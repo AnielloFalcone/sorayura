@@ -56,9 +56,10 @@ Il certificato Developer ID e il
 profilo di notarizzazione sono ancora da predisporre. La parte della procedura
 che firma e notarizza con Apple non è stata eseguita sul candidato locale.
 
-Dopo scelta del repository e revisione dei materiali, pubblicare una prerelease
-con tag immutabile, DMG notarizzato, SHA256SUMS e note della beta. Nessun repository
-è stato creato e nessun file è stato caricato da questa procedura.
+Il codice sorgente è pubblico con licenza MIT nel repository indicato. La procedura
+di preparazione non pubblica i pacchetti. Dopo revisione dei materiali, pubblicare
+una prerelease con tag immutabile, DMG notarizzato, SHA256SUMS e note della beta.
+Il DMG include la licenza MIT. Il candidato locale non va caricato come beta pubblica.
 
 ```sh
 python3 native-app/release/write-cask.py \
