@@ -1,0 +1,15 @@
+native-app/.build/
+native-app/build/
+native-app/releases/
+.DS_Store
+*.log
+
+.idea/
+.swiftpm/
+__pycache__/
+*.pyc
+native-app/performance/*
+!native-app/performance/*.py
+# Historical local diagnostics contain machine-specific paths and usage data.
+native-app/VERIFICATION.md
+native-app/DISTRIBUTION.md

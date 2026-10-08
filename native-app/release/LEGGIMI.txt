@@ -1,0 +1,25 @@
+Sorayura — beta 0.5.1
+
+Trascina Sorayura in Applications, espelli il disco e avvia l'app.
+Il controller appare nella barra dei menu. Scegli «Widget e sfondo…» per configurarla.
+
+Apple Silicon. Il requisito di compilazione è macOS 14; la verifica reale è stata
+eseguita su macOS 27.0.1. Compatibilità con altre versioni e con altri Mac ancora
+in verifica durante la beta. Intel non incluso in questo pacchetto.
+
+Se stai aggiornando, chiudi prima la copia già aperta. Preferenze e layout si
+conservano. L'app va mantenuta in Applications prima di attivare Apri al login
+o i collegamenti Claude, perché questi registrano il percorso dell'eseguibile.
+Dopo uno spostamento dell'app, riattiva i collegamenti dalla sezione Integrazioni.
+
+Le integrazioni sono facoltative. Codex e Claude devono essere installati e avere
+dati locali; per i limiti account Codex occorre un CLI autenticato, selezionabile
+nelle impostazioni. Spotify richiede il consenso macOS per Automazione.
+
+Non sono inclusi aggiornamenti automatici. Per rimuovere l'app, disattiva Apri al
+login e i collegamenti Claude attivati dall'app, chiudila e spostala nel Cestino.
+I layout rimangono in ~/Library/Application Support/dev.aniello.macsystemwallpaper/.
+
+I pacchetti che contengono CANDIDATE-NON-DISTRIBUIRE nel nome servono alla verifica
+locale: non hanno firma Developer ID o notarizzazione. Il pacchetto pubblico
+deve superare firma, notarizzazione e prova del download su un altro Mac.
