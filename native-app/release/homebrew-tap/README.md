@@ -8,7 +8,7 @@ Official Homebrew tap for [Sorayura](https://github.com/AnielloFalcone/sorayura)
 
 ```sh
 brew tap AnielloFalcone/sorayura
-brew install --cask AnielloFalcone/sorayura/sorayura
+brew install --cask sorayura
 ```
 
 If Homebrew requires explicit trust for third-party Casks, review `Casks/sorayura.rb` and authorize only this Cask with `brew trust --cask AnielloFalcone/sorayura/sorayura`, then repeat the install command.
@@ -19,7 +19,7 @@ Initial requirements: Apple Silicon and macOS 14 or later. Real-world testing ha
 
 ```sh
 brew update
-brew upgrade --cask AnielloFalcone/sorayura/sorayura
+brew upgrade --cask sorayura
 ```
 
 The app closes normally during an update. Open Sorayura again after the update. Layouts and preferences are retained. Cask versions include the app build number so new beta builds are detected.
@@ -29,7 +29,7 @@ The app closes normally during an update. Open Sorayura again after the update. 
 First disable Open at Login and the Claude connections in Sorayura settings, then run:
 
 ```sh
-brew uninstall --cask AnielloFalcone/sorayura/sorayura
+brew uninstall --cask sorayura
 ```
 
 Uninstalling preserves your layouts, wallpapers and local data. No automatic `zap` cleanup is provided.
