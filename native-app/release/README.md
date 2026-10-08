@@ -68,6 +68,9 @@ python3 native-app/release/write-cask.py \
   --output native-app/releases/sorayura.rb
 ```
 
+Tap dedicato: `AnielloFalcone/homebrew-sorayura`. La preparazione, la pubblicazione
+del Cask e gli aggiornamenti sono descritti in [HOMEBREW.md](HOMEBREW.md).
+
 Il generatore rifiuta candidati locali e artefatti con checksum diverso. Dopo aver
 pubblicato il DMG, verificare il Cask nel tap scelto con un'installazione reale.
 La disinstallazione ordinaria conserva i dati. Prima di rimuovere l'app, l'utente

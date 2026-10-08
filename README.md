@@ -79,3 +79,5 @@ Repository: [AnielloFalcone/sorayura](https://github.com/AnielloFalcone/sorayura
 ## Licenza
 
 [MIT](LICENSE) — Copyright © 2026 Aniello Falcone.
+
+Il supporto Homebrew è in preparazione nel [tap Sorayura](https://github.com/AnielloFalcone/homebrew-sorayura); il Cask sarà installabile dopo la prima release firmata e notarizzata. [Procedura Homebrew](native-app/release/HOMEBREW.md).

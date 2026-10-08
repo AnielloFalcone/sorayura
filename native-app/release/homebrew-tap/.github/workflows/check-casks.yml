@@ -1,0 +1,32 @@
+name: Check Casks
+
+on:
+  push:
+    paths: ["Casks/**", ".github/workflows/check-casks.yml"]
+  pull_request:
+    paths: ["Casks/**", ".github/workflows/check-casks.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: macos-latest
+    env:
+      HOMEBREW_NO_ANALYTICS: "1"
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check Ruby syntax and Homebrew style
+        shell: bash
+        run: |
+          shopt -s nullglob
+          casks=(Casks/*.rb)
+          if [ "${#casks[@]}" -eq 0 ]; then
+            echo "Waiting for the first notarized Sorayura release."
+            exit 0
+          fi
+          for cask in "${casks[@]}"; do
+            ruby -c "$cask"
+          done
+          brew style "${casks[@]}"
