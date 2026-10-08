@@ -104,7 +104,7 @@ def main():
             contents.mkdir()
             shutil.copytree(app, contents / app.name)
             (contents / 'Applications').symlink_to('/Applications')
-            for name in ['LEGGIMI.txt', 'PRIVACY.md', 'RELEASE-NOTES.md']:
+            for name in ['READ-ME.txt', 'PRIVACY.md', 'RELEASE-NOTES.md']:
                 shutil.copy2(ROOT / 'release' / name, contents / name)
             shutil.copy2(ROOT.parent / 'LICENSE', contents / 'LICENSE')
             suffix = '' if public else '-CANDIDATE-NON-DISTRIBUIRE'

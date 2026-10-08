@@ -1,29 +1,30 @@
 # Sorayura 0.5.1 — beta
 
-Widget e animazioni native per il desktop macOS, controllati dalla barra dei menu.
+Native desktop widgets and animations for macOS, controlled from the menu bar.
+The app’s current interface is in Italian.
 
-- Layout per monitor, griglia regolabile, trascinamento e ridimensionamento.
-- Widget di sistema con grafici e storico; memoria compatta o estesa.
-- Quattro animazioni con livelli e colori collegati alle risorse del Mac.
-- Preset e backup del layout; integrazioni facoltative con Codex, Claude e Spotify.
-- Rendering coordinato fra monitor e buffer Metal riutilizzati. Il confronto breve
-  su tre schermi ha misurato circa il 30% in meno di CPU a frequenza dei frame simile.
-  Il risultato varia con configurazione, visibilità e attività del Mac.
+- Per-monitor layouts, adjustable grid, dragging and resizing.
+- System widgets with charts and history; compact or expanded memory views.
+- Four animations with layers and colors linked to Mac resources.
+- Presets and layout backups; optional Codex, Claude and Spotify integrations.
+- Coordinated rendering across monitors and reusable Metal buffers. A short
+  comparison on three displays measured approximately 30% lower CPU at similar
+  frame rates. Results vary with configuration, visibility and Mac activity.
 
-## Limiti della beta
+## Beta limitations
 
-Pacchetto Apple Silicon. Compilazione per macOS 14+, prova reale su macOS 27.0.1;
-altre versioni e altri Mac devono ancora essere verificati. Liquid Glass da macOS
-26, materiali nativi sulle versioni precedenti. Non sono inclusi aggiornamenti automatici.
+Apple Silicon package. Built for macOS 14+, tested on macOS 27.0.1; other versions
+and Macs still require verification. Liquid Glass is used on macOS 26+, with
+native materials on earlier versions. In-app automatic updates are not included.
 
-Mission Control mostra lo sfondo statico sincronizzato; animazioni e widget sono
-finestre del desktop. Gli Space non ancora visitati possono mantenere lo sfondo precedente.
-I dati memoria sono stime dai contatori del sistema. I limiti degli agenti dipendono
-dalle fonti disponibili e dalla loro data di aggiornamento; dati mancanti non equivalgono a zero.
+Mission Control shows the synchronized static wallpaper; animations and widgets
+are desktop windows. Unvisited Spaces may retain their previous wallpaper.
+Memory values are estimates from system counters. Agent limits depend on available
+sources and their update timestamps; missing data does not mean zero usage.
 
-Installazione dal DMG locale in Applications verificata l'8 ottobre. L'utente ha
-confermato il ritorno corretto di widget, posizioni e animazione dopo Mission Control,
-riconnessione di un monitor e Stop/risveglio. La diagnostica conferma il ritorno dei
-tre schermi; non ha registrato notifiche di Stop, quindi non verifica la pausa del
-renderer durante la sospensione. Il primo avvio del download firmato e notarizzato
-su un altro Mac resta da verificare.
+Installation from the local DMG into Applications was tested on October 8.
+The user confirmed that widgets, positions and animation returned correctly
+after Mission Control, monitor reconnection and sleep/wake. Diagnostics confirmed
+that all three displays returned, but recorded no sleep notifications and therefore
+do not verify renderer pausing during sleep. First launch of the signed and
+notarized download on another Mac still requires verification.

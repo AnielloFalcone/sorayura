@@ -1,13 +1,13 @@
-# Prestazioni e verifiche
+# Performance and verification
 
-Le prove locali sono state eseguite su un Mac Apple Silicon con macOS 27.0.1 e tre monitor. Non costituiscono una garanzia per altre configurazioni.
+Local tests were conducted on an Apple Silicon Mac running macOS 27.0.1 with three monitors. These results are not a guarantee for other configurations.
 
-Nell’ultima osservazione di dieci minuti della build 0.5.1 (2), il processo è rimasto attivo con configurazione invariata. Negli ultimi tre minuti: CPU mediana 14,3% di un core, physical footprint mediano 367 MiB, RSS mediano 197,5 MiB. I renderer hanno mantenuto circa 29–30 fps sui tre monitor. I tempi GPU registrati riguardano soltanto i comandi dell’app e non misurano energia, WindowServer o consumo GPU complessivo.
+During the latest ten-minute observation of version 0.5.1, build 2, the process remained active with an unchanged configuration. Over the final three minutes: median CPU was 14.3% of one core, median physical footprint was 367 MiB and median RSS was 197.5 MiB. Renderers maintained approximately 29–30 fps across the three monitors. Recorded GPU timings cover only the app’s commands and do not measure energy, WindowServer or total GPU usage.
 
-Le precedenti prove di un’ora hanno osservato memoria stabile nell’intervallo registrato; oscillazioni e cache non dimostrano né escludono un leak. Visibilità e blocco dello schermo non erano monitorati per tutta la durata, quindi i valori CPU non vanno attribuiti interamente alle ottimizzazioni.
+Earlier one-hour tests observed stable memory within the recorded interval. Fluctuations and caches neither prove nor rule out a leak. Visibility and screen lock were not monitored throughout, so CPU values cannot be attributed entirely to the optimizations.
 
-L’utente ha verificato Mission Control, scollegamento e ricollegamento di un monitor e Stop/risveglio, con ritorno corretto di widget, posizioni e animazione. Queste prove precedono la rinomina Sorayura.
+The user tested Mission Control, monitor disconnection/reconnection and sleep/wake, confirming that widgets, positions and animation returned correctly. These physical tests preceded the Sorayura rename.
 
-La preparazione del pacchetto esegue sei controlli: M1, M2, osservazione, risorse, campionamento e prestazioni della lettura agenti. Le integrazioni che richiedono consenso o dati di applicazioni esterne, l’avvio al login e l’installazione di un download notarizzato su un altro Mac richiedono verifica reale.
+Package preparation runs six checks: M1, M2, observation, resources, sampling and agent reader performance. Integrations requiring consent or external app data, launch at login and installation of a notarized download on another Mac require real-world verification.
 
-I dati grezzi delle prove sono locali e non fanno parte del repository pubblico.
+Raw test data remains local and is excluded from the public repository.

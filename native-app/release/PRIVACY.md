@@ -1,30 +1,30 @@
-# Dati e integrazioni
+# Data and integrations
 
-L'app conserva preferenze, preset, sfondi e riepiloghi locali nella cartella
-`~/Library/Application Support/dev.aniello.macsystemwallpaper/`. I widget leggono
-contatori di sistema come CPU, memoria, batteria, disco, rete e stato termico.
-Non è presente un servizio di telemetria dell'autore o un sistema di account dell'app.
+The app stores preferences, presets, wallpapers and local summaries in
+`~/Library/Application Support/dev.aniello.macsystemwallpaper/`. Widgets read
+system counters such as CPU, memory, battery, disk, network and thermal state.
+There is no developer-operated telemetry service or app account system.
 
-Quando attivi gli agenti AI, l'app legge i registri locali di Codex/Claude e ne ricava
-consumi, modelli, progetti e attività. I registri originali possono contenere anche
-contenuti delle conversazioni: vengono elaborati localmente. Il collegamento account
-Codex, se abilitato, avvia il CLI scelto dall'utente usando l'autenticazione già presente;
-il CLI può contattare i servizi OpenAI per ottenere i limiti. L'app non richiede
-l'inserimento della password o di una chiave API nelle proprie impostazioni.
+When AI agents are enabled, the app reads local Codex/Claude logs to derive
+usage, models, projects and activity. Original logs may contain conversation
+content; they are processed locally. When enabled, the Codex account connection
+starts the user-selected CLI with its existing authentication. The CLI may
+contact OpenAI services to retrieve limits. The app does not ask for a password
+or API key in its own settings.
 
-La lettura dei limiti Claude desktop usa dati locali disponibili dell'app Claude.
-I collegamenti Claude facoltativi modificano la configurazione locale di Claude
-per ricevere eventi/stato; conservano una copia della configurazione per il ripristino.
+Claude desktop limits use locally available Claude app data. Optional Claude
+connections modify local Claude configuration to receive events/status and
+retain restoration information for the settings they manage.
 
-Spotify usa AppleEvents dopo il consenso macOS. Titolo, artista e riproduzione sono
-letti dall'app Spotify; le copertine vengono scaricate via HTTPS dai domini CDN
-Spotify consentiti. Queste richieste espongono al fornitore i normali dati di rete,
-come l'indirizzo IP. I permessi sono revocabili nelle impostazioni di macOS.
+Spotify uses AppleEvents after macOS consent. Track, artist and playback are
+read from the Spotify app; artwork is downloaded over HTTPS from allowed
+Spotify CDN domains. These requests expose standard network information,
+such as the IP address, to the provider. Permissions can be revoked in macOS settings.
 
-I backup esportati includono layout e immagine dello sfondo: condividili consapevolmente.
-La disinstallazione conserva i dati locali. Per rimuoverli occorre cancellare
-esplicitamente la cartella dei dati, dopo aver disattivato login e collegamenti Claude.
+Exported backups include layouts and the wallpaper image; consider their
+contents before sharing. Uninstalling preserves local data. To remove it,
+explicitly delete the data folder after disabling login and Claude connections.
 
-La diagnostica di sviluppo è attiva solo con opzioni esplicite di avvio, scrive
-localmente contatori delle risorse/renderer e identificativi dei monitor e ha durata
-limitata. Non viene inviata automaticamente all'autore.
+Development diagnostics require explicit launch options, write local
+resource/renderer counters and monitor identifiers, and have a limited duration.
+They are not automatically sent to the developer.

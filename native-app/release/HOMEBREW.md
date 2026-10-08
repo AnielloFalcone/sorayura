@@ -1,23 +1,23 @@
-# Homebrew per Sorayura
+# Homebrew for Sorayura
 
-Tap: `AnielloFalcone/homebrew-sorayura`. Pacchetti: release di `AnielloFalcone/sorayura`.
-Homebrew riconosce il prefisso `homebrew-`, quindi il comando sarà `brew tap AnielloFalcone/sorayura`.
+Tap: `AnielloFalcone/homebrew-sorayura`. Packages: releases of `AnielloFalcone/sorayura`.
+Homebrew recognizes the `homebrew-` prefix, so users run `brew tap AnielloFalcone/sorayura`.
 
-Il tap nasce con README, licenza e verifica automatica. `Casks/sorayura.rb` verrà
-aggiunto dopo la prima release firmata, notarizzata, pubblicata e verificata.
-Non contiene URL fittizi o checksum provvisori installabili.
+The initial tap contains a README, license and automated checks. `Casks/sorayura.rb`
+will be added after the first signed, notarized, published and verified release.
+There are no installable placeholder URLs or provisional checksums.
 
-## Prima release
+## First release
 
-1. Preparare il pacchetto pubblico con `prepare.py release`, come descritto in [README.md](README.md).
-2. Completare la verifica del pacchetto finale scaricato su un altro Mac e pubblicarlo nella release GitHub con tag immutabile.
-3. Clonare il tap in una cartella locale:
+1. Prepare the public package with `prepare.py release`, as described in [README.md](README.md).
+2. Complete verification of the final downloaded package on another Mac and publish it in a GitHub Release with an immutable tag.
+3. Clone the tap locally:
 
    ```sh
    gh repo clone AnielloFalcone/homebrew-sorayura native-app/releases/homebrew-sorayura
    ```
 
-4. Generare il Cask dal manifest del pacchetto locale definitivo:
+4. Generate the Cask from the final local package manifest:
 
    ```sh
    python3 native-app/release/write-cask.py \
@@ -28,49 +28,48 @@ Non contiene URL fittizi o checksum provvisori installabili.
    brew style native-app/releases/homebrew-sorayura/Casks/sorayura.rb
    ```
 
-5. Confrontare il checksum del DMG scaricato da GitHub con quello del manifest/Cask. Il generatore verifica il file locale; non certifica il download remoto.
-6. Aggiornare il README del tap rimuovendo l’avviso di preparazione; fare commit e push nel tap. Il workflow controlla sintassi Ruby e stile Homebrew senza installare l’app.
-7. Verificare su un Mac di prova `brew tap AnielloFalcone/sorayura`, `brew readall --os=sonoma --arch=arm AnielloFalcone/sorayura`, installazione, apertura, aggiornamento e disinstallazione.
+5. Compare the checksum of the DMG downloaded from GitHub with the manifest/Cask. The generator verifies the local file; it does not certify the remote download.
+6. Update the tap README to remove its preparation notice, then commit and push. The workflow checks Ruby syntax and Homebrew style without installing the app.
+7. On a test Mac, verify `brew tap AnielloFalcone/sorayura`, `brew readall --os=sonoma --arch=arm AnielloFalcone/sorayura`, installation, launch, upgrade and uninstall.
 
-Su Homebrew configurato per richiedere fiducia esplicita, il manutentore deve
-verificare il contenuto del proprio tap e autorizzarlo con
-`brew trust --tap AnielloFalcone/sorayura` prima di `readall`. Per gli utenti
-è sufficiente autorizzare il singolo Cask, come indicato nel README del tap.
+When Homebrew requires explicit trust, the maintainer should review their tap
+and authorize it with `brew trust --tap AnielloFalcone/sorayura` before `readall`.
+Users can authorize just the individual Cask, as explained in the tap README.
 
-La validazione preliminare non sostituisce la prova di installazione del download.
-L’app manualmente installata su questo Mac resta attiva durante la preparazione del tap.
+Preliminary validation does not replace testing installation of the download.
+The manually installed app remains active while preparing the tap.
 
-## Aggiornamenti
+## Updates
 
-Per ogni nuovo pacchetto usare un nuovo numero di build e un nuovo tag; conservare
-gli artefatti pubblicati senza sostituirli. Il Cask usa `version "versione,build"`
-per rilevare anche due beta con la stessa versione dell’app.
+Use a new build number and tag for each new package. Retain published artifacts
+without replacing them. The Cask uses `version "version,build"` to detect two
+beta builds with the same app version.
 
-Generare il nuovo Cask in un file temporaneo, verificarlo e sostituire quello del
-tap con un commit. Il generatore rifiuta di sovrascrivere un file esistente.
-La pubblicazione nel tap è un passaggio esplicito; non richiede token salvati
-nel repository o un’automazione che scriva in altri repository.
+Generate an updated Cask in a temporary file, verify it, and replace the tap’s
+Cask through a commit. The generator refuses to overwrite an existing file.
+Publishing to the tap is explicit. No tokens need to be stored in the repository,
+and no automation writes into other repositories.
 
-`uninstall quit:` chiude normalmente l’app anche durante upgrade/reinstall.
-Non vengono rimossi automaticamente dati, preset o sfondi. Prima di disinstallare,
-l’utente disattiva login e integrazioni Claude dall’app; non è previsto `zap`.
+`uninstall quit:` closes the app normally during upgrades/reinstalls as well.
+Data, presets and wallpapers are not automatically removed. Before uninstalling,
+users disable login and Claude integrations in the app. No `zap` is provided.
 
-## Verifica del generatore
+## Generator verification
 
 ```sh
 python3 native-app/release/test_cask.py
 ```
 
-I test usano manifest sintetici e file temporanei: provano checksum, formato,
-architettura, rifiuto dei candidati, notarizzazione non accettata e sovrascrittura.
-I dati sintetici non sono pacchetti firmati e non vanno pubblicati.
+Tests use synthetic manifests and temporary files to exercise checksum validation,
+format, architecture, candidate rejection, unaccepted notarization and overwrite
+protection. Synthetic data is not a signed package and must not be published.
 
-Fonti: [creare un tap](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap),
+Sources: [creating a tap](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap),
 [Cask Cookbook](https://docs.brew.sh/Cask-Cookbook),
-[sicurezza Homebrew](https://docs.brew.sh/Homebrew-Security-and-Supply-Chain).
+[Homebrew security](https://docs.brew.sh/Homebrew-Security-and-Supply-Chain).
 
-Verifica della preparazione: otto test del generatore superati, sintassi Ruby e
-`brew style` superati; Cask sintetico caricato con `brew info` e `brew readall`
-simulando Sonoma/ARM in un tap temporaneo poi rimosso. Nessuna app installata.
-Il workflow GitHub del tap è passato sullo scheletro iniziale; la verifica del
-primo Cask reale avverrà quando verrà aggiunto.
+Preparation verification: eight generator tests passed, along with Ruby syntax
+and `brew style`. A synthetic Cask was loaded with `brew info` and `brew readall`
+simulating Sonoma/ARM in a temporary tap, which was subsequently removed.
+No app was installed. The tap’s GitHub workflow passed on the initial skeleton;
+the first real Cask will be checked when it is added.

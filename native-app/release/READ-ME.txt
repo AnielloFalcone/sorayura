@@ -1,0 +1,26 @@
+Sorayura — beta 0.5.1
+
+Drag Sorayura into Applications, eject the disk image and open the app.
+The controller appears in the menu bar. Choose “Widget e sfondo…” to configure it.
+The app’s current interface is in Italian.
+
+Apple Silicon. The build requires macOS 14; real-world verification has been
+performed on macOS 27.0.1. Other macOS versions and Macs are still being verified
+during the beta. Intel is not included in this package.
+
+When upgrading, first quit the running copy. Preferences and layouts are retained.
+Keep the app in Applications before enabling Open at Login or Claude connections,
+which register the executable’s path. If you move the app, re-enable its
+connections from Integrations settings.
+
+Integrations are optional. Codex and Claude must be installed and have local data.
+Codex account limits require an authenticated CLI, selectable in settings.
+Spotify requires macOS Automation consent.
+
+In-app automatic updates are not included. To remove the app, disable Open at
+Login and app-installed Claude connections, quit the app and move it to the Trash.
+Layouts remain in ~/Library/Application Support/dev.aniello.macsystemwallpaper/.
+
+Packages whose names contain CANDIDATE-NON-DISTRIBUIRE are for local verification
+and lack Developer ID signing and notarization. Public packages must pass signing,
+notarization and testing of the downloaded package on another Mac.

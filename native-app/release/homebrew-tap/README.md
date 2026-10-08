@@ -4,6 +4,8 @@ Official Homebrew tap for [Sorayura](https://github.com/AnielloFalcone/sorayura)
 
 **Preparation stage:** the first signed and notarized download has not been published yet. This repository currently has no installable Cask. The commands below will become available after that release.
 
+Read [the story behind the name Sorayura](https://github.com/AnielloFalcone/sorayura#why-sorayura).
+
 ## Install, after the first release
 
 ```sh

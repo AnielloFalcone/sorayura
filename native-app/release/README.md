@@ -1,65 +1,66 @@
-# Preparazione della beta
+# Beta preparation
 
-La prima beta è per Apple Silicon. La build dichiara macOS 14 come minimo;
-le prove reali disponibili sono su macOS 27.0.1. Intel e le altre versioni
-restano da verificare. Materiali da rivedere: LEGGIMI.txt, RELEASE-NOTES.md e PRIVACY.md.
+The first beta targets Apple Silicon. The build declares macOS 14 as its minimum;
+real-world tests have been conducted on macOS 27.0.1. Intel and other macOS versions
+still require verification. Review READ-ME.txt, RELEASE-NOTES.md and PRIVACY.md.
 
-## Candidato locale
+## Local candidate
 
-Dal progetto:
+From the project root:
 
 ```sh
 python3 native-app/release/prepare.py candidate --version 0.5.1 --build 4
 ```
 
-Crea una cartella nuova in `native-app/releases/`, compila con hardened runtime
-e firma locale, esegue i sei controlli funzionali e verifica che tutte le librerie
-siano di sistema. Crea il DMG con collegamento ad Applications e checksum SHA-256.
-Il manifest conserva esiti, versione, architettura e hash. Una cartella già
-esistente non viene sovrascritta. Il pacchetto candidato non è quello pubblico.
+This creates a new folder in `native-app/releases/`, builds with hardened runtime
+and a local signature, runs six functional checks and verifies that all dependencies
+are system libraries. It creates a DMG with an Applications shortcut and SHA-256
+checksum. The manifest retains results, version, architecture and hashes. Existing
+folders are not overwritten. A local candidate is not the public package.
 
-La prova dell'8 ottobre ha installato il candidato dal DMG in
-`/Applications/Mac System Wallpaper.app`, verificando firma e avvio da quel percorso.
-Questo non simula Gatekeeper su un download da Internet: per quello serve il
-pacchetto finale notarizzato, con la quarantena applicata dal download, su un altro Mac.
+The October 8 test installed the candidate from the DMG into
+`/Applications/Mac System Wallpaper.app`, verifying signing and launch from that path.
+This preceded the Sorayura rename. It does not simulate Gatekeeper for an Internet
+download; that requires the final notarized package, with download quarantine,
+on another Mac.
 
-## Firma e notarizzazione
+## Signing and notarization
 
-Occorre un certificato **Developer ID Application** con relativa chiave privata
-nel Keychain. I certificati **Apple Development** presenti non sostituiscono quel
-certificato per questo canale di distribuzione. Si crea dall'account Apple Developer
-o da Xcode con il ruolo autorizzato. Non esportare la chiave privata nel progetto.
+A **Developer ID Application** certificate and its private key must be available
+in Keychain. **Apple Development** certificates cannot replace it for this
+channel. Create the certificate through Apple Developer or Xcode with the
+required account role. Do not export the private key into the project.
 
-Configurare le credenziali di notarizzazione con `xcrun notarytool store-credentials`
-usando la richiesta interattiva sicura; conservare soltanto il nome del profilo.
-Password e API key non vanno inserite nella chat, nei file del progetto o negli argomenti
-degli script di rilascio.
+Configure notarization credentials with the secure interactive prompt from
+`xcrun notarytool store-credentials`; retain only the profile name. Do not put
+passwords or API keys in chat, project files or release script arguments.
 
 ```sh
 python3 native-app/release/prepare.py release --version 0.5.1 --build 4 \
-  --identity 'Developer ID Application: NOME (TEAMID)' \
-  --notary-profile 'PROFILO_KEYCHAIN'
+  --identity 'Developer ID Application: NAME (TEAMID)' \
+  --notary-profile 'KEYCHAIN_PROFILE'
 ```
 
-La procedura richiede identità Developer ID, abilita hardened runtime e timestamp,
-usa solo l'entitlement AppleEvents necessario a Spotify, verifica tutti i controlli,
-notarizza e allega il ticket all'app, crea/firma/notarizza il DMG e verifica Gatekeeper.
-Un esito diverso da Accepted ferma la procedura. Conservare preparation.log e manifest.json.
-Il manifest resta in attesa della verifica fisica e della revisione dei materiali prima
-della pubblicazione; lo script non pubblica automaticamente.
+The procedure requires a Developer ID identity, enables hardened runtime and a
+secure timestamp, uses only the AppleEvents entitlement needed by Spotify,
+verifies all checks, notarizes and staples the app, creates/signs/notarizes the DMG,
+and verifies Gatekeeper. Any result other than Accepted stops preparation.
+Retain preparation.log and manifest.json.
 
-## GitHub e Homebrew
+The manifest still awaits physical verification and review of release materials
+before publication. The script does not publish automatically.
 
-Repository scelto: **[AnielloFalcone/sorayura](https://github.com/AnielloFalcone/sorayura)**.
-Nome dell’app e dell’eseguibile: **Sorayura**.
-Il certificato Developer ID e il
-profilo di notarizzazione sono ancora da predisporre. La parte della procedura
-che firma e notarizza con Apple non è stata eseguita sul candidato locale.
+## GitHub and Homebrew
 
-Il codice sorgente è pubblico con licenza MIT nel repository indicato. La procedura
-di preparazione non pubblica i pacchetti. Dopo revisione dei materiali, pubblicare
-una prerelease con tag immutabile, DMG notarizzato, SHA256SUMS e note della beta.
-Il DMG include la licenza MIT. Il candidato locale non va caricato come beta pubblica.
+Repository: **[AnielloFalcone/sorayura](https://github.com/AnielloFalcone/sorayura)**.
+App and executable name: **Sorayura**.
+Developer ID signing and the notarization profile still need setup. Apple signing
+and notarization have not been performed on the local candidate.
+
+Source code is public under the MIT license. Package preparation does not publish
+downloads. After reviewing the materials, publish a prerelease with an immutable
+tag, notarized DMG, SHA256SUMS and beta notes. The DMG includes the MIT license.
+Do not upload the local candidate as the public beta.
 
 ```sh
 python3 native-app/release/write-cask.py \
@@ -68,14 +69,14 @@ python3 native-app/release/write-cask.py \
   --output native-app/releases/sorayura.rb
 ```
 
-Tap dedicato: `AnielloFalcone/homebrew-sorayura`. La preparazione, la pubblicazione
-del Cask e gli aggiornamenti sono descritti in [HOMEBREW.md](HOMEBREW.md).
+Dedicated tap: `AnielloFalcone/homebrew-sorayura`. Preparation, Cask publication
+and updates are described in [HOMEBREW.md](HOMEBREW.md).
 
-Il generatore rifiuta candidati locali e artefatti con checksum diverso. Dopo aver
-pubblicato il DMG, verificare il Cask nel tap scelto con un'installazione reale.
-La disinstallazione ordinaria conserva i dati. Prima di rimuovere l'app, l'utente
-disattiva login e collegamenti Claude dall'interfaccia.
+The generator rejects local candidates and artifacts with changed checksums.
+After publishing the DMG, verify the Cask in the chosen tap with a real installation.
+Normal uninstall preserves data. Users should disable login and Claude connections
+in the app before removing it.
 
-Fonti: [Developer ID](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/),
-[notarizzazione Apple](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution),
+Sources: [Developer ID](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/),
+[Apple notarization](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution),
 [Homebrew Cask Cookbook](https://docs.brew.sh/Cask-Cookbook).

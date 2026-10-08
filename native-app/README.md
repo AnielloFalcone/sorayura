@@ -1,16 +1,16 @@
-# Sorayura — M2 nativa
+# Sorayura — native M2
 
-Implementazione Swift, AppKit, SwiftUI e Metal. Vedi il [README principale](../README.md) per le funzionalità e le impostazioni.
+Swift, AppKit, SwiftUI and Metal implementation. See the [main README](../README.md) for features and settings.
 
-## Compilazione
+## Build
 
 ```sh
 ./build-native.sh
 ```
 
-Apri `build/Sorayura.app`. Il pacchetto viene firmato localmente per mantenere una struttura valida; non è una distribuzione notarizzata.
+Open `build/Sorayura.app`. The bundle is signed locally to preserve a valid structure; this is not a notarized distribution.
 
-## Controlli
+## Checks
 
 ```sh
 'build/Sorayura.app/Contents/MacOS/Sorayura' --check-m1
@@ -18,43 +18,39 @@ Apri `build/Sorayura.app`. Il pacchetto viene firmato localmente per mantenere u
 'build/Sorayura.app/Contents/MacOS/Sorayura' --check-observation
 'build/Sorayura.app/Contents/MacOS/Sorayura' --check-resources
 'build/Sorayura.app/Contents/MacOS/Sorayura' --check-sampling
+'build/Sorayura.app/Contents/MacOS/Sorayura' --check-agent-performance
 ```
 
-Le verifiche che richiedono l'interazione con il Mac sono elencate in [PERFORMANCE.md](PERFORMANCE.md).
+Checks requiring interaction with the Mac are documented in [PERFORMANCE.md](PERFORMANCE.md).
 
-Il controllo Observation usa un modello isolato: verifica che un campione CPU non notifichi impostazioni, agenti, Spotify o metriche invariate; verifica inoltre storici, avvisi e binding dei controlli. Non avvia i lettori delle integrazioni e non scrive le preferenze dell'utente.
+Observation checks use an isolated model: a CPU sample must not notify settings, agents, Spotify or unchanged metrics. They also check history, warnings and control bindings. They do not start integration readers or write user preferences.
 
-Il controllo Resources crea finestre delle impostazioni non mostrate e piccoli buffer di prova: verifica rilascio della vista, riapertura con sezione e geometria conservate, massimo di tre frame in volo, riuso/crescita dei buffer, completamento GPU e geometrie dei quattro stili. Non avvia il wallpaper né modifica le preferenze.
+Resource checks create hidden settings windows and small test buffers. They verify view release, reopening with the same section and geometry, a maximum of three frames in flight, buffer reuse/growth, GPU completion and geometry for the four styles. They do not start the wallpaper or change preferences.
 
-Verifica anche pausa/ripresa e collegamento/distacco della vista Metal, vertici di riferimento della release precedente, pixel GPU identici fra disegni separati/raggruppati e ripristino delle fasi diagnostiche. Sampling usa letture disco simulate per verificare scadenza della cache, gestione degli errori e aggiornamento immediato dopo reset. CPU/memoria/rete continuano a campionare ogni secondo; lo spazio disco viene letto ogni 30 secondi e dopo wake/reset.
+They also verify pause/resume, attaching/detaching the Metal view, reference vertices from the previous release, identical GPU pixels between separate and grouped draws, and restoration of diagnostic phases. Sampling uses simulated disk readings to verify cache expiry, error handling and immediate refresh after reset. CPU/memory/network continue sampling every second; disk space is read every 30 seconds and after wake/reset.
 
-Resources verifica inoltre il clock comune con renderer a frequenze diverse e un batch di tre passaggi GPU: slot conservati fino al completamento, restituzione se il batch viene abbandonato e pixel indipendenti corretti. Pausa su sleep/sessione inattiva e occlusione di tutte le finestre è verificata con stati simulati; queste fixture non certificano le transizioni fisiche del Mac.
+Resource checks additionally cover the shared clock with renderers at different frame rates and a three-pass GPU batch: slots retained until completion, released when a batch is abandoned, and correct independent pixels. Pausing for sleep/inactive sessions or when all windows are occluded is tested with simulated states. These fixtures do not certify physical Mac transitions.
 
-## Rendering su più monitor
+## Multi-monitor rendering
 
-Il lancio normale coordina i renderer con un clock comune e invia i passaggi dovuti nello stesso tick in un command buffer Metal. Ogni monitor conserva il proprio limite FPS e i propri buffer. Nessuna riduzione automatica della qualità o modifica delle preferenze per questa ottimizzazione.
+Normal launches coordinate renderers through a shared clock and submit passes due in the same tick through one Metal command buffer. Each monitor retains its own FPS limit and buffers. This optimization does not automatically reduce quality or change preferences.
 
-`--independent-frames` è un flag di confronto interno che ripristina i clock automatici distinti di MTKView nello stesso binario. È un'opzione di avvio, non un'impostazione dell'interfaccia: per confrontare le modalità occorre chiudere normalmente l'istanza esistente prima di avviare il pacchetto esatto con il flag. È possibile eseguire il controllo Resources anche con `--independent-frames --check-resources`, senza avviare il desktop.
+`--independent-frames` is an internal comparison flag that restores separate automatic MTKView clocks in the same binary. It is a launch option rather than a UI setting. To compare modes, quit the existing instance normally before launching the exact bundle with the flag. Resource checks also support `--independent-frames --check-resources` without starting the desktop.
 
-Nel rendering condiviso `MTKView.isPaused` è sempre true perché il disegno è esplicito. Gli snapshot distinguono `automatic_mtk_paused` dalla pausa logica `paused`, e aggiungono `frame_clock`, tick e invii condivisi. Usare i contatori di frame inviati per verificare che l'animazione sia attiva. Sleep/sessione inattiva o tutte le finestre wallpaper attive occluse sospendono il clock; la verifica fisica della ripresa resta elencata in PERFORMANCE.md.
+In shared rendering, `MTKView.isPaused` is always true because drawing is explicit. Snapshots distinguish `automatic_mtk_paused` from the logical `paused` state and add `frame_clock`, ticks and shared submissions. Use submitted-frame counters to verify that animation is active. Sleep, inactive sessions or occlusion of all active wallpaper windows suspend the clock. Physical resume verification is documented in PERFORMANCE.md.
 
-## Diagnostica dei componenti
+## Component diagnostics
 
-`--benchmark-sampling` confronta pochi campioni seriali del lettore con query disco ripetute e conservate. `--benchmark-geometry` misura piccole fixture CPU delle quattro geometrie. Nessuna finestra del wallpaper, lettura degli agenti o scrittura delle preferenze; non sono confronti dell'app completa o misure GPU/energia.
+`--benchmark-sampling` compares a few serial reader samples with repeated and cached disk queries. `--benchmark-geometry` measures small CPU fixtures for the four geometries. These commands do not create wallpaper windows, read agent data or write preferences. They are not full-app comparisons or GPU/energy measurements.
 
-Il lancio con `--profile-components /percorso/assoluto/cartella` attiva una prova visiva esplicita di circa nove minuti: sei fasi da 90 secondi (normale, Metal sospeso, Glass sostituito, widget nascosti, widget nascosti + Metal sospeso, normale). Registra i confini in component-profile.json. Non salva modifiche alle preferenze, mantiene la vista Metal e la sua timeline e ripristina automaticamente la presentazione normale. Interrompe/ripristina su modifica del layout/preferenze, cambio di schermi/Space o wake. Va usato con Mac sbloccato e visibilità controllata, dopo aver concordato la temporanea variazione dello sfondo. Raccogliere contemporaneamente CPU/RSS/footprint del PID; escludere i campioni di transizione e distinguere il costo del processo da quello GPU/WindowServer. Un'istanza già aperta non avvia una seconda prova da sola.
+Launching with `--profile-components /absolute/path/folder` enables an explicit visual test lasting approximately nine minutes: six 90-second phases (normal, Metal paused, Glass replaced, widgets hidden, widgets hidden + Metal paused, normal). Phase boundaries are recorded in component-profile.json. It does not save preference changes, retains the Metal view and timeline, and automatically restores normal presentation. Editing layouts/preferences, display/Space changes or wake interrupt and restore it. Use an unlocked Mac with controlled visibility, after agreeing to the temporary presentation changes. Collect CPU/RSS/footprint for the PID simultaneously, exclude transition samples and distinguish process cost from GPU/WindowServer cost. An existing instance does not automatically start a second test.
 
-`--render-diagnostics /percorso/assoluto/file.json` abilita per circa dieci minuti uno snapshot passivo ogni dieci secondi dei contatori draw/fotogrammi inviati e dello stato delle viste Metal sui monitor. Nessuna modifica al desktop o alle preferenze. Zero fotogrammi, occlusione e pausa vanno controllati prima di interpretare una diminuzione CPU come risparmio del renderer; i contatori non misurano costo GPU/energia o visibilità dei pixel. Il normale lancio non abilita questa raccolta.
+`--render-diagnostics /absolute/path/file.json` enables passive snapshots every ten seconds for approximately ten minutes, recording draw/submitted-frame counters and Metal view state across monitors. It does not change the desktop or preferences. Check zero-frame intervals, occlusion and pause before interpreting lower CPU as renderer savings. Counters do not measure GPU/energy cost or pixel visibility. Normal launches do not enable this collection.
 
-Da 0.5.1 gli snapshot includono anche i tempi GPU dei command buffer di questa app,
-errori di completamento, finestre/schermi e gli ultimi 64 eventi di cambio Space,
-monitor e sospensione. `--render-diagnostics-seconds 1800` estende la durata fino
-a un massimo di un'ora. I tempi GPU non sono utilizzo percentuale dell'intera GPU
-né consumo energetico. Le statistiche dei tempi recenti conservano al massimo
-240 campioni e non raccolgono contenuti delle finestre.
+Since 0.5.1, snapshots also include GPU timings for this app’s command buffers, completion errors, windows/displays and the last 64 Space, monitor and suspension events. `--render-diagnostics-seconds 1800` extends collection, up to one hour. GPU timings are not total GPU utilization percentages or energy consumption. Recent timing statistics retain at most 240 samples and do not collect window contents.
 
-Per una prova dei componenti autorizzata, il monitor `performance/measure-footprint.py` accetta `--render-health <file.json>` e conserva gli snapshot nuovi in render-snapshots.jsonl. Dopo il ripristino del profilo, `python3 performance/analyze-components.py <cartella-prova>` calcola CPU/RSS/footprint per fase, esclude i primi 30 e gli ultimi cinque secondi e controlla presenza, pausa e invio dei fotogrammi su ogni monitor. Interpretare una sequenza breve con cache/ordine delle fasi e confronto completa iniziale/finale; non misura costo GPU o energia.
+For an authorized component test, `performance/measure-footprint.py` accepts `--render-health <file.json>` and retains new snapshots in render-snapshots.jsonl. After the profile restores normal presentation, `python3 performance/analyze-components.py <test-folder>` calculates CPU/RSS/footprint per phase, excludes the first 30 and last five seconds, and checks renderer presence, pause and frame submissions for each monitor. Interpret short sequences with cache/phase-order effects and the initial/final full-app comparison in mind. This does not measure GPU cost or energy.
 
-Per due raccolte di tre minuti `independent/` e `shared/` con metadata e snapshot, `python3 performance/analyze-renderer.py <cartella-prova>` confronta CPU/RSS/footprint nel segmento 60–175 s, includendo soltanto intervalli CPU interamente nel segmento. Controlla identità/configurazione, renderer attivi, dimensioni e FPS equivalenti (rapporto 0,95–1,05). Confronto e limiti dell'8 ottobre in PERFORMANCE.md: calo CPU osservato circa 30%, nessun risparmio RAM dimostrato; da confermare nel tempo.
+For two three-minute collections in `independent/` and `shared/` with metadata and snapshots, `python3 performance/analyze-renderer.py <test-folder>` compares CPU/RSS/footprint over seconds 60–175, including only CPU intervals fully within that segment. It checks process identity/configuration, active renderers, equivalent dimensions and FPS (ratio 0.95–1.05). The October 8 comparison observed approximately 30% lower CPU, with no demonstrated RAM savings; longer-term confirmation is needed. See PERFORMANCE.md for the published verification summary.
 
-Novità M2 e limiti dei dati: [M2.md](M2.md).
+M2 features and data limitations: [M2.md](M2.md).

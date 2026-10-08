@@ -1,83 +1,87 @@
-# Sorayura — M2 (in sviluppo)
+# Sorayura
 
-App nativa per macOS, scritta in Swift, AppKit, SwiftUI e Metal. Widget di sistema e animazioni sul desktop, con un controller nella barra dei menu e nessuna icona nel Dock.
+A native macOS app built with Swift, AppKit, SwiftUI and Metal. System widgets and animations live on your desktop, controlled from the menu bar with no Dock icon. M2 is in development.
 
-## Avvio
+## Why Sorayura?
 
-Apri **native-app/build/Sorayura.app**. Dalla barra dei menu scegli **Widget e sfondo…** per le impostazioni o **Modifica layout…** per organizzare il desktop.
+**Sorayura** is a coined name inspired by Japanese: *sora* (空) means “sky”, while *yura* echoes *yurayura* (ゆらゆら), a gentle swaying motion.
 
-Per ricompilare servono Xcode Command Line Tools e macOS 14 o successivo:
+The name evokes a **sky in motion**: a changing space filled with light and shapes. That is the idea behind the app: turning the desktop into a living environment where animations and widgets make your Mac’s activity visible.
+
+## Getting started
+
+Open **native-app/build/Sorayura.app**. In the menu bar, choose the settings item (“Widget e sfondo…”) or edit layout (“Modifica layout…”). The app’s current interface is in Italian.
+
+Building requires Xcode Command Line Tools and macOS 14 or later:
 
 ```sh
 cd native-app
 ./build-native.sh
 ```
 
-Il progetto contiene soltanto la versione nativa Swift e non richiede Node, Rust o Tauri.
+The repository contains the native Swift app and does not require Node, Rust or Tauri.
 
-## Funzionalità M1
+## M1 features
 
-- Widget: orologio, CPU, memoria, rete, batteria, disco, attività e nome Mac.
-- CPU e memoria con barra o grafici degli ultimi 90 secondi; modalità compatta o estesa.
-- Memoria estesa con cache, swap, memoria app, vincolata e compressa. Sono stime dai contatori macOS, non una replica esatta di Activity Monitor.
-- Click secondario (due dita, se configurato nel trackpad) per il menu del widget. Click mantenuto per 550 ms e trascinamento per spostarlo.
-- Modalità modifica con griglia o posizionamento libero, celle regolabili e widget larghi/alti fino alle colonne e righe disponibili; menu Aggiungi per gli elementi nascosti.
-- Animazioni Aurora, Impulso, Tracce e Nucleo luminoso; risorse, colori, posizione e dimensione configurabili.
-- Warning e critical con soglie e colori configurabili. Rete in bps, Kbps, Mbps o Gbps.
-- Contenuti e posizioni indipendenti per monitor; identificazione degli schermi e associazione tramite identità macOS stabile.
-- Preset Minimal, Glass, Monitoraggio e Cyber; preset personali; annullamento dell'ultima applicazione.
-- Temi widget Minimal, Glass e Cyber. Glass usa Liquid Glass da macOS 26, con materiali nativi sulle versioni precedenti.
-- Importazione/esportazione JSON con immagine dello sfondo inclusa, validazione e abbinamento dei monitor.
-- Avvio al login opzionale tramite Service Management, attivabile nella sezione Generali.
-- Salvataggio automatico e copia di recupero; gestione dei cambi di risoluzione, dei monitor e del risveglio.
+- Widgets: clock, CPU, memory, network, battery, disk, uptime and Mac name.
+- CPU and memory bars or charts covering the last 90 seconds; compact and expanded views.
+- Expanded memory details: cache, swap, app memory, wired memory and compressed memory. Values are estimates from macOS counters, rather than an exact reproduction of Activity Monitor.
+- Secondary click (two fingers when configured on the trackpad) opens a widget’s menu. Hold a click for 550 ms and drag to move it.
+- Grid or free placement in edit mode, adjustable cell sizes and widget dimensions up to the available columns and rows; an Add menu for hidden items.
+- Aurora, Pulse, Trails and Luminous Core animations, with configurable resources, colors, position and size.
+- Warning and critical thresholds with configurable colors. Network rates in bps, Kbps, Mbps or Gbps.
+- Independent content and positions per monitor; display identification and matching through stable macOS identities.
+- Minimal, Glass, Monitoring and Cyber presets; custom presets and undo for the most recent application.
+- Minimal, Glass and Cyber widget themes. Glass uses Liquid Glass on macOS 26+, with native materials on earlier versions.
+- JSON import/export including the wallpaper image, validation and monitor matching.
+- Optional launch at login through Service Management, available in General settings.
+- Automatic saving and a recovery copy; handling of resolution changes, monitor changes and wake.
 
-## Sfondo e Space
+## Wallpaper and Spaces
 
-L'app imposta anche il wallpaper statico macOS quando **Usa lo stesso sfondo anche in macOS** è attivo. Mission Control mostra questa immagine, mentre widget e animazioni sono finestre sul desktop.
+When wallpaper synchronization is enabled (“Usa lo stesso sfondo anche in macOS”), the app also sets the static macOS wallpaper. Mission Control shows this image; widgets and animations are desktop windows.
 
-Al cambio Space e al risveglio l'app riapplica lo sfondo nello Space attivo. Gli Space non visitati possono conservare il wallpaper precedente finché vengono aperti. Puoi usare **Riapplica sfondo** nella sezione Schermi. Non viene impostato un video come wallpaper di sistema.
+On Space changes and wake, the app reapplies the wallpaper to the active Space. Unvisited Spaces may retain their previous wallpaper until opened. Use the reapply wallpaper action (“Riapplica sfondo”) in Displays settings if needed. The app does not set a video as the system wallpaper.
 
-## Preferenze e backup
+## Preferences and backups
 
-I file sono in `~/Library/Application Support/dev.aniello.macsystemwallpaper/`:
+Files are stored in `~/Library/Application Support/dev.aniello.macsystemwallpaper/`:
 
-- `native-settings.json`: configurazione corrente.
-- `native-settings.backup.json`: copia precedente leggibile, usata se il file corrente è danneggiato.
-- `presets.json`: preset personali.
-- `wallpapers/`: sfondi generati o importati.
+- `native-settings.json`: current configuration.
+- `native-settings.backup.json`: the previous readable copy, used if the current file is damaged.
+- `presets.json`: custom presets.
+- `wallpapers/`: generated or imported wallpapers.
 
-La prima apertura recupera le impostazioni della versione Tauri, quando disponibili. Gli identificativi numerici dei monitor vengono migrati mantenendo contenuti e posizioni.
+The first launch recovers settings from the former Tauri version when available. Numeric monitor identifiers are migrated while preserving content and positions.
 
-L'export contiene la configurazione corrente e lo sfondo, fino a 25 MB di immagine. I preset personali restano nella loro raccolta locale. I file di importazione possono arrivare a 35 MB. Il toggle di avvio al login è una preferenza di macOS e non viene trasferito dal backup.
+Exports include the current configuration and up to 25 MB of wallpaper image data. Custom presets remain in their local collection. Import files may be up to 35 MB. Launch at login is a macOS preference and is not transferred through backups.
 
-## Verifica
+The app bundle and process are named **Sorayura**. The internal identifier and data folder retain the previous name to preserve preferences, layouts and permissions. Existing Claude connections using the supported previous paths are relocated on Sorayura’s first launch.
 
-Dopo la compilazione:
+## Verification
+
+After building, from `native-app/`:
 
 ```sh
 'build/Sorayura.app/Contents/MacOS/Sorayura' --check-m1
 ```
 
-Il controllo copre preset, codifica JSON, abbinamento monitor, compatibilità con le impostazioni precedenti e rifiuto di configurazioni non valide. La verifica di login, sleep/wake e gesture fisiche richiede una sessione reale; vedi [verifiche e prestazioni](native-app/PERFORMANCE.md).
+This checks presets, JSON encoding, monitor matching, compatibility with previous settings and rejection of invalid configurations. Login, sleep/wake and physical gestures require a real session; see [performance and verification](native-app/PERFORMANCE.md).
 
-La temperatura in gradi non è disponibile; il widget termico mostra lo stato fornito da macOS.
+Temperature in degrees is unavailable; the thermal widget shows the state reported by macOS.
 
-## Prima versione M2
+## M2 integrations
 
-Dashboard locale Codex/Claude Code, collegamento facoltativo alla status line Claude, widget termico e politica energetica delle animazioni. Dettagli e limiti: [M2](native-app/M2.md).
+Local Codex/Claude Code dashboards, optional Claude status line connections, a thermal widget and animation energy policies. Details and limitations: [M2](native-app/M2.md).
 
-## Distribuzione beta
+## Beta distribution
 
-Preparazione di DMG, controlli, firma e notarizzazione: [procedura di rilascio](native-app/release/README.md).
-Il candidato locale 0.5.1 è distinto dal pacchetto pubblico firmato Developer ID.
-Stato delle verifiche: [prestazioni e verifiche](native-app/PERFORMANCE.md).
+DMG preparation, checks, signing and notarization: [release procedure](native-app/release/README.md). Local 0.5.1 candidates are separate from the public Developer ID signed package. Verification status: [performance and verification](native-app/PERFORMANCE.md).
 
-Il nome del bundle e del processo è **Sorayura**. L’identificatore interno e la cartella dati conservano il nome precedente per mantenere preferenze, layout e permessi. I collegamenti Claude già installati dal percorso precedente vengono aggiornati al primo avvio di Sorayura.
+Homebrew support is being prepared in the [Sorayura tap](https://github.com/AnielloFalcone/homebrew-sorayura). The Cask will become installable after the first signed and notarized release. See the [Homebrew procedure](native-app/release/HOMEBREW.md).
 
 Repository: [AnielloFalcone/sorayura](https://github.com/AnielloFalcone/sorayura).
 
-## Licenza
+## License
 
 [MIT](LICENSE) — Copyright © 2026 Aniello Falcone.
-
-Il supporto Homebrew è in preparazione nel [tap Sorayura](https://github.com/AnielloFalcone/homebrew-sorayura); il Cask sarà installabile dopo la prima release firmata e notarizzata. [Procedura Homebrew](native-app/release/HOMEBREW.md).
