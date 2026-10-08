@@ -10,7 +10,7 @@ The name evokes a **sky in motion**: a changing space filled with light and shap
 
 ## Getting started
 
-Open **native-app/build/Sorayura.app**. In the menu bar, choose “Widgets and wallpaper…” or “Edit layout…” (Italian: “Widget e sfondo…” / “Modifica layout…”). The interface supports English and Italian. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
+Open **native-app/build/Sorayura.app**. In the menu bar, choose “Widgets and wallpaper…” or “Edit layout…” (Italian: “Widget e sfondo…” / “Modifica layout…”). The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
 
 Building requires Xcode Command Line Tools and macOS 14 or later:
 

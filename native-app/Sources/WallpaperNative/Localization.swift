@@ -6,13 +6,14 @@ import SwiftUI
 /// A single cached catalog shared by SwiftUI, AppKit and background readers.
 enum Localizer {
     static let preferenceKey = "SorayuraInterfaceLanguage"
-    static let supported = ["it", "en"]
+    static let supported = ["it", "en", "es"]
     private struct Snapshot: Sendable {
         let language: String
         let locale: Locale
         init(_ choice: String) {
             language = Localizer.resolved(choice)
-            locale = Locale(identifier: language + "_" + (Locale.current.region?.identifier ?? (language == "it" ? "IT" : "US")))
+            let defaultRegion = ["it": "IT", "en": "US", "es": "ES"][language] ?? "US"
+            locale = Locale(identifier: language + "_" + (Locale.current.region?.identifier ?? defaultRegion))
         }
     }
     private static let selection = OSAllocatedUnfairLock(initialState: Snapshot(validated(UserDefaults.standard.string(forKey: preferenceKey) ?? "system")))

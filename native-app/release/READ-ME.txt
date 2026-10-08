@@ -2,7 +2,7 @@ Sorayura — beta 0.5.1
 
 Drag Sorayura into Applications, eject the disk image and open the app.
 The controller appears in the menu bar. Choose “Widget e sfondo…” to configure it.
-The interface supports English and Italian. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
+The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
 
 Apple Silicon. The build requires macOS 14; real-world verification has been
 performed on macOS 27.0.1. Other macOS versions and Macs are still being verified

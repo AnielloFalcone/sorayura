@@ -1,7 +1,7 @@
 # Sorayura 0.5.1 — beta
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
-The interface supports English and Italian. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
+The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
 
 - Per-monitor layouts, adjustable grid, dragging and resizing.
 - System widgets with charts and history; compact or expanded memory views.

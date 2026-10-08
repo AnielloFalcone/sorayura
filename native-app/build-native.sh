@@ -3,7 +3,7 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-5}"
+wallpaper_build="${WALLPAPER_BUILD:-6}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
@@ -23,7 +23,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleIdentifier</key><string>dev.aniello.macsystemwallpaper.native</string>
 <key>CFBundleName</key><string>Sorayura</string>
 <key>CFBundleDevelopmentRegion</key><string>en</string>
-<key>CFBundleLocalizations</key><array><string>en</string><string>it</string></array>
+<key>CFBundleLocalizations</key><array><string>en</string><string>it</string><string>es</string></array>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleVersion</key><string>1</string>
 <key>CFBundleShortVersionString</key><string>0.5.0</string>

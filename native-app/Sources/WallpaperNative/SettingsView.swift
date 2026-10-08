@@ -164,6 +164,7 @@ struct SettingsView: View {
                     Text(L("Segui la lingua del Mac")).tag("system")
                     Text("Italiano").tag("it")
                     Text("English").tag("en")
+                    Text("Español").tag("es")
                 }
                 Text(L("La lingua cambia subito per impostazioni, menu e widget. I dialoghi di sistema seguono macOS."))
                     .font(.caption).foregroundStyle(.secondary)
