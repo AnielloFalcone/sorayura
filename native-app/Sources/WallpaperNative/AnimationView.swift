@@ -7,6 +7,7 @@ struct AnimationView: View {
     @Environment(Model.self) private var model
 
     var body: some View {
+        let _ = LocalizationSettings.shared.choice
         let metrics = model.prefs.layers.map { layer -> FilamentMetric in
             let value = layer.metric == "network"
                 ? model.metrics.percentage("network") / max(0.1, model.prefs.networkScaleMBps)
@@ -18,7 +19,7 @@ struct AnimationView: View {
                                   displayValue: isNetwork
                                       ? "↓ \(networkRate(model.metrics.download))"
                                       : "\(Int(model.metrics.percentage(layer.metric).rounded()))%",
-                                  subtitle: isNetwork ? "RETE · ↑ \(networkRate(model.metrics.upload))" : nil)
+                                  subtitle: isNetwork ? LF("RETE · ↑ \(networkRate(model.metrics.upload))") : nil)
         }
         FilamentSurface(metrics: metrics, position: model.animationPosition(screen),
                         scale: model.animationScale(screen), style: model.prefs.animationStyle,
@@ -266,7 +267,7 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
             marker.cornerRadius = 1.5
             box.addSublayer(marker)
             let name = CATextLayer()
-            name.string = metric.id.uppercased()
+            name.string = Model.localizedName(metric.id).uppercased()
             name.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .medium)
             name.fontSize = 10
             name.foregroundColor = NSColor.white.withAlphaComponent(0.78).cgColor
@@ -304,7 +305,7 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         CATransaction.begin()
         CATransaction.setAnimationDuration(0.55)
         for metric in metrics {
-            names[metric.id]?.string = metric.subtitle ?? metric.id.uppercased()
+            names[metric.id]?.string = metric.subtitle ?? Model.localizedName(metric.id).uppercased()
             readouts[metric.id]?.string = metric.displayValue
             bars[metric.id]?.bounds.size.width = 140 * CGFloat(metric.fraction)
         }

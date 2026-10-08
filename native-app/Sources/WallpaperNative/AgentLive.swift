@@ -75,7 +75,7 @@ enum ClaudeActivity {
         if let hooks = current["hooks"] as? [String: Any] {
             for event in events {
                 if let value = hooks[event] {
-                    guard let groups = value as? [[String: Any]], groups.allSatisfy({ $0["hooks"] is [[String: Any]] }) else { throw SettingsError.invalid("Hook Claude con formato non supportato: \(event). Nessuna modifica.") }
+                    guard let groups = value as? [[String: Any]], groups.allSatisfy({ $0["hooks"] is [[String: Any]] }) else { throw SettingsError.invalid(LF("Hook Claude con formato non supportato: \(event). Nessuna modifica.")) }
                 }
             }
         }

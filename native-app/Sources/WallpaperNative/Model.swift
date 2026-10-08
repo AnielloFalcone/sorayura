@@ -7,6 +7,7 @@ final class Model {
     nonisolated static let systemWidgetIDs = ["clock", "cpu", "memory", "network", "battery", "disk", "uptime", "device"]
     nonisolated static let widgetIDs = ["clock", "cpu", "memory", "network", "battery", "disk", "uptime", "device", "thermal", "apps", "agents", "agentTrend", "agentModels", "agentProjects", "agentActivity", "agentSpending", "agentNow", "agentLive", "spotify"]
     nonisolated static let metricIDs = ["cpu", "memory", "network", "battery", "disk"]
+    nonisolated static func localizedName(_ id: String) -> String { L(names[id] ?? id) }
     nonisolated static let names = ["clock":"Orologio", "cpu":"CPU", "memory":"Memoria", "network":"Rete", "battery":"Batteria", "disk":"Disco", "uptime":"Attività", "device":"Nome Mac", "thermal":"Stato termico", "apps":"Applicazioni", "agents":"AI Agents", "agentTrend":"AI · Andamento", "agentModels":"AI · Modelli", "agentProjects":"AI · Progetti", "agentActivity":"AI · Attività", "agentSpending":"AI · Valore API", "agentNow":"AI · Recenti", "agentLive":"AI · Live", "spotify":"Spotify"]
     var prefs: Prefs { didSet {
         if servicesEnabled {
@@ -185,7 +186,7 @@ final class Model {
                 try old.write(to: Self.backupURL, options: .atomic)
             }
             try JSONEncoder().encode(prefs).write(to: url, options: .atomic)
-        } catch { storageMessage = "Impossibile salvare le impostazioni: \(error.localizedDescription)" }
+        } catch { storageMessage = LF("Impossibile salvare le impostazioni: \(error.localizedDescription)") }
     }
     func tick() {
         let sample = sampler.sample()

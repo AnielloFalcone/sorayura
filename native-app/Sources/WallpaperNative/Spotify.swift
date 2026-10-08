@@ -52,32 +52,33 @@ actor SpotifyReader {
 struct SpotifyWidget: View {
     @Environment(Model.self) private var model
     var body: some View {
+        let _ = LocalizationSettings.shared.choice
         VStack(alignment: .leading, spacing: 8) {
             Label("Spotify", systemImage: "music.note").font(.system(size: 12, weight: .semibold))
-            if model.prefs.spotifyEnabled != true { Text("Attiva da Integrazioni").font(.caption).foregroundStyle(.secondary) }
+            if model.prefs.spotifyEnabled != true { Text(L("Attiva da Integrazioni")).font(.caption).foregroundStyle(.secondary) }
             else {
                 HStack(spacing: 10) {
                     if let data = model.spotify.artwork, let image = NSImage(data: data) {
                         Image(nsImage: image).resizable().scaledToFill().frame(width: 48, height: 48).clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(model.spotify.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                        Text(model.spotify.available ? model.spotify.title : L(model.spotify.title)).font(.system(size: 13, weight: .semibold)).lineLimit(1)
                         Text(model.spotify.artist).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
                         if model.widgetUnits("spotify", axis: "height") > 1 { Text(model.spotify.album).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1) }
                     }
                 }
-                if let error = model.spotify.error { Text(error).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(3) }
+                if let error = model.spotify.error { Text(L(error)).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(3) }
                 Spacer(minLength: 0)
                 HStack {
-                    musicButton("backward.end.fill", command: "previous track", label: "Brano precedente")
-                    musicButton(model.spotify.playing ? "pause.fill" : "play.fill", command: "playpause", label: "Riproduci o pausa")
-                    musicButton("forward.end.fill", command: "next track", label: "Brano successivo")
+                    musicButton("backward.end.fill", command: "previous track", label: L("Brano precedente"))
+                    musicButton(model.spotify.playing ? "pause.fill" : "play.fill", command: "playpause", label: L("Riproduci o pausa"))
+                    musicButton("forward.end.fill", command: "next track", label: L("Brano successivo"))
                 }.frame(height: 28)
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     private func musicButton(_ icon: String, command: String, label: String) -> some View {
         Button { model.spotifyCommand(command) } label: { Image(systemName: icon).frame(maxWidth: .infinity) }
-            .buttonStyle(.plain).disabled(!model.spotify.available).help(label)
+            .buttonStyle(.plain).disabled(!model.spotify.available).help(L(label))
     }
 }

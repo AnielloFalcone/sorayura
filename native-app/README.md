@@ -19,6 +19,7 @@ Open `build/Sorayura.app`. The bundle is signed locally to preserve a valid stru
 'build/Sorayura.app/Contents/MacOS/Sorayura' --check-resources
 'build/Sorayura.app/Contents/MacOS/Sorayura' --check-sampling
 'build/Sorayura.app/Contents/MacOS/Sorayura' --check-agent-performance
+'build/Sorayura.app/Contents/MacOS/Sorayura' --check-localization
 ```
 
 Checks requiring interaction with the Mac are documented in [PERFORMANCE.md](PERFORMANCE.md).
@@ -54,3 +55,11 @@ For an authorized component test, `performance/measure-footprint.py` accepts `--
 For two three-minute collections in `independent/` and `shared/` with metadata and snapshots, `python3 performance/analyze-renderer.py <test-folder>` compares CPU/RSS/footprint over seconds 60–175, including only CPU intervals fully within that segment. It checks process identity/configuration, active renderers, equivalent dimensions and FPS (ratio 0.95–1.05). The October 8 comparison observed approximately 30% lower CPU, with no demonstrated RAM savings; longer-term confirmation is needed. See PERFORMANCE.md for the published verification summary.
 
 M2 features and data limitations: [M2.md](M2.md).
+
+## Localization
+
+The native interface supports English and Italian. General → Language offers System, English and Italiano; a change updates the app’s views, menu bar and widget menus immediately. System selection uses the first supported language in the Mac’s preferred language list, with English as fallback. Dates and numbers use that language with the Mac’s region. System dialogs and permission prompts follow macOS.
+
+The language choice is stored separately in UserDefaults, rather than in exported layouts or presets. Existing widget IDs, settings files and custom preset names remain unchanged. Restart after changing macOS language/region preferences when following the system.
+
+Translation catalogs are `Resources/Localization/en.json` and `it.json`. Keys retain the original interface wording so stored identifiers stay stable. Use `L` for fixed text and `LF` for interpolated messages; numbered `{0}` placeholders can be reordered but must be preserved. Leave user data (track names, project names, custom preset names) untouched. Catalogs and the resolved locale are cached outside the render loop. `build-native.sh` bundles both catalogs; run `--check-localization` from the app bundle to validate resources and placeholders. To add a language, add its catalog and register it in `Localizer.supported`, the language picker and `CFBundleLocalizations`.

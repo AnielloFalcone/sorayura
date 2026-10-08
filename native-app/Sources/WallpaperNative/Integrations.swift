@@ -36,18 +36,19 @@ enum ThermalPresentation {
 struct IntegrationWidget: View {
     @Environment(Model.self) private var model
     var body: some View {
+        let _ = LocalizationSettings.shared.choice
         VStack(alignment: .leading, spacing: 8) {
-            Text("APPLICAZIONI").font(.system(size: 10, weight: .bold)).tracking(2).foregroundStyle(.secondary)
+            Text(L("APPLICAZIONI")).font(.system(size: 10, weight: .bold)).tracking(2).foregroundStyle(.secondary)
             if model.prefs.appStatusEnabled == true {
                 ForEach(model.appPresence) { app in
                     HStack {
                         Circle().fill(app.running ? Color.green : Color.gray).frame(width: 6, height: 6)
                         Text(app.name)
                         Spacer()
-                        Text(app.running ? "Aperta" : "Chiusa").foregroundStyle(.secondary)
+                        Text(app.running ? L("Aperta") : L("Chiusa")).foregroundStyle(.secondary)
                     }.font(.system(size: 12))
                 }
-            } else { Text("Attiva da Integrazioni").font(.caption).foregroundStyle(.secondary) }
+            } else { Text(L("Attiva da Integrazioni")).font(.caption).foregroundStyle(.secondary) }
         }
     }
 }

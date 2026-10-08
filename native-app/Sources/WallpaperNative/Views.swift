@@ -7,6 +7,7 @@ struct ScreenView: View {
     @State private var dragOrigins: [String:Point] = [:]
     @State private var animationScaleOrigin: Double? = nil
     var body: some View {
+        let _ = LocalizationSettings.shared.choice
         GeometryReader { geometry in
             ZStack(alignment:.topLeading) {
                 Image(nsImage: WallpaperRenderer.image(for:screen,prefs:model.prefs))
@@ -44,20 +45,20 @@ struct ScreenView: View {
                 if model.editing {
                     VStack {
                         HStack(spacing:12) {
-                            Text("Modifica layout · \(screen.localizedName)").bold()
-                            Picker("Posizione",selection:Bindable(model).prefs.layout) {
-                                Text("Libero").tag("free"); Text("Griglia").tag("grid")
+                            Text(LF("Modifica layout · \(screen.localizedName)")).bold()
+                            Picker(L("Posizione"),selection:Bindable(model).prefs.layout) {
+                                Text(L("Libero")).tag("free"); Text(L("Griglia")).tag("grid")
                             }.pickerStyle(.segmented).frame(width:160)
-                            Menu("Aggiungi") {
+                            Menu(L("Aggiungi")) {
                                 ForEach(Model.widgetIDs.filter { !model.content(screen).widgets.contains($0) }, id: \.self) { id in
-                                    Button(Model.names[id] ?? id) {
+                                    Button(Model.localizedName(id)) {
                                         var content = model.content(screen)
                                         content.widgets.append(id)
                                         model.setContent(screen, content)
                                     }
                                 }
                                 if !model.content(screen).animation {
-                                    Button("Animazione") {
+                                    Button(L("Animazione")) {
                                         var content = model.content(screen)
                                         content.animation = true
                                         if model.prefs.animationStyle == "off" { model.prefs.animationStyle = "aurora" }
@@ -65,7 +66,7 @@ struct ScreenView: View {
                                     }
                                 }
                             }
-                            Button("Fine") { model.editing = false }
+                            Button(L("Fine")) { model.editing = false }
                         }
                         .padding(12).wallpaperGlass(cornerRadius:14)
                         Spacer()
@@ -111,7 +112,7 @@ struct ScreenView: View {
                 model.setAnimationPosition(screen, Point(x: px, y: py))
             }.onEnded { _ in dragOrigins["animation"] = nil })
             .overlay(alignment: .topLeading) {
-                Text("✥ Animazione · trascina per spostare")
+                Text(L("✥ Animazione · trascina per spostare"))
                     .font(.caption).padding(10).wallpaperGlass(cornerRadius: 12)
                     .padding(10).allowsHitTesting(false)
             }
@@ -179,6 +180,7 @@ struct WidgetView: View {
     @Environment(Model.self) private var model
     @Environment(\.wallpaperGlassDisabled) private var glassDisabled
     var body:some View {
+        let _ = LocalizationSettings.shared.choice
         let metrics = model.metrics
         let expanded = (id == "cpu" && model.prefs.cpuDisplay.density == "expanded") || (id == "memory" && model.prefs.memoryDisplay.density == "expanded")
         let chart = id == "cpu" ? model.prefs.cpuDisplay.chart : model.prefs.memoryDisplay.chart
@@ -197,11 +199,11 @@ struct WidgetView: View {
                 IntegrationWidget().environment(model)
             } else {
                 HStack {
-                    Text(Model.names[id]?.uppercased() ?? id).font(.system(size:10,weight:.bold)).tracking(2).foregroundStyle(.white.opacity(0.53))
+                    Text(Model.localizedName(id).uppercased()).font(.system(size:10,weight:.bold)).tracking(2).foregroundStyle(.white.opacity(0.53))
                     if model.severity(id) != "normal" { Text(model.severity(id).uppercased()).font(.system(size:9,weight:.bold)).foregroundStyle(color) }
                 }
-                Text(value(metrics)).font(.system(size:31,weight:.light)).minimumScaleFactor(0.65).lineLimit(1)
-                if let sub = subvalue(metrics) { Text(sub).font(.system(size:11)).foregroundStyle(.white.opacity(0.52)).lineLimit(1) }
+                Text(L(value(metrics))).font(.system(size:31,weight:.light)).minimumScaleFactor(0.65).lineLimit(1)
+                if let sub = subvalue(metrics) { Text(L(sub)).font(.system(size:11)).foregroundStyle(.white.opacity(0.52)).lineLimit(1) }
                 if ["cpu","memory"].contains(id) && chart != "bar" {
                     HistoryView(values:model.history(for: id),filled:chart == "area",color:color).frame(height:55)
                 } else if ["cpu","memory","disk","battery"].contains(id) {
@@ -215,16 +217,16 @@ struct WidgetView: View {
                 if expanded {
                     Divider().overlay(.white.opacity(0.2)).padding(.vertical,4)
                     if id == "memory" {
-                        detail("Memoria fisica",bytes(metrics.memoryTotal))
-                        detail("Memoria usata",bytes(metrics.memoryUsed))
-                        detail("File nella cache",bytes(metrics.memoryCached))
-                        detail("Swap usato",bytes(metrics.swapUsed))
-                        detail("Memoria app",bytes(metrics.memoryApp))
-                        detail("Memoria vincolata",bytes(metrics.memoryWired))
-                        detail("Compressa",bytes(metrics.memoryCompressed))
+                        detail(L("Memoria fisica"),bytes(metrics.memoryTotal))
+                        detail(L("Memoria usata"),bytes(metrics.memoryUsed))
+                        detail(L("File nella cache"),bytes(metrics.memoryCached))
+                        detail(L("Swap usato"),bytes(metrics.swapUsed))
+                        detail(L("Memoria app"),bytes(metrics.memoryApp))
+                        detail(L("Memoria vincolata"),bytes(metrics.memoryWired))
+                        detail(L("Compressa"),bytes(metrics.memoryCompressed))
                     } else {
                         let average = (model.history(for: "cpu")).reduce(0,+)/Double(max(1,model.history(for: "cpu").count))
-                        detail("Media · 90 s",String(format:"%.0f%%",average))
+                        detail(L("Media · 90 s"),String(format: "%.0f%%", locale: Localizer.locale,average))
                     }
                 }
             }
@@ -258,16 +260,16 @@ struct WidgetView: View {
         .overlay { if id != "clock" && id != "device" { RoundedRectangle(cornerRadius:18).stroke(color.opacity(model.severity(id) == "normal" ? 0.1 : 0.7),lineWidth:1) } }
         .foregroundStyle(.white)
         .contextMenu {
-            Button("Modifica layout…") { model.editing = true }
+            Button(L("Modifica layout…")) { model.editing = true }
             if ["cpu", "memory"].contains(id) {
-                Menu("Dettaglio") {
-                    Button("Compatto") { setDisplay(density: "compact") }
-                    Button("Esteso") { setDisplay(density: "expanded") }
+                Menu(L("Dettaglio")) {
+                    Button(L("Compatto")) { setDisplay(density: "compact") }
+                    Button(L("Esteso")) { setDisplay(density: "expanded") }
                 }
-                Menu("Grafico") {
-                    Button("Barra") { setDisplay(chart: "bar") }
-                    Button("Linea") { setDisplay(chart: "line") }
-                    Button("Area") { setDisplay(chart: "area") }
+                Menu(L("Grafico")) {
+                    Button(L("Barra")) { setDisplay(chart: "bar") }
+                    Button(L("Linea")) { setDisplay(chart: "line") }
+                    Button(L("Area")) { setDisplay(chart: "area") }
                 }
             }
         }
@@ -278,27 +280,27 @@ struct WidgetView: View {
         if id == "memory" { model.prefs.memoryDisplay = value } else { model.prefs.cpuDisplay = value }
     }
     private func detail(_ label:String,_ value:String)->some View {
-        HStack { Text(label).foregroundStyle(.white.opacity(0.65)); Spacer(); Text(value) }.font(.system(size:10))
+        HStack { Text(L(label)).foregroundStyle(.white.opacity(0.65)); Spacer(); Text(value) }.font(.system(size:10))
     }
     private func value(_ m:MetricReadings)->String {
         switch id {
         case "thermal": return ThermalPresentation.title(m.thermal)
-        case "cpu": return String(format:"%.0f%%",m.cpu)
-        case "memory": return String(format:"%.0f%%",m.memory)
-        case "disk": return String(format:"%.0f%%",m.disk)
-        case "battery": return m.battery.map { String(format:"%.0f%%",$0) } ?? "—"
+        case "cpu": return String(format: "%.0f%%", locale: Localizer.locale,m.cpu)
+        case "memory": return String(format: "%.0f%%", locale: Localizer.locale,m.memory)
+        case "disk": return String(format: "%.0f%%", locale: Localizer.locale,m.disk)
+        case "battery": return m.battery.map { String(format: "%.0f%%", locale: Localizer.locale,$0) } ?? "—"
         case "network": return "↓ \(networkRate(m.download))"
-        case "uptime": return "\(Int(m.uptime/86400))g \(Int(m.uptime.truncatingRemainder(dividingBy:86400)/3600))h"
+        case "uptime": return LF("\(Int(m.uptime/86400))g \(Int(m.uptime.truncatingRemainder(dividingBy:86400)/3600))h")
         default: return "—"
         }
     }
     private func subvalue(_ m:MetricReadings)->String? {
         switch id {
-        case "thermal": return m.lowPower ? "Risparmio energetico attivo" : "Stato macOS · non temperatura in °C"
+        case "thermal": return m.lowPower ? L("Risparmio energetico attivo") : L("Stato macOS · non temperatura in °C")
         case "memory": return "\(bytes(m.memoryUsed)) / \(bytes(m.memoryTotal))"
         case "disk": return "\(bytes(m.diskUsed)) / \(bytes(m.diskTotal))"
         case "network": return "↑ \(networkRate(m.upload))"
-        case "battery": return m.charging ? "In carica" : "A batteria"
+        case "battery": return m.charging ? L("In carica") : L("A batteria")
         default: return nil
         }
     }
@@ -309,6 +311,7 @@ private struct ClockWidget: View {
         Date(timeIntervalSince1970: floor(Date().timeIntervalSince1970 / 60) * 60)
     }
     var body: some View {
+        let _ = LocalizationSettings.shared.choice
         TimelineView(.periodic(from: minuteBoundary, by: 60)) { context in
             VStack(alignment: .leading, spacing: 5) {
                 Text(context.date, format: .dateTime.hour().minute())
@@ -321,10 +324,10 @@ private struct ClockWidget: View {
 }
 
 func bytes(_ value:Double)->String {
-    if value < 1024 { return String(format:"%.0f B",value) }
-    if value < 1_048_576 { return String(format:"%.0f KB",value/1024) }
-    if value < 1_073_741_824 { return String(format:"%.1f MB",value/1_048_576) }
-    return String(format:"%.1f GB",value/1_073_741_824)
+    if value < 1024 { return String(format: "%.0f B", locale: Localizer.locale,value) }
+    if value < 1_048_576 { return String(format: "%.0f KB", locale: Localizer.locale,value/1024) }
+    if value < 1_073_741_824 { return String(format: "%.1f MB", locale: Localizer.locale,value/1_048_576) }
+    return String(format: "%.1f GB", locale: Localizer.locale,value/1_073_741_824)
 }
 
 struct HistoryView:View {
@@ -332,6 +335,7 @@ struct HistoryView:View {
     let filled:Bool
     let color:Color
     var body:some View {
+        let _ = LocalizationSettings.shared.choice
         GeometryReader { geometry in
             Canvas { context,size in
                 guard values.count > 1 else { return }

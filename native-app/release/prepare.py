@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKS = ['--check-m1', '--check-m2', '--check-observation', '--check-resources',
-          '--check-sampling', '--check-agent-performance']
+          '--check-sampling', '--check-agent-performance', '--check-localization']
 
 
 def run(args, log, **kwargs):
@@ -43,7 +43,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['candidate', 'release'])
     parser.add_argument('--version', default='0.5.1')
-    parser.add_argument('--build', default='4')
+    parser.add_argument('--build', default='5')
     parser.add_argument('--identity', help='Exact Developer ID Application identity')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile name')
     args = parser.parse_args()

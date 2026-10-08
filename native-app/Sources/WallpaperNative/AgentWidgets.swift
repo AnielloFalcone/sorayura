@@ -6,19 +6,20 @@ struct AgentWidget: View {
     private var snapshot: AgentUsageSnapshot { model.agentUsage }
     private var period: String { model.prefs.agentPeriod ?? "all" }
     private var summary: AgentPeriodSummary { snapshot.periods[period] ?? AgentPeriodSummary() }
-    private var periodTitle: String { ["today":"Oggi", "week":"Ultimi 7 giorni", "month":"Ultimi 30 giorni", "all":"Storico locale"][period] ?? "Storico locale" }
+    private var periodTitle: String { ["today":L("Oggi"), "week":L("Ultimi 7 giorni"), "month":L("Ultimi 30 giorni"), "all":L("Storico locale")][period] ?? L("Storico locale") }
     private var codexQuota: AgentQuota? { model.prefs.codexAccountEnabled == true ? model.codexAccount.quota ?? snapshot.codexQuota : snapshot.codexQuota }
     private let claudeColor = Color(red: 0.80, green: 0.44, blue: 0.32)
     private let codexColor = Color(red: 0.48, green: 0.57, blue: 0.94)
     var body: some View {
+        let _ = LocalizationSettings.shared.choice
         VStack(alignment: .leading, spacing: 10) {
-            Label(Model.names[id] ?? id, systemImage: icon).font(.system(size: 14, weight: .semibold))
+            Label(Model.localizedName(id), systemImage: icon).font(.system(size: 14, weight: .semibold))
             if model.prefs.agentUsageEnabled != true {
-                Text("Attiva da Integrazioni").font(.caption).foregroundStyle(.secondary)
+                Text(L("Attiva da Integrazioni")).font(.caption).foregroundStyle(.secondary)
             } else if snapshot.updated == nil {
-                Text("Lettura dei contatori locali…").font(.caption).foregroundStyle(.secondary)
+                Text(L("Lettura dei contatori locali…")).font(.caption).foregroundStyle(.secondary)
             } else if snapshot.events.isEmpty && snapshot.claudeSessions.isEmpty && snapshot.claudeDesktop == nil {
-                Text("Nessun contatore locale disponibile").font(.caption).foregroundStyle(.secondary)
+                Text(L("Nessun contatore locale disponibile")).font(.caption).foregroundStyle(.secondary)
             } else {
                 switch id {
                 case "agents": providers
@@ -40,19 +41,19 @@ struct AgentWidget: View {
     private var live: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             VStack(alignment: .leading, spacing: 8) {
-                if model.liveAgents.isEmpty { Text("Nessun evento recente. Collega gli hook Claude nelle impostazioni.").font(.caption).foregroundStyle(.secondary) }
+                if model.liveAgents.isEmpty { Text(L("Nessun evento recente. Collega gli hook Claude nelle impostazioni.")).font(.caption).foregroundStyle(.secondary) }
                 ForEach(model.liveAgents.prefix(model.prefs.agentDensity == "expanded" ? 6 : 3)) { agent in
                     HStack {
                         Circle().fill(agent.displayState(now: context.date) == "Al lavoro" ? Color.green : agent.displayState(now: context.date) == "In attesa" ? Color.orange : Color.gray).frame(width: 6, height: 6)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\(agent.provider) · \(agent.project)").font(.system(size: 11, weight: .semibold)).lineLimit(1)
-                            Text(agent.displayState(now: context.date)).font(.system(size: 10)).foregroundStyle(.secondary)
+                            Text(L(agent.displayState(now: context.date))).font(.system(size: 10)).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 4)
                         Text(agent.date, style: .relative).font(.system(size: 9)).foregroundStyle(.secondary)
                     }
                 }
-                Text("Eventi locali · aggiornamento automatico · inattivi oltre 5 min da verificare").font(.system(size: 8)).foregroundStyle(.secondary)
+                Text(L("Eventi locali · aggiornamento automatico · inattivi oltre 5 min da verificare")).font(.system(size: 8)).foregroundStyle(.secondary)
             }
         }
     }
@@ -72,27 +73,27 @@ struct AgentWidget: View {
                     Circle().fill(event.provider == "Claude" ? claudeColor : codexColor).frame(width: 6, height: 6)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(event.project).lineLimit(1).font(.system(size: 11, weight: .semibold))
-                        Text("\(event.model) · \(tokenLabel(event.tokens)) token").lineLimit(1).font(.system(size: 9)).foregroundStyle(.secondary)
+                        Text(LF("\(event.model) · \(tokenLabel(event.tokens)) token")).lineLimit(1).font(.system(size: 9)).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
                     Text(event.date, style: .relative).font(.system(size: 9)).foregroundStyle(.secondary)
                 }
             }
-            Text("Ultimi contatori registrati · non stato live del task").font(.system(size: 8)).foregroundStyle(.secondary)
+            Text(L("Ultimi contatori registrati · non stato live del task")).font(.system(size: 8)).foregroundStyle(.secondary)
         }
     }
     private var spending: some View {
         VStack(alignment: .leading, spacing: 5) {
             if snapshot.claudeSessions.contains(where: { $0.apiValue != nil }) {
-                Text(String(format: "$%.2f", snapshot.claudeSessions.reduce(0) { $0 + ($1.apiValue ?? 0) })).font(.title.bold())
-                Text("Claude · valore API delle sessioni collegate").font(.system(size: 10)).foregroundStyle(.secondary)
-                Text("Claude · sessioni intere, indipendenti dal filtro periodo").font(.system(size: 9)).foregroundStyle(.secondary)
-            } else { Text("Claude · collega la status line").font(.caption).foregroundStyle(.secondary) }
+                Text(String(format: "$%.2f", locale: Localizer.locale, snapshot.claudeSessions.reduce(0) { $0 + ($1.apiValue ?? 0) })).font(.title.bold())
+                Text(L("Claude · valore API delle sessioni collegate")).font(.system(size: 10)).foregroundStyle(.secondary)
+                Text(L("Claude · sessioni intere, indipendenti dal filtro periodo")).font(.system(size: 9)).foregroundStyle(.secondary)
+            } else { Text(L("Claude · collega la status line")).font(.caption).foregroundStyle(.secondary) }
             if !model.codexAccount.costs.isEmpty {
-                Text(String(format: "$%.2f", model.codexAccount.costs.values.reduce(0, +))).font(.title3.bold())
-                Text("Codex · stima delle ultime \(model.codexAccount.costs.count) chat lette").font(.system(size: 10)).foregroundStyle(.secondary)
-            } else { Text("Codex · valore API non disponibile").font(.system(size: 10)).foregroundStyle(.secondary) }
-            Text("Valori API di sessione · non sono fatture o costi dell'abbonamento").font(.system(size: 8)).foregroundStyle(.secondary)
+                Text(String(format: "$%.2f", locale: Localizer.locale, model.codexAccount.costs.values.reduce(0, +))).font(.title3.bold())
+                Text(LF("Codex · stima delle ultime \(model.codexAccount.costs.count) chat lette")).font(.system(size: 10)).foregroundStyle(.secondary)
+            } else { Text(L("Codex · valore API non disponibile")).font(.system(size: 10)).foregroundStyle(.secondary) }
+            Text(L("Valori API di sessione · non sono fatture o costi dell'abbonamento")).font(.system(size: 8)).foregroundStyle(.secondary)
         }
     }
     private var providers: some View {
@@ -102,9 +103,9 @@ struct AgentWidget: View {
                 provider("Codex", color: codexColor)
             }
             HStack {
-                Text("\(periodTitle) · \(tokenLabel(summary.tokens)) token")
+                Text(LF("\(periodTitle) · \(tokenLabel(summary.tokens)) token"))
                 Spacer()
-                Text("\(Int(summary.tokens > 0 ? summary.cached / summary.tokens * 100 : 0))% cache")
+                Text(LF("\(Int(summary.tokens > 0 ? summary.cached / summary.tokens * 100 : 0))% cache"))
             }.font(.system(size: 10)).foregroundStyle(.secondary)
 
         }
@@ -124,22 +125,22 @@ struct AgentWidget: View {
                 Spacer(minLength: 0)
                 if name == "Codex", let plan = codexQuota?.plan { Text(plan.capitalized).font(.system(size: 9)).foregroundStyle(color) }
             }
-            quota("Sessione", limit: name == "Codex" ? codexQuota?.session : claudeQuota?.session, color: color)
-            quota("Settimana", limit: name == "Codex" ? codexQuota?.week : claudeQuota?.week, color: color)
+            quota(L("Sessione"), limit: name == "Codex" ? codexQuota?.session : claudeQuota?.session, color: color)
+            quota(L("Settimana"), limit: name == "Codex" ? codexQuota?.week : claudeQuota?.week, color: color)
             if let quota = name == "Codex" ? codexQuota : claudeQuota {
-                Text("Rilevato \(quota.date.formatted(date: .abbreviated, time: .shortened))").font(.system(size: 8)).foregroundStyle(.secondary).lineLimit(1)
+                Text(LF("Rilevato \(quota.date.localizedFormatted(date: .abbreviated, time: .shortened))")).font(.system(size: 8)).foregroundStyle(.secondary).lineLimit(1)
             }
             if name == "Claude", usesClaudeDesktop {
-                Text("Claude desktop · account dell’app").font(.system(size: 8)).foregroundStyle(.secondary)
+                Text(L("Claude desktop · account dell’app")).font(.system(size: 8)).foregroundStyle(.secondary)
                 if let date = claudeQuota?.date, Date().timeIntervalSince(date) > 1800 {
-                    Text("Lettura non recente").font(.system(size: 8)).foregroundStyle(.orange)
+                    Text(L("Lettura non recente")).font(.system(size: 8)).foregroundStyle(.orange)
                 }
                 if model.prefs.agentDensity == "expanded", let desktop = snapshot.claudeDesktop {
-                    quota("Opus · settimana", limit: desktop.opus, color: color)
-                    quota("Sonnet · settimana", limit: desktop.sonnet, color: color)
+                    quota(L("Opus · settimana"), limit: desktop.opus, color: color)
+                    quota(L("Sonnet · settimana"), limit: desktop.sonnet, color: color)
                 }
             } else if name == "Claude", claudeQuota != nil {
-                Text("Claude Code · status line").font(.system(size: 8)).foregroundStyle(.secondary)
+                Text(L("Claude Code · status line")).font(.system(size: 8)).foregroundStyle(.secondary)
             }
         }.padding(10).frame(maxWidth: .infinity, alignment: .topLeading).wallpaperGlass(cornerRadius: 12)
     }
@@ -152,9 +153,9 @@ struct AgentWidget: View {
             }.font(.system(size: 10))
             if let limit {
                 ProgressView(value: limit.used, total: 100).tint(color)
-                Text(limit.reset.map { $0 > Date() ? "Reset \($0.formatted(date: .omitted, time: .shortened)) · \($0.formatted(date: .abbreviated, time: .omitted))" : "Da aggiornare" } ?? "Reset non fornito")
+                Text(limit.reset.map { $0 > Date() ? LF("Reset \($0.localizedFormatted(date: .omitted, time: .shortened)) · \($0.localizedFormatted(date: .abbreviated, time: .omitted))") : L("Da aggiornare") } ?? L("Reset non fornito"))
                     .font(.system(size: 8)).foregroundStyle(.secondary).lineLimit(1)
-            } else { Text("Limiti non disponibili").font(.system(size: 8)).foregroundStyle(.secondary) }
+            } else { Text(L("Limiti non disponibili")).font(.system(size: 8)).foregroundStyle(.secondary) }
         }
     }
     @ViewBuilder private var trend: some View {
@@ -163,7 +164,7 @@ struct AgentWidget: View {
     private var hourlyTrend: some View {
         let maximum = max(1, (0..<24).map { snapshot.hourlyClaude[$0] + snapshot.hourlyCodex[$0] }.max() ?? 1)
         return VStack(alignment: .leading, spacing: 6) {
-            Text("Oggi · \(tokenLabel(snapshot.todayTokens)) token").font(.caption).foregroundStyle(.secondary)
+            Text(LF("Oggi · \(tokenLabel(snapshot.todayTokens)) token")).font(.caption).foregroundStyle(.secondary)
             GeometryReader { geometry in
                 HStack(alignment: .bottom, spacing: 3) {
                     ForEach(0..<24, id: \.self) { hour in
@@ -173,7 +174,7 @@ struct AgentWidget: View {
                             Rectangle().fill(codexColor).frame(height: geometry.size.height * o / maximum)
                             Rectangle().fill(claudeColor).frame(height: geometry.size.height * c / maximum)
                         }.frame(maxWidth: .infinity).frame(minHeight: 2).background(.white.opacity(0.08))
-                            .help("\(hour):00 · Claude \(tokenLabel(c)) · Codex \(tokenLabel(o))")
+                            .help(LF("\(hour):00 · Claude \(tokenLabel(c)) · Codex \(tokenLabel(o))"))
                     }
                 }
             }.frame(minHeight: 30, maxHeight: 90)
@@ -194,7 +195,7 @@ struct AgentWidget: View {
                             Rectangle().fill(codexColor).frame(height: geometry.size.height * (summary.codexDays[day] ?? 0) / maximum)
                             Rectangle().fill(claudeColor).frame(height: geometry.size.height * (summary.claudeDays[day] ?? 0) / maximum)
                         }.frame(maxWidth: .infinity).frame(minHeight: 2).background(.white.opacity(0.08))
-                            .help("\(day.formatted(date: .abbreviated, time: .omitted)) · \(tokenLabel(summary.days[day] ?? 0)) token")
+                            .help(LF("\(day.localizedFormatted(date: .abbreviated, time: .omitted)) · \(tokenLabel(summary.days[day] ?? 0)) token"))
                     }
                 }
             }.frame(minHeight: 30, maxHeight: 90)
@@ -210,7 +211,7 @@ struct AgentWidget: View {
                     Text(tokenLabel(value.1)).monospacedDigit().foregroundStyle(.secondary)
                 }.font(.system(size: 11))
             }
-            Text("Token · \(periodTitle)").font(.system(size: 9)).foregroundStyle(.secondary)
+            Text(LF("Token · \(periodTitle)")).font(.system(size: 9)).foregroundStyle(.secondary)
         }
     }
     private var activity: some View {
@@ -224,13 +225,13 @@ struct AgentWidget: View {
                 ForEach(dates, id: \.self) { day in
                     let value = totals[day] ?? 0
                     RoundedRectangle(cornerRadius: 2).fill(.white.opacity(value > 0 ? 0.25 + 0.75 * sqrt(value / maxValue) : 0.08)).frame(width: 9, height: 9)
-                        .help("\(day.formatted(date: .abbreviated, time: .omitted)) · \(tokenLabel(value)) token")
+                        .help(LF("\(day.localizedFormatted(date: .abbreviated, time: .omitted)) · \(tokenLabel(value)) token"))
                 }
             }
             VStack(alignment: .leading, spacing: 5) {
                 Text(tokenLabel(dates.reduce(0) { $0 + (totals[$1] ?? 0) })).font(.title3.bold())
-                Text("13 settimane").font(.system(size: 9)).foregroundStyle(.secondary)
-                Text("\(dates.filter { (totals[$0] ?? 0) > 0 }.count) giorni attivi").font(.system(size: 9))
+                Text(L("13 settimane")).font(.system(size: 9)).foregroundStyle(.secondary)
+                Text(LF("\(dates.filter { (totals[$0] ?? 0) > 0 }.count) giorni attivi")).font(.system(size: 9))
             }
         }
     }

@@ -79,7 +79,7 @@ actor CodexAccountReader {
                 if initialized && pending.isEmpty { snapshot.date = Date(); return snapshot }
             }
             snapshot.error = "Il collegamento Codex è scaduto o è stato interrotto."
-        } catch { snapshot.error = "Collegamento Codex non disponibile: \(error.localizedDescription)" }
+        } catch { snapshot.error = LF("Collegamento Codex non disponibile: \(error.localizedDescription)") }
         return snapshot
     }
 }

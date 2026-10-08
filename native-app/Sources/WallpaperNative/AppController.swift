@@ -56,6 +56,10 @@ struct WallpaperNative {
             fputs("Impostazioni legacy non trovate\n", stderr)
             exit(1)
         }
+        if CommandLine.arguments.contains("--check-localization") {
+            do { try LocalizationChecks.run(); return }
+            catch { fputs("Localization check failed: \(error)\n", stderr); exit(1) }
+        }
         if CommandLine.arguments.contains("--check-m1") {
             do { try M1Checks.run(); return }
             catch { fputs("M1 check failed: \(error)\n", stderr); exit(1) }
@@ -117,13 +121,14 @@ final class AppController: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(systemSymbolName: "circle.hexagongrid", accessibilityDescription: "Sorayura")
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Widget e sfondo…", action: #selector(openSettings), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: "Modifica layout…", action: #selector(beginEditing), keyEquivalent: "e"))
-        menu.addItem(NSMenuItem(title: "Identifica monitor", action: #selector(identify), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: L("Widget e sfondo…"), action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(NSMenuItem(title: L("Modifica layout…"), action: #selector(beginEditing), keyEquivalent: "e"))
+        menu.addItem(NSMenuItem(title: L("Identifica monitor"), action: #selector(identify), keyEquivalent: ""))
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Esci", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: L("Esci"), action: #selector(quit), keyEquivalent: "q"))
         for menuItem in menu.items { menuItem.target = self }
         item.menu = menu
+        NotificationCenter.default.addObserver(self, selector: #selector(languageChanged), name: .sorayuraLanguageChanged, object: nil)
         statusItem = item
         model.refreshDisplays = { [weak self] in self?.refreshScreens() }
         model.editChanged = { [weak self] editing in
@@ -190,6 +195,14 @@ final class AppController: NSObject, NSApplicationDelegate {
     }
     @objc private func beginEditing() { model.editing = true }
     @objc private func identify() { model.identifyUntil = Date().addingTimeInterval(6) }
+    @objc private func languageChanged() {
+        if let menu = statusItem?.menu {
+            let titles = [L("Widget e sfondo…"), L("Modifica layout…"), L("Identifica monitor"), "", L("Esci")]
+            for (item, title) in zip(menu.items, titles) where !item.isSeparatorItem { item.title = title }
+        }
+        settingsPresentation.updateLanguage()
+        refreshScreens()
+    }
     @objc private func quit() { NSApp.terminate(nil) }
     private func screenID(_ screen: NSScreen) -> String { model.displayKey(screen) }
     private func diagnosticWindowState() -> [String: Any] {
@@ -220,7 +233,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             if screenSignatures[id] != signature {
                 for (key, hit) in hitWindows where key.hasPrefix("\(id):") { hit.close(); hitWindows[key] = nil }
                 if let existing = windows[id] {
-                    existing.contentView = NSHostingView(rootView: ScreenView(screen: screen).environment(model))
+                    existing.contentView = NSHostingView(rootView: LocalizedRoot(content: ScreenView(screen: screen).environment(model)))
                 }
                 screenSignatures[id] = signature
             }
@@ -233,7 +246,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                 window.isOpaque = false
                 window.hasShadow = false
                 window.collectionBehavior = [.canJoinAllSpaces,.stationary,.ignoresCycle]
-                window.contentView = NSHostingView(rootView: ScreenView(screen: screen).environment(model))
+                window.contentView = NSHostingView(rootView: LocalizedRoot(content: ScreenView(screen: screen).environment(model)))
                 windows[id] = window
             }
             window.setFrame(screen.frame, display: true)
@@ -261,12 +274,12 @@ final class AppController: NSObject, NSApplicationDelegate {
                 panel.isReleasedWhenClosed = false
                 panel.hidesOnDeactivate = false
                 panel.ignoresMouseEvents = false
-                panel.title = "Widget · \(Model.names[widget] ?? widget) · \(screenID)"
+                panel.title = "Widget · \(Model.localizedName(widget)) · \(screenID)"
                 window = panel
                 window.isOpaque = false; window.backgroundColor = .clear; window.hasShadow = false
                 window.collectionBehavior = [.canJoinAllSpaces,.stationary,.ignoresCycle]
                 let hitView = LongPressView(frame: .zero)
-                hitView.widgetName = Model.names[widget] ?? widget
+                hitView.widgetName = Model.localizedName(widget)
                 hitView.widgetID = widget
                 hitView.configuration = { [weak self] in
                     guard let self else { return WidgetDisplay() }
@@ -284,7 +297,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                 }
                 hitView.setAccessibilityElement(true)
                 hitView.setAccessibilityRole(.group)
-                hitView.setAccessibilityLabel("Widget \(Model.names[widget] ?? widget)")
+                hitView.setAccessibilityLabel("Widget \(Model.localizedName(widget))")
                 hitView.onEdit = { [weak self] in self?.model.editing = true }
                 hitView.onRemove = { [weak self] in
                     guard let self else { return }
@@ -396,13 +409,13 @@ final class LongPressView: NSView {
     override func rightMouseDown(with event: NSEvent) {
         finishDrag()
         let menu = NSMenu(title: widgetName)
-        let edit = NSMenuItem(title: "Modifica layout…", action: #selector(editWidget), keyEquivalent: "")
+        let edit = NSMenuItem(title: L("Modifica layout…"), action: #selector(editWidget), keyEquivalent: "")
         edit.target = self
         menu.addItem(edit)
         menu.addItem(.separator())
         if onMusicCommand != nil {
             for (title, command) in [("Brano precedente", "previous track"), ("Riproduci / pausa", "playpause"), ("Brano successivo", "next track")] {
-                let item = NSMenuItem(title: title, action: #selector(musicAction(_:)), keyEquivalent: "")
+                let item = NSMenuItem(title: L(title), action: #selector(musicAction(_:)), keyEquivalent: "")
                 item.representedObject = command; item.target = self; menu.addItem(item)
             }
             menu.addItem(.separator())
@@ -413,17 +426,17 @@ final class LongPressView: NSView {
             for (title, choices, selected) in [("Dettaglio", [("Compatto", "compact"), ("Esteso", "expanded")], current.density), (widgetID.hasPrefix("agent") ? "Periodo (tutti i widget AI)" : "Grafico", chartOptions, current.chart)] {
                 if widgetID == "agentTrend" && title == "Dettaglio" { continue }
                 if widgetID == "agentLive" && title.hasPrefix("Periodo") { continue }
-                let parent = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-                let sub = NSMenu(title: title)
+                let parent = NSMenuItem(title: L(title), action: nil, keyEquivalent: "")
+                let sub = NSMenu(title: L(title))
                 for (label, value) in choices {
-                    let item = NSMenuItem(title: label, action: #selector(configureAction(_:)), keyEquivalent: "")
+                    let item = NSMenuItem(title: L(label), action: #selector(configureAction(_:)), keyEquivalent: "")
                     item.target = self; item.representedObject = value; item.state = selected == value ? .on : .off; sub.addItem(item)
                 }
                 parent.submenu = sub; menu.addItem(parent)
             }
             menu.addItem(.separator())
         }
-        let remove = NSMenuItem(title: "Rimuovi \(widgetName)", action: #selector(removeWidget), keyEquivalent: "")
+        let remove = NSMenuItem(title: LF("Rimuovi \(widgetName)"), action: #selector(removeWidget), keyEquivalent: "")
         remove.target = self
         menu.addItem(remove)
         NSMenu.popUpContextMenu(menu, with: event, for: self)

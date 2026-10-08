@@ -45,7 +45,7 @@ struct SavedPreset: Codable, Identifiable {
 
 enum SettingsError: LocalizedError {
     case invalid(String)
-    var errorDescription: String? { switch self { case .invalid(let text): return text } }
+    var errorDescription: String? { switch self { case .invalid(let text): return L(text) } }
 }
 
 struct BuiltInPreset: Identifiable {

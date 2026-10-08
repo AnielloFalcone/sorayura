@@ -18,10 +18,10 @@ import Observation
                             styleMask: [.titled, .closable, .miniaturizable, .resizable],
                             backing: .buffered, defer: false)
         next.minSize = NSSize(width: 860, height: 680)
-        next.title = "Sorayura — Impostazioni"
+        next.title = L("Sorayura — Impostazioni")
         next.isReleasedWhenClosed = false
         next.delegate = self
-        next.contentView = NSHostingView(rootView: SettingsView(navigation: navigation).environment(model))
+        next.contentView = NSHostingView(rootView: LocalizedRoot(content: SettingsView(navigation: navigation).environment(model)))
         if let savedFrame, NSScreen.screens.contains(where: { $0.visibleFrame.intersects(savedFrame) }) {
             next.setFrame(savedFrame, display: false)
         } else {
@@ -35,6 +35,7 @@ import Observation
         prepare(model: model).makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
+    func updateLanguage() { window?.title = L("Sorayura — Impostazioni") }
 
     func windowWillClose(_ notification: Notification) {
         guard let closing = notification.object as? NSWindow, closing === window else { return }

@@ -8,6 +8,6 @@ Earlier one-hour tests observed stable memory within the recorded interval. Fluc
 
 The user tested Mission Control, monitor disconnection/reconnection and sleep/wake, confirming that widgets, positions and animation returned correctly. These physical tests preceded the Sorayura rename.
 
-Package preparation runs six checks: M1, M2, observation, resources, sampling and agent reader performance. Integrations requiring consent or external app data, launch at login and installation of a notarized download on another Mac require real-world verification.
+Package preparation runs seven checks: M1, M2, observation, resources, sampling, agent reader performance and localization. Integrations requiring consent or external app data, launch at login and installation of a notarized download on another Mac require real-world verification.
 
 Raw test data remains local and is excluded from the public repository.
