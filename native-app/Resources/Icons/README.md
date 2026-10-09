@@ -1,7 +1,8 @@
 # Sorayura icon assets
 
 - `SorayuraMenuTemplate.png`: monochrome transparent S ribbon, loaded as an 18-point AppKit template image. macOS supplies its appearance for light/dark menu bars and selection.
-- `SorayuraAppConcept.png`: user-selected full-color app-icon concept; retained as a design source, not yet assigned as the bundle icon.
+- `SorayuraAppConcept.png`: user-selected full-color S ribbon, the source for the app icon.
+- `Sorayura.icns`: macOS icon set derived from that source at all standard sizes (16–1024 pixels).
 
 Generated with the built-in image generation tool. Menu-mark prompt: preserve the S ribbon silhouette and sweep direction from the selected Sorayura icon, including the upper-right and lower-left curls; remove the rounded-square tile, color, glow, shading and texture; produce one centered solid black flat silhouette with a fully transparent background; simplify fine folds for legibility at 18×18 pixels; no border, gray, shadow, text or particles.
 

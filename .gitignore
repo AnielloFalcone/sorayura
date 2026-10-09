@@ -13,3 +13,5 @@ native-app/performance/*
 # Historical local diagnostics contain machine-specific paths and usage data.
 native-app/VERIFICATION.md
 native-app/DISTRIBUTION.md
+
+native-app/build.noindex/

@@ -8,18 +8,18 @@ Swift, AppKit, SwiftUI and Metal implementation. See the [main README](../README
 ./build-native.sh
 ```
 
-Open `build/Sorayura.app`. The bundle is signed locally to preserve a valid structure; this is not a notarized distribution.
+Open `build.noindex/Sorayura.app`. The bundle is signed locally to preserve a valid structure; this is not a notarized distribution.
 
 ## Checks
 
 ```sh
-'build/Sorayura.app/Contents/MacOS/Sorayura' --check-m1
-'build/Sorayura.app/Contents/MacOS/Sorayura' --check-m2
-'build/Sorayura.app/Contents/MacOS/Sorayura' --check-observation
-'build/Sorayura.app/Contents/MacOS/Sorayura' --check-resources
-'build/Sorayura.app/Contents/MacOS/Sorayura' --check-sampling
-'build/Sorayura.app/Contents/MacOS/Sorayura' --check-agent-performance
-'build/Sorayura.app/Contents/MacOS/Sorayura' --check-localization
+'build.noindex/Sorayura.app/Contents/MacOS/Sorayura' --check-m1
+'build.noindex/Sorayura.app/Contents/MacOS/Sorayura' --check-m2
+'build.noindex/Sorayura.app/Contents/MacOS/Sorayura' --check-observation
+'build.noindex/Sorayura.app/Contents/MacOS/Sorayura' --check-resources
+'build.noindex/Sorayura.app/Contents/MacOS/Sorayura' --check-sampling
+'build.noindex/Sorayura.app/Contents/MacOS/Sorayura' --check-agent-performance
+'build.noindex/Sorayura.app/Contents/MacOS/Sorayura' --check-localization
 ```
 
 Checks requiring interaction with the Mac are documented in [PERFORMANCE.md](PERFORMANCE.md).

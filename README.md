@@ -10,7 +10,7 @@ The name evokes a **sky in motion**: a changing space filled with light and shap
 
 ## Getting started
 
-Open **native-app/build/Sorayura.app**. In the menu bar, choose “Widgets and wallpaper…” or “Edit layout…” (Italian: “Widget e sfondo…” / “Modifica layout…”). The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
+Open **native-app/build.noindex/Sorayura.app**. In the menu bar, choose “Widgets and wallpaper…” or “Edit layout…” (Italian: “Widget e sfondo…” / “Modifica layout…”). The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
 
 Building requires Xcode Command Line Tools and macOS 14 or later:
 
@@ -63,7 +63,7 @@ The app bundle and process are named **Sorayura**. The internal identifier and d
 After building, from `native-app/`:
 
 ```sh
-'build/Sorayura.app/Contents/MacOS/Sorayura' --check-m1
+'build.noindex/Sorayura.app/Contents/MacOS/Sorayura' --check-m1
 ```
 
 This checks presets, JSON encoding, monitor matching, compatibility with previous settings and rejection of invalid configurations. Login, sleep/wake and physical gestures require a real session; see [performance and verification](native-app/PERFORMANCE.md).

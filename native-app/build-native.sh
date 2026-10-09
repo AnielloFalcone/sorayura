@@ -3,8 +3,8 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-11}"
-wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build}"
+wallpaper_build="${WALLPAPER_BUILD:-12}"
+wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build.noindex}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
 [[ "$wallpaper_build" =~ '^[0-9]+$' ]] || { print -u2 'Invalid build number'; exit 1; }
@@ -15,6 +15,7 @@ mkdir -p "$app/Contents/Resources/Localization"
 cp Resources/Localization/*.json "$app/Contents/Resources/Localization/"
 mkdir -p "$app/Contents/Resources/Icons"
 cp Resources/Icons/*.png "$app/Contents/Resources/Icons/"
+cp Resources/Icons/Sorayura.icns "$app/Contents/Resources/"
 cp .build/release/Sorayura "$app/Contents/MacOS/.Sorayura.new"
 mv -f "$app/Contents/MacOS/.Sorayura.new" "$app/Contents/MacOS/Sorayura"
 cat > "$app/Contents/Info.plist" <<'PLIST'
@@ -24,6 +25,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleExecutable</key><string>Sorayura</string>
 <key>CFBundleIdentifier</key><string>dev.aniello.macsystemwallpaper.native</string>
 <key>CFBundleName</key><string>Sorayura</string>
+<key>CFBundleIconFile</key><string>Sorayura.icns</string>
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleLocalizations</key><array><string>en</string><string>it</string><string>es</string></array>
 <key>CFBundlePackageType</key><string>APPL</string>
