@@ -305,6 +305,13 @@ final class AppController: NSObject, NSApplicationDelegate {
                 hitView.setAccessibilityRole(.group)
                 hitView.setAccessibilityLabel("Widget \(Model.localizedName(widget))")
                 hitView.onEdit = { [weak self] in self?.model.editing = true }
+                if widget == "animation" {
+                    hitView.onBoxes = { [weak self] in
+                        guard let self else { return }
+                        self.settingsPresentation.navigation.section = "Animazione"
+                        self.openSettings()
+                    }
+                }
                 hitView.onRemove = { [weak self] in
                     guard let self else { return }
                     var content = self.model.content(screen)
@@ -358,7 +365,8 @@ final class AppController: NSObject, NSApplicationDelegate {
             let rect: CGRect
             if widget == "animation" {
                 rect = AnimationView.interactionRect(style: model.prefs.animationStyle, bounds: screen.frame.size,
-                    scale: model.animationScale(screen), position: model.animationPosition(screen), layers: model.prefs.layers.count)
+                    scale: model.animationScale(screen), position: model.animationPosition(screen), layers: model.prefs.layers.count,
+                    boxes: Dictionary(uniqueKeysWithValues: Model.animationSides.map { ($0, model.animationFields($0).count) }))
             } else {
                 let point = model.position(widget, screen)
                 let width = widgetSize(widget, axis: "width", screen: screen)
@@ -370,6 +378,12 @@ final class AppController: NSObject, NSApplicationDelegate {
                                    width: rect.width, height: rect.height), display: true)
             // Widget controls take precedence where the animation overlaps them.
             window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + (widget == "animation" ? 1 : 2))
+            if let hitView = window.contentView as? LongPressView, widget == "animation" {
+                let regions = AnimationView.interactionRegions(style: model.prefs.animationStyle, bounds: screen.frame.size,
+                    scale: model.animationScale(screen), position: model.animationPosition(screen), layers: model.prefs.layers.count,
+                    boxes: Dictionary(uniqueKeysWithValues: Model.animationSides.map { ($0, model.animationFields($0).count) }))
+                hitView.hitRegions = regions.map { CGRect(x: $0.minX - rect.minX, y: rect.maxY - $0.maxY, width: $0.width, height: $0.height) }
+            }
             if model.editing { if window.isVisible { window.orderOut(nil) } } else if !window.isVisible { window.orderFrontRegardless() }
         }
     }
@@ -385,6 +399,8 @@ final class LongPressView: NSView {
     var configuration: (() -> WidgetDisplay)?
     var onConfigure: ((String) -> Void)?
     var onEdit: (() -> Void)?
+    var onBoxes: (() -> Void)?
+    var hitRegions: [CGRect]? { didSet { needsDisplay = true } }
     var onRemove: (() -> Void)?
     var onClick: ((CGPoint) -> Void)?
     var onMusicCommand: ((String) -> Void)?
@@ -397,7 +413,12 @@ final class LongPressView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         // WindowServer passes clicks through pixels with zero alpha.
         NSColor.black.withAlphaComponent(0.01).setFill()
-        bounds.fill()
+        for region in hitRegions ?? [bounds] { region.intersection(bounds).fill() }
+    }
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let local = convert(point, from: superview)
+        if let hitRegions, !hitRegions.contains(where: { $0.contains(local) }) { return nil }
+        return super.hitTest(point)
     }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) {
@@ -450,6 +471,8 @@ final class LongPressView: NSView {
             menu.addItem(.separator())
         }
         if widgetID == "animation" {
+            let dataItem = NSMenuItem(title: L("Box dati…"), action: #selector(configureBoxes), keyEquivalent: "")
+            dataItem.target = self; menu.addItem(dataItem)
             let parent = NSMenuItem(title: L("Stile"), action: nil, keyEquivalent: "")
             let sub = NSMenu(title: L("Stile"))
             let selected = configuration?().chart
@@ -483,6 +506,7 @@ final class LongPressView: NSView {
     }
     @objc private func configureAction(_ sender: NSMenuItem) { if let value = sender.representedObject as? String { onConfigure?(value) } }
     @objc private func musicAction(_ sender: NSMenuItem) { if let command = sender.representedObject as? String { onMusicCommand?(command) } }
+    @objc private func configureBoxes() { onBoxes?() }
     @objc private func editWidget() { onEdit?() }
     @objc private func removeWidget() { onRemove?() }
 

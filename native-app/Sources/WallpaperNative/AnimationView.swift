@@ -8,37 +8,40 @@ struct AnimationView: View {
 
     var body: some View {
         let _ = LocalizationSettings.shared.choice
-        let metrics = model.prefs.layers.map { layer -> FilamentMetric in
-            let value = layer.metric == "network"
-                ? model.metrics.percentage("network") / max(0.1, model.prefs.networkScaleMBps)
-                : model.metrics.percentage(layer.metric) / 100
-            let isNetwork = layer.metric == "network"
-            return FilamentMetric(id: layer.metric,
-                                  color: model.metricColor(layer.metric, base: layer.color, target: "animation").color,
-                                  fraction: min(1, max(0, value)),
-                                  displayValue: isNetwork
-                                      ? "↓ \(networkRate(model.metrics.download))"
-                                      : "\(Int(model.metrics.percentage(layer.metric).rounded()))%",
-                                  subtitle: isNetwork ? LF("RETE · ↑ \(networkRate(model.metrics.upload))") : nil)
+        func entry(_ id: String, color: ColorValue) -> FilamentMetric {
+            let reading = model.animationReading(id)
+            return FilamentMetric(id: id, color: model.metricColor(id, base: color, target: "animation").color,
+                fraction: reading.fraction ?? 0, displayValue: reading.value, subtitle: reading.title,
+                animated: reading.fraction != nil)
         }
-        FilamentSurface(metrics: metrics, position: model.animationPosition(screen),
+        let metrics = model.prefs.layers.map { entry($0.metric, color: $0.color) }
+        let boxes = Model.animationSides.compactMap { side -> FilamentBox? in
+            let fields = model.animationFields(side)
+            guard !fields.isEmpty else { return nil }
+            return FilamentBox(side: side, entries: fields.map { id in
+                entry(id, color: model.prefs.layers.first(where: { $0.metric == id })?.color ?? ColorValue("#82c4ff"))
+            })
+        }
+        return FilamentSurface(metrics: metrics, boxes: boxes, position: model.animationPosition(screen),
                         scale: model.animationScale(screen), style: model.prefs.animationStyle,
                         frameRate: ThermalPresentation.frames(model.metrics.thermal, lowPower: model.metrics.lowPower,
                                                                adaptive: model.prefs.adaptiveAnimation ?? true),
                         paused: model.performanceVariant.pausesAnimation)
     }
 
-    static func interactionRect(style: String, bounds: CGSize, scale: Double, position: Point, layers: Int) -> CGRect {
+    static func interactionRect(style: String, bounds: CGSize, scale: Double, position: Point, layers: Int, boxes: [String: Int]? = nil) -> CGRect {
+        interactionRegions(style: style, bounds: bounds, scale: scale, position: position, layers: layers, boxes: boxes)
+            .reduce(CGRect.null) { $0.union($1) }
+    }
+    static func interactionRegions(style: String, bounds: CGSize, scale: Double, position: Point, layers: Int, boxes: [String: Int]? = nil) -> [CGRect] {
         let size = visualSize(style: style, bounds: bounds, scale: scale)
         let center = CGPoint(x: bounds.width * position.x / 100, y: bounds.height * position.y / 100)
-        var rect = CGRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height)
-        if layers > 0 {
-            let isWide = ["aurora", "pulse", "traces"].contains(style)
-            let height = CGFloat(layers) * 57 + 15
-            rect = rect.union(CGRect(x: center.x + size.width * (isWide ? 0.50 : 0.36) + 28,
-                                     y: center.y - height / 2, width: 180, height: height))
+        var regions = [CGRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height)]
+        let contents = boxes ?? (layers > 0 ? ["right": layers] : [:])
+        for (side, count) in contents where count > 0 {
+            regions.append(AnimationBoxGeometry.layout(side: side, bounds: bounds, visual: size, point: position, count: count).frame)
         }
-        return rect.intersection(CGRect(origin: .zero, size: bounds))
+        return regions.map { $0.intersection(CGRect(origin: .zero, size: bounds)) }.filter { !$0.isEmpty }
     }
     static func draggedPosition(start: Point, delta: CGPoint, bounds: CGSize, cell: Double?) -> Point {
         func coordinate(_ start: Double, _ delta: Double, _ extent: Double) -> Double {
@@ -64,6 +67,7 @@ struct AnimationView: View {
 /// values and keeps its existing view and continuous frame loop.
 private struct FilamentSurface: NSViewRepresentable {
     let metrics: [FilamentMetric]
+    let boxes: [FilamentBox]
     let position: Point
     let scale: Double
     let style: String
@@ -74,11 +78,16 @@ private struct FilamentSurface: NSViewRepresentable {
     func updateNSView(_ view: FilamentAnimationView, context: Context) {
         view.setFrameRate(frameRate)
         view.setRenderingPaused(paused)
-        view.configure(metrics: metrics, position: position, scale: scale, style: style)
+        view.configure(metrics: metrics, position: position, scale: scale, style: style, boxes: boxes)
     }
     static func dismantleNSView(_ view: FilamentAnimationView, coordinator: ()) {
         view.stopRendering()
     }
+}
+
+private struct FilamentBox {
+    let side: String
+    let entries: [FilamentMetric]
 }
 
 private struct FilamentMetric {
@@ -87,11 +96,12 @@ private struct FilamentMetric {
     let fraction: Double
     let displayValue: String
     let subtitle: String?
+    let animated: Bool
     let rgb: (Float, Float, Float)
 
-    init(id: String, color: NSColor, fraction: Double, displayValue: String, subtitle: String?) {
+    init(id: String, color: NSColor, fraction: Double, displayValue: String, subtitle: String?, animated: Bool = true) {
         self.id = id; self.color = color; self.fraction = fraction
-        self.displayValue = displayValue; self.subtitle = subtitle
+        self.displayValue = displayValue; self.subtitle = subtitle; self.animated = animated
         let converted = color.usingColorSpace(.deviceRGB) ?? color
         rgb = (Float(converted.redComponent), Float(converted.greenComponent), Float(converted.blueComponent))
     }
@@ -117,15 +127,18 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
     private var scale = 1.0
     private var style = "jarvis"
     private var metrics: [FilamentMetric] = []
+    private var boxes: [FilamentBox] = []
     private var readoutLayers: [CALayer] = []
     private var readouts: [String: CATextLayer] = [:]
     private var names: [String: CATextLayer] = [:]
     private var bars: [String: CALayer] = [:]
     private let halo = CAGradientLayer()
     private var signature = ""
+    private var lastReadoutSize = CGSize.zero
     private var renderingPaused = false
+    private var dataOnly = false
     private(set) var animationFrameRate = 30
-    var animationFrameActive: Bool { window != nil && !renderingPaused && metalView?.delegate != nil && !isHiddenOrHasHiddenAncestor }
+    var animationFrameActive: Bool { window != nil && !renderingPaused && !dataOnly && metalView?.delegate != nil && !isHiddenOrHasHiddenAncestor }
     var animationFrameOccluded: Bool { window?.occlusionState.contains(.visible) != true }
     override var isFlipped: Bool { true }
 
@@ -155,6 +168,7 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
 
     override func layout() {
         super.layout()
+        if lastReadoutSize != bounds.size { makeReadoutBox() }
         arrange()
     }
 
@@ -181,7 +195,7 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
     }
 
     private func updateFrameScheduling() {
-        let paused = AnimationFrameClock.usesIndependentFrames ? window == nil || renderingPaused : true
+        let paused = AnimationFrameClock.usesIndependentFrames ? window == nil || renderingPaused || dataOnly : true
         if metalView?.isPaused != paused { metalView?.isPaused = paused }
         if !AnimationFrameClock.usesIndependentFrames { AnimationFrameClock.shared.refresh() }
     }
@@ -232,106 +246,125 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         guard view.animationFrameActive else { throw SettingsError.invalid("Reattached renderer did not resume") }
     }
 
-    fileprivate func configure(metrics: [FilamentMetric], position: Point, scale: Double, style: String) {
+    fileprivate func configure(metrics: [FilamentMetric], position: Point, scale: Double, style: String, boxes: [FilamentBox]? = nil) {
         self.metrics = metrics
+        self.boxes = boxes ?? (metrics.isEmpty ? [] : [FilamentBox(side: "right", entries: metrics)])
         self.position = position
         self.scale = scale
         self.style = style
-        renderer.setMetrics(metrics, style: style)
-        if let color = metrics.first?.color {
+        dataOnly = !metrics.contains(where: \.animated)
+        metalView?.isHidden = dataOnly
+        updateFrameScheduling()
+        renderer.setMetrics(metrics.filter(\.animated), style: style)
+        halo.isHidden = !metrics.contains(where: \.animated)
+        if let color = metrics.first(where: \.animated)?.color {
             halo.colors = [color.withAlphaComponent(0.13).cgColor,
                            color.withAlphaComponent(0.035).cgColor,
                            color.withAlphaComponent(0).cgColor]
             halo.locations = [0, 0.45, 1]
         }
         arrange()
-        let next = metrics.map { "\($0.id):\($0.color.hexString)" }.joined(separator: "|")
+        let next = self.boxes.map { box in box.side + ":" + box.entries.map { "\($0.id):\($0.color.hexString):\($0.animated)" }.joined(separator: "|") }.joined(separator: ";") + "\(bounds.size):\(style)"
         if signature != next { signature = next; makeReadoutBox() }
         updateReadouts()
+    }
+
+    static func checkBoxFixtures() throws {
+        let view = FilamentAnimationView(frame: CGRect(x: 0, y: 0, width: 1440, height: 900))
+        let metric = FilamentMetric(id: "cpu", color: .cyan, fraction: 0.42, displayValue: "42%", subtitle: nil)
+        let boxes = Model.animationSides.map { FilamentBox(side: $0, entries: [metric]) }
+        view.configure(metrics: [metric], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: boxes)
+        guard view.readoutLayers.count == 4, view.names.count == 4, view.bars.count == 4 else { throw SettingsError.invalid("Box sides share or lose row identities") }
+        guard view.readoutLayers.allSatisfy({ view.bounds.contains($0.frame) }) else { throw SettingsError.invalid("Box layout exceeds the view") }
+        let text = FilamentMetric(id: "device", color: .cyan, fraction: 0, displayValue: "Mac", subtitle: nil, animated: false)
+        view.configure(metrics: [], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: [FilamentBox(side: "top", entries: [text])])
+        guard view.readoutLayers.count == 1, view.bars.isEmpty, view.dataOnly, view.metalView?.isHidden == true else { throw SettingsError.invalid("Text information generated a progress bar or active renderer") }
+        view.stopRendering()
     }
 
     private func arrange() {
         guard bounds.width > 1, bounds.height > 1 else { return }
         let point = CGPoint(x: bounds.width * position.x / 100, y: bounds.height * position.y / 100)
-        let isWide = ["aurora", "pulse", "traces"].contains(style)
         let visualSize = AnimationView.visualSize(style: style, bounds: bounds.size, scale: scale)
         let width = visualSize.width
         let height = visualSize.height
         let visualFrame = CGRect(x: point.x - width/2, y: point.y - height/2, width: width, height: height)
         metalView?.frame = visualFrame
         halo.frame = visualFrame
-        if let box = readoutLayers.first {
-            box.position = CGPoint(x: point.x + width * (isWide ? 0.50 : 0.36) + 28,
-                                   y: point.y - box.bounds.height/2)
+        for (index, box) in boxes.enumerated() where index < readoutLayers.count {
+            let geometry = AnimationBoxGeometry.layout(side: box.side, bounds: bounds.size, visual: visualSize, point: position, count: box.entries.count)
+            readoutLayers[index].frame = geometry.frame
         }
     }
 
     private func makeReadoutBox() {
+        lastReadoutSize = bounds.size
         readoutLayers.forEach { $0.removeFromSuperlayer() }
         readoutLayers.removeAll(); readouts.removeAll(); names.removeAll(); bars.removeAll()
-        guard let root = layer, !metrics.isEmpty else { return }
-        let box = CALayer()
-        box.bounds = CGRect(x: 0, y: 0, width: 180, height: CGFloat(metrics.count) * 57 + 15)
-        box.anchorPoint = .zero
-        box.backgroundColor = NSColor(hex: "#101a2a").withAlphaComponent(0.92).cgColor
-        box.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
-        box.borderWidth = 1
-        box.cornerRadius = 13
-        root.addSublayer(box)
-        readoutLayers.append(box)
-        let scale = window?.backingScaleFactor ?? 2
-        for (index, metric) in metrics.enumerated() {
-            let y = CGFloat(index) * 57 + 11
-            let marker = CALayer()
-            marker.frame = CGRect(x: 13, y: y + 5, width: 3, height: 36)
-            marker.backgroundColor = metric.color.cgColor
-            marker.cornerRadius = 1.5
-            box.addSublayer(marker)
-            let name = CATextLayer()
-            name.string = Model.localizedName(metric.id).uppercased()
-            name.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .medium)
-            name.fontSize = 10
-            name.foregroundColor = NSColor.white.withAlphaComponent(0.78).cgColor
-            name.frame = CGRect(x: 26, y: y, width: 140, height: 14)
-            name.contentsScale = scale
-            box.addSublayer(name)
-            names[metric.id] = name
-            let value = CATextLayer()
-            let valueSize: CGFloat = metric.id == "network" ? 15 : 19
-            value.font = NSFont.monospacedDigitSystemFont(ofSize: valueSize, weight: .semibold)
-            value.fontSize = valueSize
-            value.foregroundColor = metric.color.cgColor
-            value.frame = CGRect(x: 26, y: y + 14, width: 140, height: 25)
-            value.contentsScale = scale
-            box.addSublayer(value)
-            readouts[metric.id] = value
-            let track = CALayer()
-            track.frame = CGRect(x: 26, y: y + 43, width: 140, height: 2)
-            track.backgroundColor = metric.color.withAlphaComponent(0.18).cgColor
-            track.cornerRadius = 1
-            box.addSublayer(track)
-            let bar = CALayer()
-            bar.bounds = CGRect(x: 0, y: 0, width: 0, height: 2)
-            bar.anchorPoint = .zero
-            bar.position = CGPoint(x: 26, y: y + 43)
-            bar.backgroundColor = metric.color.cgColor
-            bar.cornerRadius = 1
-            box.addSublayer(bar)
-            bars[metric.id] = bar
+        guard let root = layer else { return }
+        let visual = AnimationView.visualSize(style: style, bounds: bounds.size, scale: scale)
+        for data in boxes {
+            let geometry = AnimationBoxGeometry.layout(side: data.side, bounds: bounds.size, visual: visual, point: position, count: data.entries.count)
+            let box = CALayer()
+            box.anchorPoint = .zero
+            box.frame = geometry.frame
+            box.backgroundColor = NSColor(hex: "#101a2a").withAlphaComponent(0.92).cgColor
+            box.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
+            box.borderWidth = 1; box.cornerRadius = 13; box.masksToBounds = true
+            root.addSublayer(box); readoutLayers.append(box)
+            let backingScale = window?.backingScaleFactor ?? 2
+            for (index, metric) in data.entries.enumerated() {
+                let key = data.side + ":" + metric.id
+                let x = CGFloat(index / geometry.rows) * geometry.columnWidth
+                let y = CGFloat(index % geometry.rows) * 57 + 11
+                let contentWidth = max(1, geometry.columnWidth - 40)
+                let marker = CALayer()
+                marker.frame = CGRect(x: x + 13, y: y + 5, width: 3, height: 36)
+                marker.backgroundColor = metric.color.cgColor; marker.cornerRadius = 1.5; box.addSublayer(marker)
+                let name = CATextLayer()
+                name.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .medium); name.fontSize = 10
+                name.foregroundColor = NSColor.white.withAlphaComponent(0.78).cgColor
+                name.frame = CGRect(x: x + 26, y: y, width: contentWidth, height: 14)
+                name.contentsScale = backingScale; name.truncationMode = .end
+                box.addSublayer(name); names[key] = name
+                let value = CATextLayer()
+                value.foregroundColor = metric.color.cgColor
+                value.frame = CGRect(x: x + 26, y: y + 14, width: contentWidth, height: 27)
+                value.contentsScale = backingScale; value.truncationMode = .end
+                box.addSublayer(value); readouts[key] = value
+                if metric.animated {
+                    let track = CALayer()
+                    track.frame = CGRect(x: x + 26, y: y + 43, width: contentWidth, height: 2)
+                    track.backgroundColor = metric.color.withAlphaComponent(0.18).cgColor; track.cornerRadius = 1
+                    box.addSublayer(track)
+                    let bar = CALayer()
+                    bar.bounds = CGRect(x: 0, y: 0, width: 0, height: 2); bar.anchorPoint = .zero
+                    bar.position = CGPoint(x: x + 26, y: y + 43)
+                    bar.backgroundColor = metric.color.cgColor; bar.cornerRadius = 1
+                    box.addSublayer(bar); bars[key] = bar
+                }
+            }
         }
-        arrange()
+        updateReadouts()
     }
 
     private func updateReadouts() {
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(0.55)
-        for metric in metrics {
-            names[metric.id]?.string = metric.subtitle ?? Model.localizedName(metric.id).uppercased()
-            readouts[metric.id]?.string = metric.displayValue
-            bars[metric.id]?.bounds.size.width = 140 * CGFloat(metric.fraction)
+        CATransaction.begin(); CATransaction.setAnimationDuration(0.55)
+        for box in boxes {
+            for metric in box.entries {
+                let key = box.side + ":" + metric.id
+                names[key]?.string = metric.subtitle ?? Model.animationTitle(metric.id).uppercased()
+                let valueSize: CGFloat = metric.displayValue.count > 17 ? 11 : metric.displayValue.count > 10 ? 14 : 19
+                readouts[key]?.font = NSFont.monospacedDigitSystemFont(ofSize: valueSize, weight: .semibold)
+                readouts[key]?.fontSize = valueSize
+                readouts[key]?.isWrapped = metric.displayValue.count > 17
+                readouts[key]?.string = metric.displayValue
+                bars[key]?.bounds.size.width = max(0, (readouts[key]?.bounds.width ?? 180)) * CGFloat(metric.fraction)
+            }
         }
         CATransaction.commit()
     }
+
 }
 
 private final class FilamentRenderer: NSObject, MTKViewDelegate {

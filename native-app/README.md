@@ -71,3 +71,11 @@ In Edit Layout, drag the right handle for width, the bottom handle for height, o
 ## Animation interaction
 
 Outside edit mode, animation and readout areas accept the same secondary click and 0.55-second hold-to-drag gesture as widgets. The animation menu offers Edit Layout, its four styles and Remove (on that display). Dragging follows grid settings and saves its center per display. Widget controls take precedence over the animation when they overlap. Hidden or disabled animations have no hit window. Edit mode retains its existing drag and resize controls.
+
+## Animation data boxes
+
+Animation → Data boxes configures independent right, left, top and bottom cards. Select a side, then choose its fields; an empty selection hides that card. All widget summaries are available, including clock, hostname, uptime, thermal state, application presence, Spotify, AI token totals, the leading model/project, recent/live activity and API-value estimates. AI activity summarizes active days in the last 13 weeks. Existing integration opt-ins remain required, and these cards use cached readings from the existing services. They do not start new integrations or read credentials.
+
+Animated layers are selected separately: CPU, memory, disk, network, battery and Claude/Codex session/weekly limits. Non-numeric fields have no percentage bar or animated layer. Missing/expired limits do not become zero usage; quota readings older than 30 minutes are labeled stale and do not drive animation. API values remain estimates/session values, not invoices or subscription spend. If there are only informational cards, Metal animation is hidden and its frame clock is paused.
+
+Cards wrap into columns when needed and are bounded by each screen. Clickable areas include the visual and each card; the transparent gaps pass through. Open Data boxes… from the animation context menu to configure them. Preferences, saved presets and exports retain selections; old layouts initially keep their selected resource values on the right. Built-in presets restore that default.

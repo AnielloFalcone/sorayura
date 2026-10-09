@@ -67,6 +67,7 @@ struct BuiltInPreset: Identifiable {
     func settings(from current: Prefs, displayKeys: [String], displaySizes: [String: NSSize] = [:]) -> Prefs {
         var result = current
         result.widgetSizes = nil
+        result.animationBoxes = nil
         if id == "ai" {
             result.widgetTheme = "glass"; result.animationStyle = "off"; result.layout = "free"; result.cellSize = 120
             let widgets = ["agents", "agentLive", "spotify", "agentTrend", "agentModels", "agentProjects", "agentActivity", "agentSpending"]
@@ -174,7 +175,10 @@ extension Prefs {
             try require(point.x.isFinite && point.y.isFinite && (0...100).contains(point.x) && (0...100).contains(point.y), "Posizione non valida.")
         }
         for scale in (animationScales ?? [:]).values { try require(scale.isFinite && (0.5...1.8).contains(scale), "Dimensione animazione non valida.") }
-        try require(Set(layers.map(\.metric)).count == layers.count && layers.allSatisfy { Model.metricIDs.contains($0.metric) }, "Livelli animazione non validi.")
+        try require(Set(layers.map(\.metric)).count == layers.count && layers.allSatisfy { Model.animationSourceIDs.contains($0.metric) }, "Livelli animazione non validi.")
+        for (side, fields) in animationBoxes ?? [:] {
+            try require(Model.animationSides.contains(side) && Set(fields).count == fields.count && fields.allSatisfy(Model.animationFieldIDs.contains), "Livelli animazione non validi.")
+        }
         for color in layers.map(\.color) + [warningColor, criticalColor] {
             try require(color.hex.range(of: "^#[0-9A-Fa-f]{6}$", options: .regularExpression) != nil, "Colore non valido.")
         }

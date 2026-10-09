@@ -272,5 +272,19 @@
   "Immagine": "Image",
   "macOS può chiederti il permesso di controllare Spotify. La copertina viene scaricata dal servizio Spotify. I controlli sono disponibili sul widget e nel suo menu secondario.": "macOS may ask for permission to control Spotify. Artwork is downloaded from Spotify. Controls are available in the widget and its context menu.",
   "macOS mostra l’immagine statica nello Space attivo; widget e animazioni sono visibili sul desktop. Per altri Space usa “Riapplica sfondo” sul monitor interessato.": "macOS shows the static image in the active Space; widgets and animations are visible on the desktop. For other Spaces, use “Reapply wallpaper” on the relevant monitor.",
-  "Trascina per ridimensionare il widget": "Drag to resize the widget"
+  "Trascina per ridimensionare il widget": "Drag to resize the widget",
+  "Box dati": "Data boxes",
+  "Lato": "Side",
+  "Destra": "Right",
+  "Sinistra": "Left",
+  "Sopra": "Top",
+  "Sotto": "Bottom",
+  "Mostra box": "Show box",
+  "Claude · Sessione": "Claude · Session",
+  "Claude · Settimana": "Claude · Week",
+  "Codex · Sessione": "Codex · Session",
+  "Codex · Settimana": "Codex · Week",
+  "Scegli i dati per ciascun lato. I widget informativi compaiono solo nella box; i livelli animati usano dati misurabili. Le integrazioni devono essere attive.": "Choose data for each side. Informational widgets appear only in the box; animated layers use measurable data. Integrations must be enabled.",
+  "Applicazioni": "Applications",
+  "Box dati…": "Data boxes…"
 }

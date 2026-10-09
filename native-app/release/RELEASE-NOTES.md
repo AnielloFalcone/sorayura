@@ -5,7 +5,7 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 
 - Per-monitor layouts, adjustable grid, dragging and resizing. Widget edit handles support continuous per-display dimensions, with snapping when the grid is enabled.
 - System widgets with charts and history; compact or expanded memory views.
-- Four animations with layers and colors linked to Mac resources.
+- Four animations with layers and colors linked to Mac resources and available AI quotas. Four independently configurable data cards can show summaries from all widgets.
 - Presets and layout backups; optional Codex, Claude and Spotify integrations.
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar

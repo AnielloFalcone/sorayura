@@ -410,6 +410,7 @@ struct Prefs: Codable {
     var animationPositions: [String:Point] = [:]
     var animationScales: [String:Double]? = nil
     var animationStyle = "jarvis"
+    var animationBoxes: [String: [String]]? = nil
     var layers: [Layer] = [Layer(metric: "cpu", color: ColorValue("#82c4ff"))]
     var layout = "free"
     var alertTargets: [String]? = nil

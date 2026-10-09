@@ -8,6 +8,7 @@ import Metal
         try animationInteractions()
         try buffers()
         try AnimationResourceChecks.run()
+        try FilamentAnimationView.checkBoxFixtures()
         try ComponentProfile.checkFixtures()
         try AnimationFrameClock.checkFixtures()
         try batchedPasses()

@@ -85,6 +85,29 @@ enum M1Checks {
             isolated.setWidgetUnits("cpu", axis: "width", units: 3)
             try check(isolated.prefs.widgetSizes?[screenKey]?["cpu"]?.height == freeSize.height && isolated.widgetSize("cpu", screen: screen).width == 390, "Unit picker lost the other custom dimension")
         }
+        var boxed = archive
+        boxed.settings.animationBoxes = ["right": ["cpu", "device"], "left": ["spotify"], "top": ["claudeWeek"], "bottom": ["clock", "agentProjects"]]
+        boxed.settings.layers.append(Layer(metric: "claudeWeek", color: ColorValue("#82c4ff")))
+        let boxedDecoded = try JSONDecoder().decode(SettingsArchive.self, from: JSONEncoder().encode(boxed)).validated()
+        try check(boxedDecoded.settings.animationBoxes == boxed.settings.animationBoxes, "Box contents lost in settings round trip")
+        var badBox = boxed
+        badBox.settings.animationBoxes?["middle"] = ["cpu"]
+        try rejects(badBox)
+        badBox = boxed; badBox.settings.animationBoxes?["left"] = ["cpu", "cpu"]; try rejects(badBox)
+        let dataModel = Model.isolated()
+        try check(dataModel.animationFields("right") == dataModel.prefs.layers.map(\.metric), "Legacy right box lost its selected metrics")
+        dataModel.setAnimationFields(["clock", "device"], side: "left")
+        try check(dataModel.animationFields("right") == ["cpu"] && dataModel.animationFields("left") == ["clock", "device"], "Changing one box changed another")
+        try check(dataModel.animationReading("device").fraction == nil && dataModel.animationReading("battery").fraction == nil, "Text or unavailable battery synthesized a percentage")
+        dataModel.prefs.agentUsageEnabled = true
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        dataModel.agentUsage.codexQuota = AgentQuota(date: now, plan: nil, session: AgentLimit(used: 42, reset: now.addingTimeInterval(600), minutes: 300), week: nil)
+        try check(dataModel.animationReading("codexSession", now: now).fraction == 0.42 && dataModel.animationReading("codexWeek", now: now).fraction == nil, "Quota sources confused missing data with zero usage")
+        try check(dataModel.animationReading("codexSession", now: now.addingTimeInterval(700)).fraction == nil, "Expired quota still drives animation")
+        for side in Model.animationSides {
+            let layout = AnimationBoxGeometry.layout(side: side, bounds: CGSize(width: 1440, height: 900), visual: CGSize(width: 400, height: 400), point: Point(x: 50, y: 50), count: Model.animationFieldIDs.count)
+            try check(CGRect(x: 0, y: 0, width: 1440, height: 900).contains(layout.frame), "Data box exceeds screen bounds")
+        }
         let sampler = MetricsSampler()
         _ = sampler.sample()
         sampler.reset()
@@ -93,8 +116,9 @@ enum M1Checks {
         var legacy = try JSONSerialization.jsonObject(with: JSONEncoder().encode(base)) as! [String: Any]
         legacy.removeValue(forKey: "widgetTheme")
         legacy.removeValue(forKey: "widgetSizes")
+        legacy.removeValue(forKey: "animationBoxes")
         let legacyDecoded = try JSONDecoder().decode(Prefs.self, from: JSONSerialization.data(withJSONObject: legacy))
-        try check(legacyDecoded.widgetTheme == nil && legacyDecoded.widgetSizes == nil, "Old settings no longer decode")
+        try check(legacyDecoded.widgetTheme == nil && legacyDecoded.widgetSizes == nil && legacyDecoded.animationBoxes == nil, "Old settings no longer decode")
         let original = SavedPreset(name: "Test", archive: archive)
         let restored = try JSONDecoder().decode(SavedPreset.self, from: JSONEncoder().encode(original))
         try check(restored.id == original.id && restored.name == "Test", "Custom preset persistence failed")

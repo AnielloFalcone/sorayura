@@ -272,5 +272,19 @@
   "Immagine": "Immagine",
   "macOS può chiederti il permesso di controllare Spotify. La copertina viene scaricata dal servizio Spotify. I controlli sono disponibili sul widget e nel suo menu secondario.": "macOS può chiederti il permesso di controllare Spotify. La copertina viene scaricata dal servizio Spotify. I controlli sono disponibili sul widget e nel suo menu secondario.",
   "macOS mostra l’immagine statica nello Space attivo; widget e animazioni sono visibili sul desktop. Per altri Space usa “Riapplica sfondo” sul monitor interessato.": "macOS mostra l’immagine statica nello Space attivo; widget e animazioni sono visibili sul desktop. Per altri Space usa “Riapplica sfondo” sul monitor interessato.",
-  "Trascina per ridimensionare il widget": "Trascina per ridimensionare il widget"
+  "Trascina per ridimensionare il widget": "Trascina per ridimensionare il widget",
+  "Box dati": "Box dati",
+  "Lato": "Lato",
+  "Destra": "Destra",
+  "Sinistra": "Sinistra",
+  "Sopra": "Sopra",
+  "Sotto": "Sotto",
+  "Mostra box": "Mostra box",
+  "Claude · Sessione": "Claude · Sessione",
+  "Claude · Settimana": "Claude · Settimana",
+  "Codex · Sessione": "Codex · Sessione",
+  "Codex · Settimana": "Codex · Settimana",
+  "Scegli i dati per ciascun lato. I widget informativi compaiono solo nella box; i livelli animati usano dati misurabili. Le integrazioni devono essere attive.": "Scegli i dati per ciascun lato. I widget informativi compaiono solo nella box; i livelli animati usano dati misurabili. Le integrazioni devono essere attive.",
+  "Applicazioni": "Applicazioni",
+  "Box dati…": "Box dati…"
 }

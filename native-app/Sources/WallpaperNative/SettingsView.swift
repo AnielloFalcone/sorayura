@@ -10,6 +10,7 @@ struct SettingsView: View {
         nonmutating set { navigation.section = newValue }
     }
     @State private var presetName = ""
+    @State private var animationBoxSide = "right"
     @State private var claudeHooksInstalled = ClaudeHooksInstaller.installed
     @State private var claudeBridgeInstalled = ClaudeBridgeInstaller.installed
     @State private var message: String?
@@ -355,6 +356,7 @@ struct SettingsView: View {
         }
     }
     private var animationSection:some View {
+        VStack(spacing: 16) {
         panel(L("Animazione")) {
             Picker(L("Stile"),selection:Bindable(model).prefs.animationStyle) {
                 Text(L("Nessuna")).tag("off")
@@ -363,9 +365,9 @@ struct SettingsView: View {
                 Text(L("Tracce · 90 secondi")).tag("traces")
                 Text(L("Nucleo luminoso")).tag("jarvis")
             }.pickerStyle(.menu)
-            ForEach(Model.metricIDs,id:\.self) { metric in
+            ForEach(Model.animationSourceIDs,id:\.self) { metric in
                 HStack {
-                    Toggle(Model.localizedName(metric),isOn:Binding(get:{model.prefs.layers.contains{$0.metric==metric}},set:{enabled in if enabled {model.prefs.layers.append(Layer(metric:metric,color:ColorValue("#82c4ff")))} else {model.prefs.layers.removeAll{$0.metric==metric}} }))
+                    Toggle(Model.animationTitle(metric),isOn:Binding(get:{model.prefs.layers.contains{$0.metric==metric}},set:{enabled in if enabled {model.prefs.layers.append(Layer(metric:metric,color:ColorValue("#82c4ff")))} else {model.prefs.layers.removeAll{$0.metric==metric}} }))
                     if model.prefs.layers.contains(where:{$0.metric==metric}) {
                         ColorPicker("",selection:colorBinding(metric),supportsOpacity:false).labelsHidden()
                     }
@@ -373,6 +375,27 @@ struct SettingsView: View {
             }
             Text(L(animationDescription))
                 .font(.caption).foregroundStyle(.secondary)
+        }
+        panel(L("Box dati")) {
+            Picker(L("Lato"), selection: $animationBoxSide) {
+                Text(L("Destra")).tag("right"); Text(L("Sinistra")).tag("left")
+                Text(L("Sopra")).tag("top"); Text(L("Sotto")).tag("bottom")
+            }.pickerStyle(.segmented)
+            Toggle(L("Mostra box"), isOn: Binding(get: { !model.animationFields(animationBoxSide).isEmpty }, set: { enabled in
+                model.setAnimationFields(enabled ? ["cpu", "memory"] : [], side: animationBoxSide)
+            }))
+            Text(L("Scegli i dati per ciascun lato. I widget informativi compaiono solo nella box; i livelli animati usano dati misurabili. Le integrazioni devono essere attive.")).font(.caption).foregroundStyle(.secondary)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading) {
+                ForEach(Model.animationFieldIDs, id: \.self) { id in
+                    Toggle(Model.animationTitle(id), isOn: Binding(get: { model.animationFields(animationBoxSide).contains(id) }, set: { enabled in
+                        var fields = model.animationFields(animationBoxSide)
+                        fields.removeAll { $0 == id }
+                        if enabled { fields.append(id) }
+                        model.setAnimationFields(fields, side: animationBoxSide)
+                    }))
+                }
+            }
+        }
         }
     }
     private var animationDescription: String {
