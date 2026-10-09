@@ -28,6 +28,27 @@ struct AnimationView: View {
                         paused: model.performanceVariant.pausesAnimation)
     }
 
+    static func interactionRect(style: String, bounds: CGSize, scale: Double, position: Point, layers: Int) -> CGRect {
+        let size = visualSize(style: style, bounds: bounds, scale: scale)
+        let center = CGPoint(x: bounds.width * position.x / 100, y: bounds.height * position.y / 100)
+        var rect = CGRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height)
+        if layers > 0 {
+            let isWide = ["aurora", "pulse", "traces"].contains(style)
+            let height = CGFloat(layers) * 57 + 15
+            rect = rect.union(CGRect(x: center.x + size.width * (isWide ? 0.50 : 0.36) + 28,
+                                     y: center.y - height / 2, width: 180, height: height))
+        }
+        return rect.intersection(CGRect(origin: .zero, size: bounds))
+    }
+    static func draggedPosition(start: Point, delta: CGPoint, bounds: CGSize, cell: Double?) -> Point {
+        func coordinate(_ start: Double, _ delta: Double, _ extent: Double) -> Double {
+            let raw = start * extent / 100 + delta
+            let snapped = cell.map { (raw / $0).rounded() * $0 } ?? raw
+            return min(100, max(0, snapped / max(1, extent) * 100))
+        }
+        return Point(x: coordinate(start.x, delta.x, bounds.width), y: coordinate(start.y, -delta.y, bounds.height))
+    }
+
     static func visualSize(style: String, bounds: CGSize, scale: Double) -> CGSize {
         let isWide = ["aurora", "pulse", "traces"].contains(style)
         let baseWidth = isWide ? min(720, bounds.width * 0.52) : min(460, min(bounds.width, bounds.height) * 0.42)

@@ -106,12 +106,10 @@ struct ScreenView: View {
             .gesture(DragGesture(minimumDistance: 1).onChanged { value in
                 let start = dragOrigins["animation"] ?? point
                 if dragOrigins["animation"] == nil { dragOrigins["animation"] = start }
-                let x = min(100, max(0, start.x + value.translation.width / max(1, size.width) * 100))
-                let y = min(100, max(0, start.y + value.translation.height / max(1, size.height) * 100))
-                let cell = max(40, model.prefs.cellSize)
-                let px = model.prefs.layout == "grid" ? (Double((x * size.width / 100 / cell).rounded()) * cell / size.width * 100) : x
-                let py = model.prefs.layout == "grid" ? (Double((y * size.height / 100 / cell).rounded()) * cell / size.height * 100) : y
-                model.setAnimationPosition(screen, Point(x: px, y: py))
+                let delta = CGPoint(x: value.translation.width, y: -value.translation.height)
+                let next = AnimationView.draggedPosition(start: start, delta: delta, bounds: size,
+                    cell: model.prefs.layout == "grid" ? model.prefs.cellSize : nil)
+                model.setAnimationPosition(screen, next)
             }.onEnded { _ in dragOrigins["animation"] = nil })
             .overlay(alignment: .topLeading) {
                 Text(L("✥ Animazione · trascina per spostare"))

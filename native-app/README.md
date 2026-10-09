@@ -67,3 +67,7 @@ Translation catalogs are `Resources/Localization/en.json`, `it.json` and `es.jso
 ## Widget resizing
 
 In Edit Layout, drag the right handle for width, the bottom handle for height, or the corner for both. Free placement retains continuous sizes in logical screen points; grid placement snaps dimensions to cells. The top-left corner stays anchored and resizing stops at the display edge. Custom dimensions are saved separately for each display, included in saved presets and layout exports, and remapped when importing on another Mac. Built-in presets restore their predefined sizes. Unit selectors remain available; changing an axis preserves custom dimensions on the other axis. Old settings without custom dimensions continue using unit sizes.
+
+## Animation interaction
+
+Outside edit mode, animation and readout areas accept the same secondary click and 0.55-second hold-to-drag gesture as widgets. The animation menu offers Edit Layout, its four styles and Remove (on that display). Dragging follows grid settings and saves its center per display. Widget controls take precedence over the animation when they overlap. Hidden or disabled animations have no hit window. Edit mode retains its existing drag and resize controls.

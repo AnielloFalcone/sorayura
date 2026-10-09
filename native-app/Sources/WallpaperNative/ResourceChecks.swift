@@ -5,6 +5,7 @@ import Metal
 @MainActor enum ResourceChecks {
     static func run() throws {
         try settingsLifetime()
+        try animationInteractions()
         try buffers()
         try AnimationResourceChecks.run()
         try ComponentProfile.checkFixtures()
@@ -15,6 +16,33 @@ import Metal
 
     private static func check(_ passed: Bool, _ message: String) throws {
         if !passed { throw SettingsError.invalid(message) }
+    }
+
+    private static func animationInteractions() throws {
+        let bounds = CGSize(width: 1440, height: 900)
+        for style in ["aurora", "pulse", "traces", "jarvis"] {
+            let rect = AnimationView.interactionRect(style: style, bounds: bounds, scale: 1.8, position: Point(x: 95, y: 5), layers: 5)
+            try check(!rect.isEmpty && CGRect(origin: .zero, size: bounds).contains(rect), "Animation interaction area exceeds its display")
+            let middle = AnimationView.interactionRect(style: style, bounds: bounds, scale: 1, position: Point(x: 50, y: 50), layers: 3)
+            try check(middle.contains(CGPoint(x: 720, y: 450)) && middle.maxX > 900, "Animation hit area omits the visual or readouts")
+        }
+        let dragged = AnimationView.draggedPosition(start: Point(x: 50, y: 50), delta: CGPoint(x: 144, y: -90), bounds: bounds, cell: nil)
+        try check(dragged.x == 60 && dragged.y == 60, "Animation drag uses the wrong center or vertical direction")
+        let bounded = AnimationView.draggedPosition(start: Point(x: 99, y: 1), delta: CGPoint(x: 1000, y: 1000), bounds: bounds, cell: 130)
+        try check(bounded.x == 100 && bounded.y == 0, "Animation grid drag escapes the display")
+        let view = LongPressView(frame: .zero)
+        view.widgetID = "animation"; view.widgetName = L("Animazione")
+        view.configuration = { WidgetDisplay(chart: "jarvis") }
+        var edited = false, removed = false, selected = ""
+        view.onEdit = { edited = true }; view.onRemove = { removed = true }; view.onConfigure = { selected = $0 }
+        let menu = view.contextMenu()
+        try check(menu.items.first?.title == L("Modifica layout…") && menu.items.last?.title == LF("Rimuovi \(L("Animazione"))"), "Animation menu lacks shared edit/remove actions")
+        let styles = menu.items.compactMap(\.submenu).first!
+        try check(styles.items.count == 4 && styles.items.last?.state == .on, "Animation styles missing or selection incorrect")
+        menu.performActionForItem(at: 0)
+        styles.performActionForItem(at: 1)
+        menu.performActionForItem(at: menu.items.count - 1)
+        try check(edited && removed && selected == "pulse", "Animation menu callbacks are disconnected")
     }
 
     private static func settingsLifetime() throws {

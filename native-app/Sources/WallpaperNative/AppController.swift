@@ -263,9 +263,10 @@ final class AppController: NSObject, NSApplicationDelegate {
     private func refreshHitWindows(for screen: NSScreen) {
         let screenID = screenID(screen)
         let content = model.content(screen)
-        let needed = Set(content.widgets.map { "\(screenID):\($0)" })
+        let targets = content.widgets + (content.animation && model.prefs.animationStyle != "off" ? ["animation"] : [])
+        let needed = Set(targets.map { "\(screenID):\($0)" })
         for (id, window) in hitWindows where id.hasPrefix("\(screenID):") && !needed.contains(id) { window.close(); hitWindows[id] = nil }
-        for widget in content.widgets {
+        for widget in targets {
             let id = "\(screenID):\(widget)"
             let window: NSWindow
             if let existing = hitWindows[id] { window = existing }
@@ -274,20 +275,25 @@ final class AppController: NSObject, NSApplicationDelegate {
                 panel.isReleasedWhenClosed = false
                 panel.hidesOnDeactivate = false
                 panel.ignoresMouseEvents = false
-                panel.title = "Widget · \(Model.localizedName(widget)) · \(screenID)"
+                panel.title = "Widget · \(widget == "animation" ? L("Animazione") : Model.localizedName(widget)) · \(screenID)"
                 window = panel
                 window.isOpaque = false; window.backgroundColor = .clear; window.hasShadow = false
                 window.collectionBehavior = [.canJoinAllSpaces,.stationary,.ignoresCycle]
                 let hitView = LongPressView(frame: .zero)
-                hitView.widgetName = Model.localizedName(widget)
+                hitView.widgetName = widget == "animation" ? L("Animazione") : Model.localizedName(widget)
                 hitView.widgetID = widget
                 hitView.configuration = { [weak self] in
                     guard let self else { return WidgetDisplay() }
+                    if widget == "animation" { return WidgetDisplay(chart: self.model.prefs.animationStyle) }
                     if widget.hasPrefix("agent") { return WidgetDisplay(chart: self.model.prefs.agentPeriod ?? "all", density: self.model.prefs.agentDensity ?? "compact") }
                     return widget == "memory" ? self.model.prefs.memoryDisplay : self.model.prefs.cpuDisplay
                 }
                 hitView.onConfigure = { [weak self] setting in
                     guard let self else { return }
+                    if widget == "animation" {
+                        if ["aurora", "pulse", "traces", "jarvis"].contains(setting) { self.model.prefs.animationStyle = setting }
+                        return
+                    }
                     if widget.hasPrefix("agent") {
                         if ["compact", "expanded"].contains(setting) { self.model.prefs.agentDensity = setting } else { self.model.prefs.agentPeriod = setting }; return
                     }
@@ -302,7 +308,8 @@ final class AppController: NSObject, NSApplicationDelegate {
                 hitView.onRemove = { [weak self] in
                     guard let self else { return }
                     var content = self.model.content(screen)
-                    content.widgets.removeAll { $0 == widget }
+                    if widget == "animation" { content.animation = false }
+                    else { content.widgets.removeAll { $0 == widget } }
                     self.model.setContent(screen, content)
                 }
                 if widget == "spotify" {
@@ -316,11 +323,18 @@ final class AppController: NSObject, NSApplicationDelegate {
                 var dragStart: Point?
                 hitView.onDragStart = { [weak self] in
                     guard let self else { return }
-                    dragStart = self.model.position(widget, screen)
+                    dragStart = widget == "animation" ? self.model.animationPosition(screen) : self.model.position(widget, screen)
                 }
                 hitView.onDragEnd = { dragStart = nil }
                 hitView.onDrag = { [weak self] delta in
                     guard let self else { return }
+                    if widget == "animation" {
+                        let start = dragStart ?? self.model.animationPosition(screen)
+                        let cell = self.model.prefs.layout == "grid" ? self.model.prefs.cellSize : nil
+                        let next = AnimationView.draggedPosition(start: start, delta: delta, bounds: screen.frame.size, cell: cell)
+                        self.model.setAnimationPosition(screen, next)
+                        return
+                    }
                     let start = dragStart ?? self.model.position(widget, screen)
                     let width = self.widgetSize(widget, axis: "width", screen: screen)
                     let height = self.widgetSize(widget, axis: "height", screen: screen)
@@ -337,13 +351,25 @@ final class AppController: NSObject, NSApplicationDelegate {
                 window.contentView = hitView
                 hitWindows[id] = window
             }
-            let point = model.position(widget, screen)
-            let width = widgetSize(widget, axis: "width", screen: screen)
-            let height = widgetSize(widget, axis: "height", screen: screen)
-            let x = screen.frame.minX + min(max(0, screen.frame.width * point.x / 100), max(0,screen.frame.width-width))
-            let top = min(max(0, screen.frame.height * point.y / 100), max(0,screen.frame.height-height))
-            window.setFrame(NSRect(x:x,y:screen.frame.maxY-top-height,width:width,height:height), display: true)
-            window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+            if let hitView = window.contentView as? LongPressView {
+                hitView.widgetName = widget == "animation" ? L("Animazione") : Model.localizedName(widget)
+                hitView.setAccessibilityLabel(hitView.widgetName)
+            }
+            let rect: CGRect
+            if widget == "animation" {
+                rect = AnimationView.interactionRect(style: model.prefs.animationStyle, bounds: screen.frame.size,
+                    scale: model.animationScale(screen), position: model.animationPosition(screen), layers: model.prefs.layers.count)
+            } else {
+                let point = model.position(widget, screen)
+                let width = widgetSize(widget, axis: "width", screen: screen)
+                let height = widgetSize(widget, axis: "height", screen: screen)
+                rect = CGRect(x: min(max(0, screen.frame.width * point.x / 100), max(0, screen.frame.width - width)),
+                    y: min(max(0, screen.frame.height * point.y / 100), max(0, screen.frame.height - height)), width: width, height: height)
+            }
+            window.setFrame(NSRect(x: screen.frame.minX + rect.minX, y: screen.frame.maxY - rect.maxY,
+                                   width: rect.width, height: rect.height), display: true)
+            // Widget controls take precedence where the animation overlaps them.
+            window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + (widget == "animation" ? 1 : 2))
             if model.editing { if window.isVisible { window.orderOut(nil) } } else if !window.isVisible { window.orderFrontRegardless() }
         }
     }
@@ -408,6 +434,9 @@ final class LongPressView: NSView {
     }
     override func rightMouseDown(with event: NSEvent) {
         finishDrag()
+        NSMenu.popUpContextMenu(contextMenu(), with: event, for: self)
+    }
+    func contextMenu() -> NSMenu {
         let menu = NSMenu(title: widgetName)
         let edit = NSMenuItem(title: L("Modifica layout…"), action: #selector(editWidget), keyEquivalent: "")
         edit.target = self
@@ -419,6 +448,17 @@ final class LongPressView: NSView {
                 item.representedObject = command; item.target = self; menu.addItem(item)
             }
             menu.addItem(.separator())
+        }
+        if widgetID == "animation" {
+            let parent = NSMenuItem(title: L("Stile"), action: nil, keyEquivalent: "")
+            let sub = NSMenu(title: L("Stile"))
+            let selected = configuration?().chart
+            for (label, value) in [("Aurora", "aurora"), ("Impulso", "pulse"), ("Tracce · 90 secondi", "traces"), ("Nucleo luminoso", "jarvis")] {
+                let item = NSMenuItem(title: L(label), action: #selector(configureAction(_:)), keyEquivalent: "")
+                item.target = self; item.representedObject = value; item.state = selected == value ? .on : .off
+                sub.addItem(item)
+            }
+            parent.submenu = sub; menu.addItem(parent); menu.addItem(.separator())
         }
         if ["cpu", "memory"].contains(widgetID) || ["agents", "agentLive", "agentModels", "agentProjects", "agentTrend"].contains(widgetID) {
             let current = configuration?() ?? WidgetDisplay()
@@ -439,7 +479,7 @@ final class LongPressView: NSView {
         let remove = NSMenuItem(title: LF("Rimuovi \(widgetName)"), action: #selector(removeWidget), keyEquivalent: "")
         remove.target = self
         menu.addItem(remove)
-        NSMenu.popUpContextMenu(menu, with: event, for: self)
+        return menu
     }
     @objc private func configureAction(_ sender: NSMenuItem) { if let value = sender.representedObject as? String { onConfigure?(value) } }
     @objc private func musicAction(_ sender: NSMenuItem) { if let command = sender.representedObject as? String { onMusicCommand?(command) } }
