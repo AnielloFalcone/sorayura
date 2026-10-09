@@ -79,3 +79,7 @@ Animation → Data boxes configures independent right, left, top and bottom card
 Animated layers are selected separately: CPU, memory, disk, network, battery and Claude/Codex session/weekly limits. Non-numeric fields have no percentage bar or animated layer. Missing/expired limits do not become zero usage; quota readings older than 30 minutes are labeled stale and do not drive animation. API values remain estimates/session values, not invoices or subscription spend. If there are only informational cards, Metal animation is hidden and its frame clock is paused.
 
 Cards wrap into columns when needed and are bounded by each screen. Clickable areas include the visual and each card; the transparent gaps pass through. Open Data boxes… from the animation context menu to configure them. Preferences, saved presets and exports retain selections; old layouts initially keep their selected resource values on the right. Built-in presets restore that default.
+
+### Smooth wallpaper gradients
+
+Generated Aurora and Midnight backgrounds render once in sRGB at the display's pixel resolution, up to a 4096-pixel longest edge. Smooth radial falloff and deterministic sub-LSB dithering reduce visible contours in dark gradients. The same raster is used in the app and saved losslessly as PNG for the macOS desktop, preserving the dithering in Mission Control. Backgrounds remain static and cached, with up to four entries and a 96 MiB bitmap budget; this adds no per-frame noise pass. User-selected image files are not modified.

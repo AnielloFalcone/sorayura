@@ -522,30 +522,13 @@ enum WallpaperRenderer {
             if let cached = imageCache[key] { return cached }
             if let image = NSImage(contentsOfFile: path) { cache(image, key: key); return image }
         }
-        // Explicit bitmap dimensions avoid lockFocus applying the Retina scale a
-        // second time. These backgrounds contain only smooth gradients, so a
-        // 2560-pixel longest edge is sufficient even on larger displays.
+        // Render once at display resolution (up to 4096 px), then cache. Dither
+        // before 8-bit quantization rather than adding noise to an already banded image.
         let native = NSSize(width: max(1,screen.frame.width * screen.backingScaleFactor), height: max(1,screen.frame.height * screen.backingScaleFactor))
-        let ratio = min(1, 2560 / max(native.width, native.height))
-        let size = NSSize(width: max(1, (native.width * ratio).rounded()), height: max(1, (native.height * ratio).rounded()))
-        let key = "\(prefs.wallpaper):\(Int(size.width))x\(Int(size.height))"
+        let size = WallpaperRaster.pixelSize(native)
+        let key = "dither-v1:\(prefs.wallpaper):\(Int(size.width))x\(Int(size.height))"
         if let cached = imageCache[key] { return cached }
-        guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width), pixelsHigh: Int(size.height),
-                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
-                bytesPerRow: 0, bitsPerPixel: 0), let context = NSGraphicsContext(bitmapImageRep: bitmap) else { return NSImage(size: screen.frame.size) }
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = context
-        (prefs.wallpaper == "midnight" ? NSColor(hex:"#070c16") : NSColor(hex:"#101a2a")).setFill()
-        NSRect(origin:.zero,size:size).fill()
-        let centers: [(CGFloat,CGFloat,CGFloat,NSColor)] = prefs.wallpaper == "midnight"
-            ? [(0.75,0.18,0.85,NSColor(hex:"#273652"))]
-            : [(0.18,0.80,0.82,NSColor(hex:"#563c55")),(0.76,0.19,0.75,NSColor(hex:"#375d86"))]
-        for (x,y,scale,color) in centers {
-            let radius = max(size.width,size.height) * scale
-            let center = NSPoint(x:size.width*x,y:size.height*(1-y))
-            NSGradient(starting: color, ending: color.withAlphaComponent(0))?.draw(fromCenter:center,radius:0,toCenter:center,radius:radius,options:[])
-        }
-        NSGraphicsContext.restoreGraphicsState()
+        guard let bitmap = WallpaperRaster.bitmap(size: size, midnight: prefs.wallpaper == "midnight") else { return NSImage(size: screen.frame.size) }
         bitmap.size = screen.frame.size
         let image = NSImage(size: screen.frame.size)
         image.addRepresentation(bitmap)
@@ -554,7 +537,9 @@ enum WallpaperRenderer {
     }
     private static func cache(_ image: NSImage, key: String) {
         // Bound theme/resolution changes rather than retaining every old bitmap.
-        if imageCache.count >= 4 { imageCache.removeAll() }
+        let budget = 96 * 1024 * 1024
+        let bytes: (NSImage) -> Int = { image in image.representations.compactMap { $0 as? NSBitmapImageRep }.reduce(0) { $0 + $1.bytesPerRow * $1.pixelsHigh } }
+        if imageCache.count >= 4 || imageCache.values.reduce(0, { $0 + bytes($1) }) + bytes(image) > budget { imageCache.removeAll() }
         imageCache[key] = image
     }
     static func apply(to screen: NSScreen, prefs: Prefs) {
@@ -564,10 +549,10 @@ enum WallpaperRenderer {
         let folder = FileManager.default.homeDirectoryForCurrentUser.appending(path:"Library/Application Support/dev.aniello.macsystemwallpaper/wallpapers")
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let id = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
-        let file = folder.appending(path:"native-\(id)-\(prefs.wallpaper).jpg")
+        let file = folder.appending(path:"native-\(id)-\(prefs.wallpaper).png")
         let image = image(for:screen,prefs:prefs)
         if let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
-           let data = NSBitmapImageRep(cgImage: cg).representation(using:.jpeg,properties:[.compressionFactor:0.94]) {
+           let data = NSBitmapImageRep(cgImage: cg).representation(using:.png,properties:[:]) {
             try? data.write(to:file,options:.atomic)
             do { try NSWorkspace.shared.setDesktopImageURL(file,for:screen,options:NSWorkspace.shared.desktopImageOptions(for:screen) ?? [:]) }
             catch { NSLog("Cannot set desktop image: %@",error.localizedDescription) }

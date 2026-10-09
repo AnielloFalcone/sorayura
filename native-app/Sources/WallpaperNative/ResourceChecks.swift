@@ -5,6 +5,7 @@ import Metal
 @MainActor enum ResourceChecks {
     static func run() throws {
         try settingsLifetime()
+        try wallpaperRaster()
         try animationInteractions()
         try buffers()
         try AnimationResourceChecks.run()
@@ -17,6 +18,35 @@ import Metal
 
     private static func check(_ passed: Bool, _ message: String) throws {
         if !passed { throw SettingsError.invalid(message) }
+    }
+
+    private static func wallpaperRaster() throws {
+        try check(WallpaperRaster.pixelSize(CGSize(width: 3840, height: 2160)) == CGSize(width: 3840, height: 2160), "4K wallpaper is downscaled")
+        try check(WallpaperRaster.pixelSize(CGSize(width: 5120, height: 2880)) == CGSize(width: 4096, height: 2304), "Wallpaper resolution cap changed")
+        for midnight in [false, true] {
+            guard let first = WallpaperRaster.bitmap(size: CGSize(width: 512, height: 320), midnight: midnight),
+                  let second = WallpaperRaster.bitmap(size: CGSize(width: 512, height: 320), midnight: midnight),
+                  let a = first.bitmapData, let b = second.bitmapData,
+                  let png = first.representation(using: .png, properties: [:]),
+                  let decoded = NSBitmapImageRep(data: png) else { throw SettingsError.invalid("Wallpaper raster/PNG unavailable") }
+            try check(!first.hasAlpha && first.samplesPerPixel == 3, "Wallpaper retains an unnecessary alpha channel")
+            for y in 0..<320 {
+                try check(memcmp(a + y * first.bytesPerRow, b + y * second.bytesPerRow, 512 * 3) == 0, "Wallpaper dithering changes across renders")
+            }
+            var reversals = 0
+            for x in 1..<511 {
+                let offset = 160 * first.bytesPerRow + x * 3
+                let before = Int(a[offset]) - Int(a[offset - 3])
+                let after = Int(a[offset + 3]) - Int(a[offset])
+                if before * after < 0 { reversals += 1 }
+            }
+            try check(reversals > 10, "Gradient quantization lacks spatial dithering")
+            for x in stride(from: 0, to: 512, by: 31) {
+                guard let original = first.colorAt(x: x, y: 160)?.usingColorSpace(.sRGB),
+                      let restored = decoded.colorAt(x: x, y: 160)?.usingColorSpace(.sRGB) else { throw SettingsError.invalid("Wallpaper pixel unreadable") }
+                try check(abs(original.redComponent - restored.redComponent) < 0.001 && abs(original.blueComponent - restored.blueComponent) < 0.001, "PNG changed wallpaper colors")
+            }
+        }
     }
 
     private static func animationInteractions() throws {
