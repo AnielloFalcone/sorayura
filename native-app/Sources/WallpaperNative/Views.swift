@@ -5,6 +5,7 @@ struct ScreenView: View {
     let screen: NSScreen
     @Environment(Model.self) private var model
     @State private var dragOrigins: [String:Point] = [:]
+    @State private var resizeOrigins: [String: (size: WidgetSize, point: Point)] = [:]
     @State private var animationScaleOrigin: Double? = nil
     var body: some View {
         let _ = LocalizationSettings.shared.choice
@@ -38,7 +39,7 @@ struct ScreenView: View {
                 }
                 ForEach(model.performanceVariant.hidesWidgets ? [] : model.content(screen).widgets,id:\.self) { id in
                     draggable(id,at:model.position(id,screen),in:geometry.size) {
-                        WidgetView(id:id).environment(model)
+                        WidgetView(id:id, screen: screen).environment(model)
                             .frame(width:dimension(id,"width"),height:dimension(id,"height"))
                     }
                 }
@@ -86,12 +87,13 @@ struct ScreenView: View {
                     }
                 }
             }.frame(width:geometry.size.width,height:geometry.size.height)
+                .coordinateSpace(name: "widgetEditor")
         }.ignoresSafeArea()
             .environment(\.wallpaperGlassDisabled, model.performanceVariant.disablesGlass)
     }
     private func dimension(_ id:String,_ axis:String) -> CGFloat {
-        let units = model.widgetUnits(id, axis: axis)
-        return min(CGFloat(units)*model.prefs.cellSize, axis == "width" ? screen.frame.width : screen.frame.height)
+        let size = model.widgetSize(id, screen: screen)
+        return axis == "width" ? size.width : size.height
     }
     private func animationEditor(in size: CGSize) -> some View {
         let point = model.animationPosition(screen)
@@ -148,14 +150,6 @@ struct ScreenView: View {
         let y = min(max(0,size.height*point.y/100),max(0,size.height-height))
         return content()
             .frame(width: width, height: height)
-            .overlay(alignment:.topTrailing) {
-                if model.editing {
-                    Button { remove(id) } label: { Image(systemName:"xmark.circle.fill").foregroundStyle(.red).font(.title2) }
-                        .buttonStyle(.plain).offset(x:9,y:-9)
-                }
-            }
-            .overlay { if model.editing { RoundedRectangle(cornerRadius:16).stroke(.cyan.opacity(0.75),style:StrokeStyle(lineWidth:1,dash:[5])) } }
-            .position(x:x+width/2,y:y+height/2)
             .gesture(model.editing ? DragGesture(minimumDistance:1).onChanged { value in
                 let start = dragOrigins[id] ?? point
                 if dragOrigins[id] == nil { dragOrigins[id] = start }
@@ -166,6 +160,40 @@ struct ScreenView: View {
                 model.setPosition(id,screen,Point(x:px,y:py))
             }.onEnded { _ in dragOrigins[id] = nil } : nil)
             .onLongPressGesture(minimumDuration:0.6) { model.editing = true }
+            .overlay(alignment:.topTrailing) {
+                if model.editing {
+                    Button { remove(id) } label: { Image(systemName:"xmark.circle.fill").foregroundStyle(.red).font(.title2) }
+                        .buttonStyle(.plain).offset(x:9,y:-9)
+                }
+            }
+            .overlay { if model.editing { RoundedRectangle(cornerRadius:16).stroke(.cyan.opacity(0.75),style:StrokeStyle(lineWidth:1,dash:[5])).allowsHitTesting(false) } }
+            .overlay(alignment: .trailing) {
+                if model.editing { resizeHandle(id, axis: "width", point: Point(x: x / size.width * 100, y: y / size.height * 100), frame: WidgetSize(width: width, height: height)) }
+            }
+            .overlay(alignment: .bottom) {
+                if model.editing { resizeHandle(id, axis: "height", point: Point(x: x / size.width * 100, y: y / size.height * 100), frame: WidgetSize(width: width, height: height)) }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if model.editing { resizeHandle(id, axis: "both", point: Point(x: x / size.width * 100, y: y / size.height * 100), frame: WidgetSize(width: width, height: height)) }
+            }
+            .position(x:x+width/2,y:y+height/2)
+
+    }
+    private func resizeHandle(_ id: String, axis: String, point: Point, frame: WidgetSize) -> some View {
+        Image(systemName: axis == "width" ? "arrow.left.and.right" : axis == "height" ? "arrow.up.and.down" : "arrow.up.left.and.arrow.down.right")
+            .font(.system(size: 11, weight: .semibold))
+            .frame(width: 28, height: 28)
+            .wallpaperGlass(cornerRadius: 8)
+            .contentShape(Rectangle())
+            .help(L("Trascina per ridimensionare il widget"))
+            .highPriorityGesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("widgetEditor"))
+                .onChanged { value in
+                    let start = resizeOrigins[id] ?? (size: frame, point: point)
+                    if resizeOrigins[id] == nil { resizeOrigins[id] = start }
+                    let proposed = WidgetSize(width: start.size.width + (axis == "height" ? 0 : Double(value.translation.width)),
+                                              height: start.size.height + (axis == "width" ? 0 : Double(value.translation.height)))
+                    model.resizeWidget(id, screen: screen, origin: start.point, size: proposed)
+                }.onEnded { _ in resizeOrigins[id] = nil })
     }
     private func remove(_ id:String) {
         var content = model.content(screen)
@@ -177,6 +205,7 @@ struct ScreenView: View {
 
 struct WidgetView: View {
     let id:String
+    var screen: NSScreen? = nil
     @Environment(Model.self) private var model
     @Environment(\.wallpaperGlassDisabled) private var glassDisabled
     var body:some View {
@@ -233,13 +262,13 @@ struct WidgetView: View {
             Spacer(minLength:0)
             if model.editing && id != "clock" && id != "device" {
                 HStack(spacing:8) {
-                    Picker("↔", selection: Binding(get: { model.widgetUnits(id, axis: "width") }, set: { model.prefs.widths[id] = $0 })) {
+                    Picker("↔", selection: Binding(get: { displayedUnits("width") }, set: { model.setWidgetUnits(id, axis: "width", units: $0) })) {
                         ForEach(1...model.maximumUnits(axis: "width"), id: \.self) { Text("\($0)").tag($0) }
                     }
-                    Picker("↕", selection: Binding(get: { model.widgetUnits(id, axis: "height") }, set: { model.prefs.heights[id] = $0 })) {
+                    Picker("↕", selection: Binding(get: { displayedUnits("height") }, set: { model.setWidgetUnits(id, axis: "height", units: $0) })) {
                         ForEach(1...model.maximumUnits(axis: "height"), id: \.self) { Text("\($0)").tag($0) }
                     }
-                }.font(.system(size:9)).controlSize(.mini)
+                }.font(.system(size:9)).controlSize(.mini).padding(.bottom, 22)
             }
         }
         .padding(id == "clock" ? 0 : 16)
@@ -281,6 +310,12 @@ struct WidgetView: View {
     }
     private func detail(_ label:String,_ value:String)->some View {
         HStack { Text(L(label)).foregroundStyle(.white.opacity(0.65)); Spacer(); Text(value) }.font(.system(size:10))
+    }
+    private func displayedUnits(_ axis: String) -> Int {
+        guard let screen else { return model.widgetUnits(id, axis: axis) }
+        let size = model.widgetSize(id, screen: screen)
+        let value = axis == "width" ? size.width : size.height
+        return min(model.maximumUnits(axis: axis), max(1, Int((value / model.prefs.cellSize).rounded())))
     }
     private func value(_ m:MetricReadings)->String {
         switch id {

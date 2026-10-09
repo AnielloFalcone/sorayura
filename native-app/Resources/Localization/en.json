@@ -271,5 +271,6 @@
   "Mezzanotte": "Midnight",
   "Immagine": "Image",
   "macOS può chiederti il permesso di controllare Spotify. La copertina viene scaricata dal servizio Spotify. I controlli sono disponibili sul widget e nel suo menu secondario.": "macOS may ask for permission to control Spotify. Artwork is downloaded from Spotify. Controls are available in the widget and its context menu.",
-  "macOS mostra l’immagine statica nello Space attivo; widget e animazioni sono visibili sul desktop. Per altri Space usa “Riapplica sfondo” sul monitor interessato.": "macOS shows the static image in the active Space; widgets and animations are visible on the desktop. For other Spaces, use “Reapply wallpaper” on the relevant monitor."
+  "macOS mostra l’immagine statica nello Space attivo; widget e animazioni sono visibili sul desktop. Per altri Space usa “Riapplica sfondo” sul monitor interessato.": "macOS shows the static image in the active Space; widgets and animations are visible on the desktop. For other Spaces, use “Reapply wallpaper” on the relevant monitor.",
+  "Trascina per ridimensionare il widget": "Drag to resize the widget"
 }

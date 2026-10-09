@@ -29,6 +29,10 @@ struct SettingsArchive: Codable {
             guard let source else { continue }
             result.displays[key] = settings.displays[source] ?? DisplayContent()
             result.positions[key] = settings.positions[source] ?? Prefs.defaults
+            if let sizes = settings.widgetSizes?[source] {
+                if result.widgetSizes == nil { result.widgetSizes = [:] }
+                result.widgetSizes?[key] = sizes
+            } else { result.widgetSizes?.removeValue(forKey: key) }
             result.animationPositions[key] = settings.animationPositions[source] ?? Point(x: 50, y: 50)
             result.animationScales = result.animationScales ?? [:]
             result.animationScales?[key] = settings.animationScales?[source] ?? 1
@@ -62,6 +66,7 @@ struct BuiltInPreset: Identifiable {
     ]
     func settings(from current: Prefs, displayKeys: [String], displaySizes: [String: NSSize] = [:]) -> Prefs {
         var result = current
+        result.widgetSizes = nil
         if id == "ai" {
             result.widgetTheme = "glass"; result.animationStyle = "off"; result.layout = "free"; result.cellSize = 120
             let widgets = ["agents", "agentLive", "spotify", "agentTrend", "agentModels", "agentProjects", "agentActivity", "agentSpending"]
@@ -156,6 +161,12 @@ extension Prefs {
         try require(cellSize.isFinite && (80...220).contains(cellSize), "La griglia deve essere fra 80 e 220 punti.")
         try require(networkScaleMBps.isFinite && networkScaleMBps > 0, "Scala della rete non valida.")
         for units in Array(widths.values) + Array(heights.values) { try require((1...100).contains(units), "Dimensione widget non valida.") }
+        for sizes in (widgetSizes ?? [:]).values {
+            for (id, size) in sizes {
+                try require(Model.widgetIDs.contains(id) && size.width.isFinite && size.height.isFinite &&
+                            (1...100_000).contains(size.width) && (1...100_000).contains(size.height), "Dimensione widget non valida.")
+            }
+        }
         for content in displays.values {
             try require(Set(content.widgets).count == content.widgets.count && content.widgets.allSatisfy(Model.widgetIDs.contains), "Elenco widget non valido.")
         }

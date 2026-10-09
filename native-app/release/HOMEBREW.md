@@ -21,7 +21,7 @@ There are no installable placeholder URLs or provisional checksums.
 
    ```sh
    python3 native-app/release/write-cask.py \
-     native-app/releases/0.5.1-6-release/manifest.json \
+     native-app/releases/0.5.1-7-release/manifest.json \
      --repository AnielloFalcone/sorayura --tag v0.5.1-beta.1 \
      --output native-app/releases/homebrew-sorayura/Casks/sorayura.rb
    ruby -c native-app/releases/homebrew-sorayura/Casks/sorayura.rb

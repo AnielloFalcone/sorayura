@@ -334,8 +334,8 @@ struct SettingsView: View {
             ForEach(Model.widgetIDs,id:\.self) { id in
                 HStack {
                     Text(Model.localizedName(id)).frame(maxWidth:.infinity,alignment:.leading)
-                    Picker(L("Larghezza"),selection:Binding(get:{model.widgetUnits(id, axis: "width")},set:{model.prefs.widths[id]=$0})) { ForEach(1...model.maximumUnits(axis: "width"),id:\.self) { Text("\($0)").tag($0) } }.frame(width:105)
-                    Picker(L("Altezza"),selection:Binding(get:{model.widgetUnits(id, axis: "height")},set:{model.prefs.heights[id]=$0})) { ForEach(1...model.maximumUnits(axis: "height"),id:\.self) { Text("\($0)").tag($0) } }.frame(width:105)
+                    Picker(L("Larghezza"),selection:Binding(get:{model.widgetUnits(id, axis: "width")},set:{model.setWidgetUnits(id, axis: "width", units: $0)})) { ForEach(1...model.maximumUnits(axis: "width"),id:\.self) { Text("\($0)").tag($0) } }.frame(width:105)
+                    Picker(L("Altezza"),selection:Binding(get:{model.widgetUnits(id, axis: "height")},set:{model.setWidgetUnits(id, axis: "height", units: $0)})) { ForEach(1...model.maximumUnits(axis: "height"),id:\.self) { Text("\($0)").tag($0) } }.frame(width:105)
                 }
             }
             Text(L("Sposta i widget dal desktop con “Modifica layout…” nel menu della barra.")).font(.caption).foregroundStyle(.secondary)

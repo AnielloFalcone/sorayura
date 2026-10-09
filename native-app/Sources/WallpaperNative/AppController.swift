@@ -348,8 +348,8 @@ final class AppController: NSObject, NSApplicationDelegate {
         }
     }
     private func widgetSize(_ id: String, axis: String, screen: NSScreen) -> CGFloat {
-        let units = model.widgetUnits(id, axis: axis)
-        return min(CGFloat(units) * model.prefs.cellSize, axis == "width" ? screen.frame.width : screen.frame.height)
+        let size = model.widgetSize(id, screen: screen)
+        return axis == "width" ? size.width : size.height
     }
 }
 

@@ -219,6 +219,7 @@ final class Model {
             if key != legacy && next.displays[key] == nil, let content = next.displays[legacy] {
                 next.displays[key] = content
                 next.positions[key] = next.positions[legacy]
+                if let sizes = next.widgetSizes?[legacy] { next.widgetSizes?[key] = sizes }
                 next.animationPositions[key] = next.animationPositions[legacy]
                 next.animationScales = next.animationScales ?? [:]
                 let legacyScale = next.animationScales?[legacy]
@@ -328,6 +329,34 @@ final class Model {
         if axis == "width" { return prefs.widths[id] ?? (id.hasPrefix("agent") ? 3 : 2) }
         return prefs.heights[id] ?? (id == "agents" ? 2 : 1)
     }
+    func widgetSize(_ id: String, screen: NSScreen) -> WidgetSize {
+        let custom = prefs.widgetSizes?[displayKey(screen)]?[id]
+        let proposed = custom ?? WidgetSize(width: Double(widgetUnits(id, axis: "width")) * prefs.cellSize,
+                                            height: Double(widgetUnits(id, axis: "height")) * prefs.cellSize)
+        return WidgetSizing.constrained(proposed, available: WidgetSize(width: screen.frame.width, height: screen.frame.height),
+                                        cell: prefs.layout == "grid" ? prefs.cellSize : nil)
+    }
+    func resizeWidget(_ id: String, screen: NSScreen, origin: Point, size: WidgetSize) {
+        let bounded = WidgetSizing.constrained(size,
+            available: WidgetSize(width: screen.frame.width * (1 - origin.x / 100), height: screen.frame.height * (1 - origin.y / 100)),
+            cell: prefs.layout == "grid" ? prefs.cellSize : nil)
+        var next = prefs
+        var sizes = next.widgetSizes ?? [:]
+        sizes[displayKey(screen), default: [:]][id] = bounded
+        next.widgetSizes = sizes
+        next.positions[displayKey(screen), default: [:]][id] = origin
+        prefs = next
+    }
+    func setWidgetUnits(_ id: String, axis: String, units: Int) {
+        var next = prefs
+        if axis == "width" { next.widths[id] = units } else { next.heights[id] = units }
+        for key in (next.widgetSizes ?? [:]).keys {
+            guard var size = next.widgetSizes?[key]?[id] else { continue }
+            if axis == "width" { size.width = Double(units) * next.cellSize } else { size.height = Double(units) * next.cellSize }
+            next.widgetSizes?[key]?[id] = size
+        }
+        prefs = next
+    }
     func severity(_ metric: String, target: String = "widgets") -> String {
         guard prefs.alerts, (prefs.alertTargets ?? ["widgets", "animation"]).contains(target), (prefs.alertMetrics ?? Self.metricIDs + ["thermal"]).contains(metric) else { return "normal" }
         if metric == "thermal" {
@@ -388,6 +417,7 @@ struct Prefs: Codable {
     var cellSize = 130.0
     var widths: [String:Int] = ["clock":3,"cpu":2,"memory":2,"network":2,"battery":2,"disk":2,"uptime":2,"device":2]
     var heights: [String:Int] = [:]
+    var widgetSizes: [String: [String: WidgetSize]]? = nil
     var cpuDisplay = WidgetDisplay()
     var memoryDisplay = WidgetDisplay()
     var alerts = true
