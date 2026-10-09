@@ -43,7 +43,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['candidate', 'release'])
     parser.add_argument('--version', default='0.5.1')
-    parser.add_argument('--build', default='14')
+    parser.add_argument('--build', default='17')
     parser.add_argument('--identity', help='Exact Developer ID Application identity')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile name')
     args = parser.parse_args()
@@ -73,7 +73,7 @@ def main():
             info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
             if info['CFBundleShortVersionString'] != args.version or info['CFBundleVersion'] != args.build:
                 raise RuntimeError('Bundle version mismatch')
-            if info.get('CFBundleIconName') != 'SorayuraAppIcon' or not (app / 'Contents/Resources/Assets.car').is_file():
+            if info.get('CFBundleIconName') != 'SorayuraAuroraIcon' or not (app / 'Contents/Resources/Assets.car').is_file():
                 raise RuntimeError('Compiled app icon catalog missing')
             icon_file = info.get('CFBundleIconFile', '')
             icon_path = app / 'Contents/Resources' / (icon_file if icon_file.endswith('.icns') else icon_file + '.icns')

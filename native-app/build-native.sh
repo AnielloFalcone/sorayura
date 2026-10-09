@@ -3,7 +3,7 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-14}"
+wallpaper_build="${WALLPAPER_BUILD:-17}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build.noindex}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
@@ -15,10 +15,12 @@ mkdir -p "$app/Contents/Resources/Localization"
 cp Resources/Localization/*.json "$app/Contents/Resources/Localization/"
 mkdir -p "$app/Contents/Resources/Icons"
 cp Resources/Icons/*.png "$app/Contents/Resources/Icons/"
+# Remove legacy icon renditions from previous builds of this generated bundle.
+rm -f "$app/Contents/Resources/Sorayura.icns" "$app/Contents/Resources/SorayuraAppIcon.icns" "$app/Contents/Resources/SorayuraFlatIcon.icns"
 # Compile the named app icon, including asset metadata consumed by Spotlight.
 xcrun actool Resources/Assets.xcassets --compile "$app/Contents/Resources" \
   --platform macosx --minimum-deployment-target 14.0 --target-device mac \
-  --app-icon SorayuraAppIcon --output-partial-info-plist "$wallpaper_output/icon-info.plist"
+  --app-icon SorayuraAuroraIcon --output-partial-info-plist "$wallpaper_output/icon-info.plist"
 cp .build/release/Sorayura "$app/Contents/MacOS/.Sorayura.new"
 mv -f "$app/Contents/MacOS/.Sorayura.new" "$app/Contents/MacOS/Sorayura"
 cat > "$app/Contents/Info.plist" <<'PLIST'
