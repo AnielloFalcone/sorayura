@@ -65,7 +65,6 @@
   "Compatto · 3 righe": "Compacto · 3 filas",
   "Esteso · 6 righe": "Ampliado · 6 filas",
   "Aggiorna limiti e stime Codex dall'account": "Actualizar límites y estimaciones de la cuenta de Codex",
-  "Usa Codex CLI e il suo login esistente; contatta i servizi Codex ogni 5 minuti. Nessuna conversazione viene avviata. Le stime riguardano fino a 8 chat recenti, se disponibili per il tuo account.": "Usa Codex CLI con su sesión existente y contacta con los servicios de Codex cada 5 minutos. No inicia conversaciones. Las estimaciones abarcan hasta 8 chats recientes, si están disponibles para tu cuenta.",
   "Scegli Codex CLI…": "Elegir Codex CLI…",
   "Scollega eventi Claude": "Desconectar eventos de Claude",
   "Collega eventi Claude": "Conectar eventos de Claude",
@@ -287,5 +286,8 @@
   "Scegli i dati per ciascun lato. I widget informativi compaiono solo nella box; i livelli animati usano dati misurabili. Le integrazioni devono essere attive.": "Elige los datos de cada lado. Los widgets informativos aparecen solo en el panel; las capas animadas usan datos medibles. Las integraciones deben estar activadas.",
   "Applicazioni": "Aplicaciones",
   "Box dati…": "Paneles de datos…",
-  "Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi.": "Filamentos de luz recorren una S tridimensional. La intensidad y el movimiento siguen los recursos; los cuadros muestran los valores exactos."
+  "Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi.": "Filamentos de luz recorren una S tridimensional. La intensidad y el movimiento siguen los recursos; los cuadros muestran los valores exactos.",
+  "Lettura scaduta": "Lectura caducada",
+  "Claude · apri l’app per aggiornare": "Claude · abre la app para actualizar",
+  "Usa Codex CLI e il suo login esistente; aggiorna ogni 5 minuti, ogni minuto se la lettura è scaduta o assente. I limiti vengono mostrati prima delle stime delle chat. Nessuna conversazione viene avviata.": "Usa Codex CLI y su inicio de sesión existente; actualiza cada 5 minutos, cada minuto si la lectura ha caducado o falta. Los límites aparecen antes de las estimaciones de chats. No se inicia ninguna conversación."
 }

@@ -49,6 +49,7 @@ final class Model {
     @ObservationIgnored private var accountTask: Task<Void, Never>?
     @ObservationIgnored private var accountDirty = false
     var updatingCounters = false
+    var updatingCodexAccount = false
     @ObservationIgnored private var spotifyTask: Task<Void, Never>?
     @ObservationIgnored private var lastLive = Date.distantPast
     @ObservationIgnored private var lastAccount = Date.distantPast
@@ -57,8 +58,9 @@ final class Model {
     func refreshCodexAccount(force: Bool = false) {
         guard prefs.agentUsageEnabled == true, prefs.codexAccountEnabled == true else { return }
         if accountTask != nil { if force { accountDirty = true }; return }
-        guard force || Date().timeIntervalSince(lastAccount) > 300 else { return }
+        guard force || Date().timeIntervalSince(lastAccount) >= CodexAccountReader.refreshInterval(quota: codexAccount.quota) else { return }
         accountDirty = false
+        updatingCodexAccount = true
         lastAccount = Date()
         var threads: [String] = []
         for event in agentUsage.events.reversed() where event.provider == "Codex" {
@@ -68,11 +70,33 @@ final class Model {
         }
         let executable = prefs.codexExecutable ?? CodexAccountReader.defaultExecutable
         accountTask = Task { [weak self, accountReader, threads] in
-            let value = await accountReader.read(executable: executable, threads: threads)
+            let value = await accountReader.read(executable: executable, threads: threads, onQuota: { [weak self] quota in
+                Task { @MainActor in
+                    guard let self, self.prefs.agentUsageEnabled == true, self.prefs.codexAccountEnabled == true else { return }
+                    self.codexAccount.quota = quota
+                    self.codexAccount.error = nil
+                }
+            })
             guard let self else { return }
-            if self.prefs.agentUsageEnabled == true && self.prefs.codexAccountEnabled == true { self.codexAccount = value }
+            if self.prefs.agentUsageEnabled == true && self.prefs.codexAccountEnabled == true {
+                var result = value
+                // A failed read must not discard a valid last measurement.
+                if result.quota == nil { result.quota = self.codexAccount.quota }
+                self.codexAccount = result
+                self.writeAccountStatus()
+            }
+            self.updatingCodexAccount = false
             self.accountTask = nil
             if self.accountDirty { self.refreshCodexAccount(force: true) }
+        }
+    }
+    private func writeAccountStatus() {
+        // Local diagnostics contain only quota readings/errors, never account
+        // identifiers, authentication material, conversations or thread costs.
+        struct Status: Encodable { var checked: Date; var quota: AgentQuota?; var error: String? }
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        if let data = try? encoder.encode(Status(checked: Date(), quota: codexAccount.quota, error: codexAccount.error)) {
+            try? data.write(to: Self.preferencesURL.deletingLastPathComponent().appending(path: "codex-limit-status.json"), options: .atomic)
         }
     }
     func refreshLive(force: Bool = false) {

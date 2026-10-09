@@ -65,7 +65,6 @@
   "Compatto · 3 righe": "Compact · 3 rows",
   "Esteso · 6 righe": "Expanded · 6 rows",
   "Aggiorna limiti e stime Codex dall'account": "Refresh Codex account limits and estimates",
-  "Usa Codex CLI e il suo login esistente; contatta i servizi Codex ogni 5 minuti. Nessuna conversazione viene avviata. Le stime riguardano fino a 8 chat recenti, se disponibili per il tuo account.": "Uses Codex CLI with its existing login and contacts Codex services every 5 minutes. No conversations are started. Estimates cover up to 8 recent chats when available for your account.",
   "Scegli Codex CLI…": "Choose Codex CLI…",
   "Scollega eventi Claude": "Disconnect Claude events",
   "Collega eventi Claude": "Connect Claude events",
@@ -287,5 +286,8 @@
   "Scegli i dati per ciascun lato. I widget informativi compaiono solo nella box; i livelli animati usano dati misurabili. Le integrazioni devono essere attive.": "Choose data for each side. Informational widgets appear only in the box; animated layers use measurable data. Integrations must be enabled.",
   "Applicazioni": "Applications",
   "Box dati…": "Data boxes…",
-  "Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi.": "Light filaments flow along a three-dimensional S. Intensity and motion follow resource activity; the boxes show precise values."
+  "Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi.": "Light filaments flow along a three-dimensional S. Intensity and motion follow resource activity; the boxes show precise values.",
+  "Lettura scaduta": "Reading expired",
+  "Claude · apri l’app per aggiornare": "Claude · open the app to refresh",
+  "Usa Codex CLI e il suo login esistente; aggiorna ogni 5 minuti, ogni minuto se la lettura è scaduta o assente. I limiti vengono mostrati prima delle stime delle chat. Nessuna conversazione viene avviata.": "Uses Codex CLI and its existing login; refreshes every 5 minutes, every minute when a reading is expired or missing. Limits appear before chat estimates. No conversation is started."
 }

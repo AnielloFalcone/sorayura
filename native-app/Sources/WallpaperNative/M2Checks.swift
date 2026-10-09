@@ -114,6 +114,9 @@ import Foundation
         try check(AgentLiveReader.parse(Data(stopped.utf8), id: "test", project: "work", previous: active)?.state == "idle", "Codex completion ignored")
         let account: [String: Any] = ["rateLimitsByLimitId":["codex":["primary":["usedPercent":44, "resetsAt":1790900000, "windowDurationMins":300]]]]
         try check(CodexAccountReader.quota(account)?.session?.used == 44, "Official account quota schema ignored")
+        let validQuota = AgentQuota(date: now, plan: nil, session: AgentLimit(used: 20, reset: now.addingTimeInterval(60), minutes: 300), week: nil)
+        let expiredQuota = AgentQuota(date: now, plan: nil, session: AgentLimit(used: 20, reset: now.addingTimeInterval(-1), minutes: 300), week: nil)
+        try check(CodexAccountReader.refreshInterval(quota: validQuota, now: now) == 300 && CodexAccountReader.refreshInterval(quota: expiredQuota, now: now) == 60 && CodexAccountReader.refreshInterval(quota: nil, now: now) == 60, "Expired or missing account limits do not refresh promptly")
         let ai = BuiltInPreset.all.first { $0.id == "ai" }!.settings(from: Prefs(), displayKeys: ["laptop", "external"], displaySizes: ["laptop": NSSize(width: 1440, height: 900), "external": NSSize(width: 2560, height: 1440)])
         try ai.validate()
         try check(ai.agentUsageEnabled != true && ai.spotifyEnabled != true && ai.codexAccountEnabled != true, "Preset enables network or permissions unexpectedly")

@@ -54,8 +54,18 @@ extension Model {
                 let desktop = agentUsage.claudeDesktop?.quota
                 quota = (desktop?.date ?? .distantPast) > (local?.date ?? .distantPast) ? desktop : local ?? desktop
             } else { quota = prefs.codexAccountEnabled == true ? codexAccount.quota ?? agentUsage.codexQuota : agentUsage.codexQuota }
-            guard let quota, let limit = id.hasSuffix("Week") ? quota.week : quota.session else { return unavailable }
-            if let reset = limit.reset, reset <= now { return AnimationReading(value: L("Da aggiornare")) }
+            guard let quota, let limit = id.hasSuffix("Week") ? quota.week : quota.session else {
+                if id == "claudeSession", let date = agentUsage.claudeDesktop?.quota.date, now.timeIntervalSince(date) >= 300 * 60 {
+                    return AnimationReading(value: L("Lettura scaduta"), title: L("Claude · apri l’app per aggiornare"))
+                }
+                if id.hasPrefix("codex"), prefs.codexAccountEnabled == true {
+                    return AnimationReading(value: L(updatingCodexAccount ? "Aggiornamento…" : "Limiti non disponibili"))
+                }
+                return unavailable
+            }
+            if let reset = limit.reset, reset <= now {
+                return AnimationReading(value: L(id.hasPrefix("codex") && updatingCodexAccount ? "Aggiornamento…" : "Lettura scaduta"))
+            }
             let text = String(format: "%.0f%%", locale: Localizer.locale, limit.used)
             if now.timeIntervalSince(quota.date) > 1800 { return AnimationReading(value: text + " · " + L("Lettura non recente")) }
             return AnimationReading(value: text, fraction: min(1, max(0, limit.used / 100)))

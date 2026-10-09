@@ -3,7 +3,7 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-19}"
+wallpaper_build="${WALLPAPER_BUILD:-20}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build.noindex}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }

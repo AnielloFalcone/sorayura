@@ -65,7 +65,6 @@
   "Compatto · 3 righe": "Compatto · 3 righe",
   "Esteso · 6 righe": "Esteso · 6 righe",
   "Aggiorna limiti e stime Codex dall'account": "Aggiorna limiti e stime Codex dall'account",
-  "Usa Codex CLI e il suo login esistente; contatta i servizi Codex ogni 5 minuti. Nessuna conversazione viene avviata. Le stime riguardano fino a 8 chat recenti, se disponibili per il tuo account.": "Usa Codex CLI e il suo login esistente; contatta i servizi Codex ogni 5 minuti. Nessuna conversazione viene avviata. Le stime riguardano fino a 8 chat recenti, se disponibili per il tuo account.",
   "Scegli Codex CLI…": "Scegli Codex CLI…",
   "Scollega eventi Claude": "Scollega eventi Claude",
   "Collega eventi Claude": "Collega eventi Claude",
@@ -287,5 +286,8 @@
   "Scegli i dati per ciascun lato. I widget informativi compaiono solo nella box; i livelli animati usano dati misurabili. Le integrazioni devono essere attive.": "Scegli i dati per ciascun lato. I widget informativi compaiono solo nella box; i livelli animati usano dati misurabili. Le integrazioni devono essere attive.",
   "Applicazioni": "Applicazioni",
   "Box dati…": "Box dati…",
-  "Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi.": "Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi."
+  "Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi.": "Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi.",
+  "Lettura scaduta": "Lettura scaduta",
+  "Claude · apri l’app per aggiornare": "Claude · apri l’app per aggiornare",
+  "Usa Codex CLI e il suo login esistente; aggiorna ogni 5 minuti, ogni minuto se la lettura è scaduta o assente. I limiti vengono mostrati prima delle stime delle chat. Nessuna conversazione viene avviata.": "Usa Codex CLI e il suo login esistente; aggiorna ogni 5 minuti, ogni minuto se la lettura è scaduta o assente. I limiti vengono mostrati prima delle stime delle chat. Nessuna conversazione viene avviata."
 }

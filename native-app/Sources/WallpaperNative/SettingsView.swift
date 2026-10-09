@@ -211,7 +211,7 @@ struct SettingsView: View {
                     Text(L("Compatto · 3 righe")).tag("compact"); Text(L("Esteso · 6 righe")).tag("expanded")
                 }
                 Toggle(L("Aggiorna limiti e stime Codex dall'account"), isOn: Binding(get: { model.prefs.codexAccountEnabled ?? false }, set: { model.prefs.codexAccountEnabled = $0; model.refreshCodexAccount(force: true) }))
-                Text(L("Usa Codex CLI e il suo login esistente; contatta i servizi Codex ogni 5 minuti. Nessuna conversazione viene avviata. Le stime riguardano fino a 8 chat recenti, se disponibili per il tuo account.")).font(.caption).foregroundStyle(.secondary)
+                Text(L("Usa Codex CLI e il suo login esistente; aggiorna ogni 5 minuti, ogni minuto se la lettura è scaduta o assente. I limiti vengono mostrati prima delle stime delle chat. Nessuna conversazione viene avviata.")).font(.caption).foregroundStyle(.secondary)
                 Button(L("Scegli Codex CLI…")) {
                     let picker = NSOpenPanel(); picker.canChooseDirectories = false
                     if picker.runModal() == .OK, let url = picker.url { model.prefs.codexExecutable = url.path; model.refreshCodexAccount(force: true) }

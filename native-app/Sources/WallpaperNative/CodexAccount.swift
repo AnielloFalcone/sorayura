@@ -8,6 +8,11 @@ struct CodexAccountSnapshot: Sendable {
     var date: Date?
 }
 actor CodexAccountReader {
+    static func refreshInterval(quota: AgentQuota?, now: Date = Date()) -> TimeInterval {
+        guard let quota else { return 60 }
+        if [quota.session, quota.week].compactMap({ $0?.reset }).contains(where: { $0 <= now }) { return 60 }
+        return 300
+    }
     static let defaultExecutable = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
     static func quota(_ result: [String: Any], now: Date = Date()) -> AgentQuota? {
         let buckets = result["rateLimitsByLimitId"] as? [String: Any]
@@ -18,7 +23,7 @@ actor CodexAccountReader {
         }
         return AgentQuota(date: now, plan: value["planType"] as? String, session: limit("primary"), week: limit("secondary"))
     }
-    func read(executable: String, threads: [String]) -> CodexAccountSnapshot {
+    func read(executable: String, threads: [String], onQuota: (@Sendable (AgentQuota) -> Void)? = nil) -> CodexAccountSnapshot {
         var snapshot = CodexAccountSnapshot()
         guard FileManager.default.isExecutableFile(atPath: executable) else { snapshot.error = "Seleziona l'eseguibile Codex CLI."; return snapshot }
         let process = Process(), input = Pipe(), output = Pipe()
@@ -69,7 +74,10 @@ actor CodexAccountReader {
                     } else {
                         pending.remove(id)
                         if let result = response["result"] as? [String: Any] {
-                            if id == 1 { snapshot.quota = Self.quota(result) }
+                            if id == 1 {
+                                snapshot.quota = Self.quota(result)
+                                if let quota = snapshot.quota { onQuota?(quota) }
+                            }
                             else if let usage = result["threadUsage"] as? [String: Any], let amount = usage["estimatedUsageUsdMicros"] as? NSNumber, let thread = usage["threadId"] as? String, amount.doubleValue >= 0 {
                                 snapshot.costs[thread] = amount.doubleValue / 1_000_000
                             }
