@@ -9,7 +9,7 @@ still require verification. Review READ-ME.txt, RELEASE-NOTES.md and PRIVACY.md.
 From the project root:
 
 ```sh
-python3 native-app/release/prepare.py candidate --version 0.5.1 --build 10
+python3 native-app/release/prepare.py candidate --version 0.5.1 --build 11
 ```
 
 This creates a new folder in `native-app/releases/`, builds with hardened runtime
@@ -36,7 +36,7 @@ Configure notarization credentials with the secure interactive prompt from
 passwords or API keys in chat, project files or release script arguments.
 
 ```sh
-python3 native-app/release/prepare.py release --version 0.5.1 --build 10 \
+python3 native-app/release/prepare.py release --version 0.5.1 --build 11 \
   --identity 'Developer ID Application: NAME (TEAMID)' \
   --notary-profile 'KEYCHAIN_PROFILE'
 ```
@@ -64,7 +64,7 @@ Do not upload the local candidate as the public beta.
 
 ```sh
 python3 native-app/release/write-cask.py \
-  native-app/releases/0.5.1-10-release/manifest.json \
+  native-app/releases/0.5.1-11-release/manifest.json \
   --repository AnielloFalcone/sorayura --tag v0.5.1-beta.1 \
   --output native-app/releases/sorayura.rb
 ```

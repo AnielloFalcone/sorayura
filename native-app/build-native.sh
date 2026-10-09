@@ -3,7 +3,7 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-10}"
+wallpaper_build="${WALLPAPER_BUILD:-11}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
@@ -13,6 +13,8 @@ app="$wallpaper_output/Sorayura.app"
 mkdir -p "$app/Contents/MacOS"
 mkdir -p "$app/Contents/Resources/Localization"
 cp Resources/Localization/*.json "$app/Contents/Resources/Localization/"
+mkdir -p "$app/Contents/Resources/Icons"
+cp Resources/Icons/*.png "$app/Contents/Resources/Icons/"
 cp .build/release/Sorayura "$app/Contents/MacOS/.Sorayura.new"
 mv -f "$app/Contents/MacOS/.Sorayura.new" "$app/Contents/MacOS/Sorayura"
 cat > "$app/Contents/Info.plist" <<'PLIST'

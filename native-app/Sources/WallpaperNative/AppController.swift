@@ -119,7 +119,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         do { try BrandMigration.relocate() }
         catch { fputs("Sorayura integration relocation failed: \(error)\n", stderr) }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "circle.hexagongrid", accessibilityDescription: "Sorayura")
+        item.button?.image = BrandIcon.menuImage()
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: L("Widget e sfondo…"), action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem(title: L("Modifica layout…"), action: #selector(beginEditing), keyEquivalent: "e"))
