@@ -156,7 +156,7 @@ extension Prefs {
         try require(["today", "week", "month", "all"].contains(agentPeriod ?? "all"), "Periodo AI non valido.")
         try require(["compact", "expanded"].contains(agentDensity ?? "compact"), "Dettaglio AI non valido.")
         try require(["gradient", "midnight", "image"].contains(wallpaper), "Sfondo non valido.")
-        try require(["off", "aurora", "pulse", "traces", "jarvis"].contains(animationStyle), "Animazione non valida.")
+        try require(["off", "aurora", "pulse", "traces", "ribbon", "jarvis"].contains(animationStyle), "Animazione non valida.")
         try require(["free", "grid"].contains(layout), "Layout non valido.")
         try require(["minimal", "glass", "cyber"].contains(widgetTheme ?? "minimal"), "Tema non valido.")
         try require(cellSize.isFinite && (80...220).contains(cellSize), "La griglia deve essere fra 80 e 220 punti.")

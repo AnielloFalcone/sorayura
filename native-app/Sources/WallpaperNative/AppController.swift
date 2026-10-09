@@ -291,7 +291,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                 hitView.onConfigure = { [weak self] setting in
                     guard let self else { return }
                     if widget == "animation" {
-                        if ["aurora", "pulse", "traces", "jarvis"].contains(setting) { self.model.prefs.animationStyle = setting }
+                        if ["aurora", "pulse", "traces", "ribbon", "jarvis"].contains(setting) { self.model.prefs.animationStyle = setting }
                         return
                     }
                     if widget.hasPrefix("agent") {
@@ -476,7 +476,7 @@ final class LongPressView: NSView {
             let parent = NSMenuItem(title: L("Stile"), action: nil, keyEquivalent: "")
             let sub = NSMenu(title: L("Stile"))
             let selected = configuration?().chart
-            for (label, value) in [("Aurora", "aurora"), ("Impulso", "pulse"), ("Tracce · 90 secondi", "traces"), ("Nucleo luminoso", "jarvis")] {
+            for (label, value) in [("Aurora", "aurora"), ("Impulso", "pulse"), ("Tracce · 90 secondi", "traces"), ("Sorayura", "ribbon"), ("Nucleo luminoso", "jarvis")] {
                 let item = NSMenuItem(title: L(label), action: #selector(configureAction(_:)), keyEquivalent: "")
                 item.target = self; item.representedObject = value; item.state = selected == value ? .on : .off
                 sub.addItem(item)

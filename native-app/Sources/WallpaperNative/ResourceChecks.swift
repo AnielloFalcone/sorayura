@@ -51,7 +51,7 @@ import Metal
 
     private static func animationInteractions() throws {
         let bounds = CGSize(width: 1440, height: 900)
-        for style in ["aurora", "pulse", "traces", "jarvis"] {
+        for style in ["aurora", "pulse", "traces", "ribbon", "jarvis"] {
             let rect = AnimationView.interactionRect(style: style, bounds: bounds, scale: 1.8, position: Point(x: 95, y: 5), layers: 5)
             try check(!rect.isEmpty && CGRect(origin: .zero, size: bounds).contains(rect), "Animation interaction area exceeds its display")
             let middle = AnimationView.interactionRect(style: style, bounds: bounds, scale: 1, position: Point(x: 50, y: 50), layers: 3)
@@ -69,7 +69,7 @@ import Metal
         let menu = view.contextMenu()
         try check(menu.items.first?.title == L("Modifica layout…") && menu.items.last?.title == LF("Rimuovi \(L("Animazione"))"), "Animation menu lacks shared edit/remove actions")
         let styles = menu.items.compactMap(\.submenu).first!
-        try check(styles.items.count == 4 && styles.items.last?.state == .on, "Animation styles missing or selection incorrect")
+        try check(styles.items.count == 5 && styles.items.last?.state == .on, "Animation styles missing or selection incorrect")
         menu.performActionForItem(at: 0)
         styles.performActionForItem(at: 1)
         menu.performActionForItem(at: menu.items.count - 1)

@@ -363,6 +363,7 @@ struct SettingsView: View {
                 Text("Aurora").tag("aurora")
                 Text(L("Impulso")).tag("pulse")
                 Text(L("Tracce · 90 secondi")).tag("traces")
+                Text("Sorayura").tag("ribbon")
                 Text(L("Nucleo luminoso")).tag("jarvis")
             }.pickerStyle(.menu)
             ForEach(Model.animationSourceIDs,id:\.self) { metric in
@@ -403,6 +404,7 @@ struct SettingsView: View {
         case "aurora": return L("Una cortina per risorsa. Altezza e luminosità crescono con il valore.")
         case "pulse": return L("Un impulso per risorsa: frequenza e altezza aumentano con il valore. I colori segnalano warning e critical.")
         case "traces": return L("Andamento degli ultimi 90 secondi, su una corsia distinta per ogni risorsa.")
+        case "ribbon": return L("La S ha una fascia per risorsa: la parte luminosa indica il livello da 0 a 100%. La rete usa la scala configurata.")
         case "jarvis": return L("Filamenti luminosi con i colori delle risorse selezionate.")
         default: return L("Seleziona uno stile per visualizzare le risorse sul desktop.")
         }

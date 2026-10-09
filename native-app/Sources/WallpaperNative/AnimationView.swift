@@ -389,6 +389,7 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
     private var metrics: [FilamentMetric] = []
     private var style = "jarvis"
     private var smoothed: [String: Double] = [:]
+    private var ribbonSamples: [(SIMD2<Float>, SIMD2<Float>, Float)] = []
     private var history: [String: [Float]] = [:]
     private var lastHistorySample = -1.0
     private let start = CACurrentMediaTime()
@@ -466,7 +467,9 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
         fill.removeAll(keepingCapacity: true)
         glow.removeAll(keepingCapacity: true)
         fine.removeAll(keepingCapacity: true)
-        if style == "aurora" {
+        if style == "ribbon" {
+            makeRibbon(metrics: current, time: time, canvasWidth: width, canvasHeight: height)
+        } else if style == "aurora" {
             makeAurora(metrics: current, time: time, canvasWidth: width, canvasHeight: height,
                        fill: &fill, glow: &glow, fine: &fine)
         } else if style == "pulse" {
@@ -535,6 +538,60 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
                 }
             }
         }
+        }
+    }
+
+    /// Three flowing Bezier sections retain the brand's S silhouette. Values
+    /// illuminate a proportion of each band without resetting the shared clock.
+    private func makeRibbon(metrics: [FilamentMetric], time: Double,
+                            canvasWidth: CGFloat, canvasHeight: CGFloat) {
+        guard !metrics.isEmpty else { return }
+        let sections: [[SIMD2<Float>]] = [
+            [.init(0.34, 0.78), .init(0.85, 0.12), .init(-0.26, 0.44), .init(-0.39, 0.04)],
+            [.init(-0.39, 0.04), .init(-0.48, -0.24), .init(0.54, -0.31), .init(0.28, -0.58)],
+            [.init(0.28, -0.58), .init(0.02, -0.85), .init(-0.85, -0.50), .init(-0.38, -0.82)]
+        ]
+        // Keep the mark undistorted when the user freely resizes its box.
+        let aspect = Float(canvasHeight / canvasWidth)
+        let sx = min(1, aspect), sy = min(1, 1 / aspect)
+        func sample(_ u: Float) -> (SIMD2<Float>, SIMD2<Float>, Float) {
+            let section = min(2, Int(u * 3))
+            let t = min(1, u * 3 - Float(section)), v = 1 - t
+            let p = sections[section]
+            var point = p[0] * (v*v*v) + p[1] * (3*v*v*t) + p[2] * (3*v*t*t) + p[3] * (t*t*t)
+            let tangent = (p[1]-p[0]) * (3*v*v) + (p[2]-p[1]) * (6*v*t) + (p[3]-p[2]) * (3*t*t)
+            let length = max(0.0001, sqrt(tangent.x*tangent.x + tangent.y*tangent.y))
+            let normal = SIMD2<Float>(-tangent.y, tangent.x) / length
+            let taper = pow(max(0, sin(u * .pi)), 0.75)
+            point.x += 0.014 * sin(u * 2 * .pi + Float(time) * 0.35) * taper
+            point.y += 0.010 * sin(u * 4 * .pi - Float(time) * 0.27) * taper
+            return (point, normal, 0.14 * taper)
+        }
+        ribbonSamples.removeAll(keepingCapacity: true)
+        for step in 0...160 { ribbonSamples.append(sample(Float(step) / 160)) }
+        for (index, metric) in metrics.enumerated() {
+            let target = min(1, max(0, metric.fraction))
+            let level = (smoothed[metric.id] ?? target) + (target - (smoothed[metric.id] ?? target)) * 0.045
+            smoothed[metric.id] = level
+            let lo = -1 + 2 * Float(index) / Float(metrics.count)
+            let hi = -1 + 2 * Float(index + 1) / Float(metrics.count)
+            func vertex(_ step: Int, _ edge: Float) -> FilamentVertex {
+                let u = Float(step) / 160
+                let (point, normal, thickness) = ribbonSamples[step]
+                let position = point + normal * (thickness * edge)
+                let active = min(1, max(0, (Float(level) - u) / 0.015))
+                let flow = 0.5 + 0.5 * sin(u * 12 - Float(time) * 0.7)
+                let light = 0.10 * active * flow
+                return FilamentVertex(x: position.x * sx, y: position.y * sy,
+                    r: min(1, metric.rgb.0 + light), g: min(1, metric.rgb.1 + light),
+                    b: min(1, metric.rgb.2 + light), a: 0.16 + active * 0.72)
+            }
+            for step in 0..<160 {
+                let a = vertex(step, lo), b = vertex(step, hi)
+                let c = vertex(step + 1, lo), d = vertex(step + 1, hi)
+                fill.append(a); fill.append(b); fill.append(c)
+                fill.append(b); fill.append(d); fill.append(c)
+            }
         }
     }
 
@@ -688,7 +745,7 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
                            displayValue: "Fixture", subtitle: nil)
         }
         let expected = [("jarvis", 0, 4800, 4800), ("aurora", 3840, 3840, 4620),
-                        ("pulse", 0, 4800, 4830), ("traces", 0, 90, 90)]
+                        ("pulse", 0, 4800, 4830), ("traces", 0, 90, 90), ("ribbon", 4800, 0, 0)]
         for (index, fixture) in expected.enumerated() {
             renderer.buildGeometry(metrics: metrics, style: fixture.0, time: Double(index * 2), width: 920, height: 920)
             try check(renderer.fill.count == fixture.1 && renderer.glow.count == fixture.2 && renderer.fine.count == fixture.3,
@@ -728,14 +785,14 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
                            displayValue: "Fixture", subtitle: nil)
         }
         var results: [[String: Any]] = []
-        for style in ["jarvis", "aurora", "pulse", "traces"] {
+        for style in ["jarvis", "aurora", "pulse", "traces", "ribbon"] {
             let renderer = FilamentRenderer()
             for tick in 0..<90 { renderer.buildGeometry(metrics: metrics, style: style, time: Double(tick), width: 920, height: 920) }
             let began = ProcessInfo.processInfo.systemUptime
             var checksum: Float = 0
             for frame in 0..<120 {
                 renderer.buildGeometry(metrics: metrics, style: style, time: 90 + Double(frame)/30, width: 920, height: 920)
-                checksum += renderer.fine.first?.x ?? 0
+                checksum += renderer.fine.first?.x ?? renderer.fill.first?.x ?? 0
             }
             let ms = (ProcessInfo.processInfo.systemUptime - began) * 1000
             renderer.buildGeometry(metrics: metrics, style: style, time: 24, width: 920, height: 920)
@@ -755,7 +812,7 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
             FilamentMetric(id: $0.element, color: [NSColor.red, .green, .blue][$0.offset],
                            fraction: [0.25, 0.60, 0.08][$0.offset], displayValue: "Fixture", subtitle: nil)
         }
-        for style in ["jarvis", "aurora", "pulse", "traces"] {
+        for style in ["jarvis", "aurora", "pulse", "traces", "ribbon"] {
             for tick in 0..<90 {
                 renderer.buildGeometry(metrics: metrics, style: style, time: Double(tick), width: 128, height: 128)
             }
@@ -808,6 +865,22 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
                 return bytes
             }
             let separate = try render(combined: false), combined = try render(combined: true)
+            if let directory = ProcessInfo.processInfo.environment["SORAYURA_RENDER_PREVIEW_DIRECTORY"] {
+                let url = URL(fileURLWithPath: directory, isDirectory: true)
+                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+                if let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 128, pixelsHigh: 128,
+                    bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                    colorSpaceName: .deviceRGB, bytesPerRow: 128 * 4, bitsPerPixel: 32), let data = bitmap.bitmapData {
+                    for pixel in 0..<(128 * 128) {
+                        let offset = pixel * 4
+                        data[offset] = combined[offset + 2]; data[offset + 1] = combined[offset + 1]
+                        data[offset + 2] = combined[offset]; data[offset + 3] = combined[offset + 3]
+                    }
+                    if let png = bitmap.representation(using: .png, properties: [:]) {
+                        try png.write(to: url.appendingPathComponent("\(style).png"))
+                    }
+                }
+            }
             guard separate.contains(where: { $0 != 0 }), separate == combined else {
                 throw SettingsError.invalid("Combined draw changed \(style) pixels")
             }
