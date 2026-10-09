@@ -43,7 +43,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['candidate', 'release'])
     parser.add_argument('--version', default='0.5.1')
-    parser.add_argument('--build', default='12')
+    parser.add_argument('--build', default='14')
     parser.add_argument('--identity', help='Exact Developer ID Application identity')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile name')
     args = parser.parse_args()
@@ -61,7 +61,7 @@ def main():
                 'mode': args.mode, 'state': 'preparing', 'public_distribution_ready': False,
                 'created': datetime.now(timezone.utc).isoformat(), 'checks': {}}
     try:
-        with tempfile.TemporaryDirectory(prefix='wallpaper-release-', dir=destination) as temporary:
+        with tempfile.TemporaryDirectory(prefix='wallpaper-release-', suffix='.noindex', dir=destination) as temporary:
             staging = Path(temporary)
             env = os.environ.copy()
             env.update(WALLPAPER_VERSION=args.version, WALLPAPER_BUILD=args.build,
@@ -73,6 +73,12 @@ def main():
             info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
             if info['CFBundleShortVersionString'] != args.version or info['CFBundleVersion'] != args.build:
                 raise RuntimeError('Bundle version mismatch')
+            if info.get('CFBundleIconName') != 'SorayuraAppIcon' or not (app / 'Contents/Resources/Assets.car').is_file():
+                raise RuntimeError('Compiled app icon catalog missing')
+            icon_file = info.get('CFBundleIconFile', '')
+            icon_path = app / 'Contents/Resources' / (icon_file if icon_file.endswith('.icns') else icon_file + '.icns')
+            if not icon_path.is_file():
+                raise RuntimeError('App icon fallback missing')
             architecture = run(['lipo', '-archs', binary], log).strip()
             if architecture != 'arm64':
                 raise RuntimeError(f'Candidate matrix only verified for arm64, got {architecture}')
@@ -130,6 +136,13 @@ def main():
         manifest.update(state='failed', error=str(error))
         raise
     finally:
+        # NSApplication-based checks can register even bundles inside .noindex.
+        # Remove only this run's transient registrations after staging cleanup.
+        if 'staging' in locals():
+            registrar = '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister'
+            for folder in ['build', 'image']:
+                subprocess.run([registrar, '-u', str(staging / folder / 'Sorayura.app')],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
         (destination / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 
 

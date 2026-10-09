@@ -3,7 +3,7 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-12}"
+wallpaper_build="${WALLPAPER_BUILD:-14}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build.noindex}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
@@ -15,7 +15,10 @@ mkdir -p "$app/Contents/Resources/Localization"
 cp Resources/Localization/*.json "$app/Contents/Resources/Localization/"
 mkdir -p "$app/Contents/Resources/Icons"
 cp Resources/Icons/*.png "$app/Contents/Resources/Icons/"
-cp Resources/Icons/Sorayura.icns "$app/Contents/Resources/"
+# Compile the named app icon, including asset metadata consumed by Spotlight.
+xcrun actool Resources/Assets.xcassets --compile "$app/Contents/Resources" \
+  --platform macosx --minimum-deployment-target 14.0 --target-device mac \
+  --app-icon SorayuraAppIcon --output-partial-info-plist "$wallpaper_output/icon-info.plist"
 cp .build/release/Sorayura "$app/Contents/MacOS/.Sorayura.new"
 mv -f "$app/Contents/MacOS/.Sorayura.new" "$app/Contents/MacOS/Sorayura"
 cat > "$app/Contents/Info.plist" <<'PLIST'
@@ -25,7 +28,9 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleExecutable</key><string>Sorayura</string>
 <key>CFBundleIdentifier</key><string>dev.aniello.macsystemwallpaper.native</string>
 <key>CFBundleName</key><string>Sorayura</string>
-<key>CFBundleIconFile</key><string>Sorayura.icns</string>
+<key>CFBundleDisplayName</key><string>Sorayura</string>
+<key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
+
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleLocalizations</key><array><string>en</string><string>it</string><string>es</string></array>
 <key>CFBundlePackageType</key><string>APPL</string>
@@ -37,6 +42,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST
+/usr/libexec/PlistBuddy -c "Merge $wallpaper_output/icon-info.plist" "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $wallpaper_version" "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $wallpaper_build" "$app/Contents/Info.plist"
 xattr -cr "$app"
