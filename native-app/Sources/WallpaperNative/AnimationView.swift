@@ -114,6 +114,8 @@ private struct FilamentVertex {
     var g: Float
     var b: Float
     var a: Float
+    var edge: Float = 0
+    var soft: Float = 0
 }
 
 private final class TransparentMTKView: MTKView {
@@ -541,56 +543,66 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
         }
     }
 
-    /// Three flowing Bezier sections retain the brand's S silhouette. Values
-    /// illuminate a proportion of each band without resetting the shared clock.
+    /// A volume of flowing light follows the S, with smooth analytic tangents
+    /// instead of offset polygon bands that fold at tight bends.
     private func makeRibbon(metrics: [FilamentMetric], time: Double,
                             canvasWidth: CGFloat, canvasHeight: CGFloat) {
         guard !metrics.isEmpty else { return }
-        let sections: [[SIMD2<Float>]] = [
-            [.init(0.34, 0.78), .init(0.85, 0.12), .init(-0.26, 0.44), .init(-0.39, 0.04)],
-            [.init(-0.39, 0.04), .init(-0.48, -0.24), .init(0.54, -0.31), .init(0.28, -0.58)],
-            [.init(0.28, -0.58), .init(0.02, -0.85), .init(-0.85, -0.50), .init(-0.38, -0.82)]
-        ]
-        // Keep the mark undistorted when the user freely resizes its box.
         let aspect = Float(canvasHeight / canvasWidth)
         let sx = min(1, aspect), sy = min(1, 1 / aspect)
-        func sample(_ u: Float) -> (SIMD2<Float>, SIMD2<Float>, Float) {
-            let section = min(2, Int(u * 3))
-            let t = min(1, u * 3 - Float(section)), v = 1 - t
-            let p = sections[section]
-            var point = p[0] * (v*v*v) + p[1] * (3*v*v*t) + p[2] * (3*v*t*t) + p[3] * (t*t*t)
-            let tangent = (p[1]-p[0]) * (3*v*v) + (p[2]-p[1]) * (6*v*t) + (p[3]-p[2]) * (3*t*t)
-            let length = max(0.0001, sqrt(tangent.x*tangent.x + tangent.y*tangent.y))
-            let normal = SIMD2<Float>(-tangent.y, tangent.x) / length
-            let taper = pow(max(0, sin(u * .pi)), 0.75)
-            point.x += 0.014 * sin(u * 2 * .pi + Float(time) * 0.35) * taper
-            point.y += 0.010 * sin(u * 4 * .pi - Float(time) * 0.27) * taper
-            return (point, normal, 0.14 * taper)
-        }
+        let clock = Float(time)
         ribbonSamples.removeAll(keepingCapacity: true)
-        for step in 0...160 { ribbonSamples.append(sample(Float(step) / 160)) }
+        for step in 0...160 {
+            let u = Float(step) / 160
+            let taper = pow(max(0, sin(u * .pi)), 0.65)
+            let angle = u * 3 * .pi
+            let x = 0.34 * cos(angle) + 0.028 * sin(u * 7 + clock * 0.48) * taper
+            let y = 0.80 - 1.60 * u
+            let tangent = SIMD2<Float>(-0.34 * 3 * .pi * sin(angle), -1.60)
+            let length = sqrt(tangent.x * tangent.x + tangent.y * tangent.y)
+            ribbonSamples.append((.init(x, y), .init(-tangent.y, tangent.x) / length, taper))
+        }
+        let strands = metrics.count > 4 ? 2 : 3
         for (index, metric) in metrics.enumerated() {
             let target = min(1, max(0, metric.fraction))
-            let level = (smoothed[metric.id] ?? target) + (target - (smoothed[metric.id] ?? target)) * 0.045
+            let previous = smoothed[metric.id] ?? target
+            let level = previous + (target - previous) * 0.045
             smoothed[metric.id] = level
-            let lo = -1 + 2 * Float(index) / Float(metrics.count)
-            let hi = -1 + 2 * Float(index + 1) / Float(metrics.count)
-            func vertex(_ step: Int, _ edge: Float) -> FilamentVertex {
-                let u = Float(step) / 160
-                let (point, normal, thickness) = ribbonSamples[step]
-                let position = point + normal * (thickness * edge)
-                let active = min(1, max(0, (Float(level) - u) / 0.015))
-                let flow = 0.5 + 0.5 * sin(u * 12 - Float(time) * 0.7)
-                let light = 0.10 * active * flow
-                return FilamentVertex(x: position.x * sx, y: position.y * sy,
-                    r: min(1, metric.rgb.0 + light), g: min(1, metric.rgb.1 + light),
-                    b: min(1, metric.rgb.2 + light), a: 0.16 + active * 0.72)
-            }
-            for step in 0..<160 {
-                let a = vertex(step, lo), b = vertex(step, hi)
-                let c = vertex(step + 1, lo), d = vertex(step + 1, hi)
-                fill.append(a); fill.append(b); fill.append(c)
-                fill.append(b); fill.append(d); fill.append(c)
+            let activity = Float(level)
+            let rgb = metric.rgb
+            let core = (rgb.0 * 0.65 + 0.35, rgb.1 * 0.65 + 0.35, rgb.2 * 0.65 + 0.35)
+            for strand in 0..<strands {
+                let phase = Float(index) * 2.399 + Float(strand) * 1.83
+                points.removeAll(keepingCapacity: true)
+                for step in 0...160 {
+                    let u = Float(step) / 160
+                    let (center, normal, taper) = ribbonSamples[step]
+                    let orbit = u * 9 + clock * 0.52 + phase
+                    let radius = (0.025 + Float(strand) * 0.018) * taper
+                    let offset = normal * (cos(orbit) * radius)
+                    points.append(((center.x + offset.x) * sx, (center.y + offset.y) * sy,
+                                   sin(orbit)))
+                }
+                for step in 0..<160 {
+                    let u = Float(step) / 160
+                    let taper = ribbonSamples[step].2
+                    let depth = 0.48 + 0.52 * (points[step].2 + 1) / 2
+                    // Broad moving highlights are light travelling along a
+                    // filament, not separate dots or abrupt gauge cutoffs.
+                    let wave = 0.5 + 0.5 * sin(u * 18 - clock * (1.1 + activity * 0.5) + phase)
+                    let light = (0.26 + activity * 0.52) * depth * taper
+                    let width: Float = 1.2 + 1.8 * depth + 1.0 * wave
+                    let p = points[step], q = points[step + 1]
+                    appendSegment(&glow, p, q, rgb, width: 36, alpha: light * 0.24, soft: true,
+                                  canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+                    appendSegment(&glow, p, q, rgb, width: 15, alpha: light * 0.38, soft: true,
+                                  canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+                    appendSegment(&fine, p, q, rgb, width: width * 2.2, alpha: light * 0.46, soft: true,
+                                  canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+                    appendSegment(&fine, p, q, core, width: width * 0.62,
+                                  alpha: min(0.95, light * (1.4 + wave * 1.2)), soft: true,
+                                  canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+                }
             }
         }
     }
@@ -719,16 +731,16 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
     }
 
     private func appendSegment(_ vertices: inout [FilamentVertex], _ p: (Float,Float,Float), _ q: (Float,Float,Float),
-                               _ color: (Float,Float,Float), width: Float, alpha: Float,
+                               _ color: (Float,Float,Float), width: Float, alpha: Float, soft: Bool = false,
                                canvasWidth: CGFloat, canvasHeight: CGFloat) {
         let dx = q.0 - p.0, dy = q.1 - p.1
         let length = max(0.0001, sqrt(dx * dx + dy * dy))
         let normalX = -dy / length * width / Float(canvasWidth)
         let normalY = dx / length * width / Float(canvasHeight)
-        let a = FilamentVertex(x:p.0 + normalX, y:p.1 + normalY, r:color.0,g:color.1,b:color.2,a:alpha)
-        let b = FilamentVertex(x:p.0 - normalX, y:p.1 - normalY, r:color.0,g:color.1,b:color.2,a:alpha)
-        let c = FilamentVertex(x:q.0 + normalX, y:q.1 + normalY, r:color.0,g:color.1,b:color.2,a:alpha)
-        let d = FilamentVertex(x:q.0 - normalX, y:q.1 - normalY, r:color.0,g:color.1,b:color.2,a:alpha)
+        let a = FilamentVertex(x:p.0 + normalX, y:p.1 + normalY, r:color.0,g:color.1,b:color.2,a:alpha,edge:1,soft:soft ? 1 : 0)
+        let b = FilamentVertex(x:p.0 - normalX, y:p.1 - normalY, r:color.0,g:color.1,b:color.2,a:alpha,edge:-1,soft:soft ? 1 : 0)
+        let c = FilamentVertex(x:q.0 + normalX, y:q.1 + normalY, r:color.0,g:color.1,b:color.2,a:alpha,edge:1,soft:soft ? 1 : 0)
+        let d = FilamentVertex(x:q.0 - normalX, y:q.1 - normalY, r:color.0,g:color.1,b:color.2,a:alpha,edge:-1,soft:soft ? 1 : 0)
         vertices.append(a); vertices.append(b); vertices.append(c)
         vertices.append(b); vertices.append(d); vertices.append(c)
     }
@@ -737,7 +749,7 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
         func check(_ passed: Bool, _ message: String) throws {
             if !passed { throw SettingsError.invalid(message) }
         }
-        try check(MemoryLayout<FilamentVertex>.stride == 6 * MemoryLayout<Float>.stride,
+        try check(MemoryLayout<FilamentVertex>.stride == 8 * MemoryLayout<Float>.stride,
                   "Vertex layout no longer matches the Metal shader")
         let renderer = FilamentRenderer()
         let metrics = ["cpu", "memory", "network", "battery", "disk"].enumerated().map {
@@ -745,7 +757,7 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
                            displayValue: "Fixture", subtitle: nil)
         }
         let expected = [("jarvis", 0, 4800, 4800), ("aurora", 3840, 3840, 4620),
-                        ("pulse", 0, 4800, 4830), ("traces", 0, 90, 90), ("ribbon", 4800, 0, 0)]
+                        ("pulse", 0, 4800, 4830), ("traces", 0, 90, 90), ("ribbon", 0, 19200, 19200)]
         for (index, fixture) in expected.enumerated() {
             renderer.buildGeometry(metrics: metrics, style: fixture.0, time: Double(index * 2), width: 920, height: 920)
             try check(renderer.fill.count == fixture.1 && renderer.glow.count == fixture.2 && renderer.fine.count == fixture.3,
@@ -808,13 +820,15 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
     static func checkCombinedRendering() throws {
         guard let resources = FilamentResources.shared else { throw SettingsError.invalid("Metal unavailable") }
         let renderer = FilamentRenderer()
+        let previewDirectory = ProcessInfo.processInfo.environment["SORAYURA_RENDER_PREVIEW_DIRECTORY"]
+        let side = previewDirectory == nil ? 128 : 768
         let metrics = ["cpu", "memory", "network"].enumerated().map {
-            FilamentMetric(id: $0.element, color: [NSColor.red, .green, .blue][$0.offset],
+            FilamentMetric(id: $0.element, color: [NSColor(hex: "#d699ff"), NSColor(hex: "#80d5ff"), NSColor(hex: "#75bfff")][$0.offset],
                            fraction: [0.25, 0.60, 0.08][$0.offset], displayValue: "Fixture", subtitle: nil)
         }
         for style in ["jarvis", "aurora", "pulse", "traces", "ribbon"] {
             for tick in 0..<90 {
-                renderer.buildGeometry(metrics: metrics, style: style, time: Double(tick), width: 128, height: 128)
+                renderer.buildGeometry(metrics: metrics, style: style, time: Double(tick), width: CGFloat(side), height: CGFloat(side))
             }
             let vertices = renderer.fill + renderer.glow + renderer.fine
             let counts = [renderer.fill.count, renderer.glow.count, renderer.fine.count]
@@ -824,7 +838,7 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
                   }) else { throw SettingsError.invalid("No vertices for render fixture") }
             func render(combined: Bool) throws -> [UInt8] {
                 let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
-                    pixelFormat: .bgra8Unorm, width: 128, height: 128, mipmapped: false)
+                    pixelFormat: .bgra8Unorm, width: side, height: side, mipmapped: false)
                 textureDescriptor.storageMode = .shared
                 textureDescriptor.usage = .renderTarget
                 guard let texture = resources.device.makeTexture(descriptor: textureDescriptor),
@@ -835,7 +849,7 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
                 pass.colorAttachments[0].texture = texture
                 pass.colorAttachments[0].loadAction = .clear
                 pass.colorAttachments[0].storeAction = .store
-                pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+                pass.colorAttachments[0].clearColor = previewDirectory == nil ? MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0) : MTLClearColor(red: 0.018, green: 0.030, blue: 0.065, alpha: 1)
                 guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else {
                     throw SettingsError.invalid("Cannot encode render fixture")
                 }
@@ -857,10 +871,10 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
                       command.status == .completed, command.error == nil else {
                     throw SettingsError.invalid("Render fixture failed to complete")
                 }
-                var bytes = [UInt8](repeating: 0, count: 128 * 128 * 4)
+                var bytes = [UInt8](repeating: 0, count: side * side * 4)
                 bytes.withUnsafeMutableBytes { data in
-                    texture.getBytes(data.baseAddress!, bytesPerRow: 128 * 4,
-                                     from: MTLRegionMake2D(0, 0, 128, 128), mipmapLevel: 0)
+                    texture.getBytes(data.baseAddress!, bytesPerRow: side * 4,
+                                     from: MTLRegionMake2D(0, 0, side, side), mipmapLevel: 0)
                 }
                 return bytes
             }
@@ -868,10 +882,10 @@ private final class FilamentRenderer: NSObject, MTKViewDelegate {
             if let directory = ProcessInfo.processInfo.environment["SORAYURA_RENDER_PREVIEW_DIRECTORY"] {
                 let url = URL(fileURLWithPath: directory, isDirectory: true)
                 try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-                if let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 128, pixelsHigh: 128,
+                if let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side,
                     bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-                    colorSpaceName: .deviceRGB, bytesPerRow: 128 * 4, bitsPerPixel: 32), let data = bitmap.bitmapData {
-                    for pixel in 0..<(128 * 128) {
+                    colorSpaceName: .deviceRGB, bytesPerRow: side * 4, bitsPerPixel: 32), let data = bitmap.bitmapData {
+                    for pixel in 0..<(side * side) {
                         let offset = pixel * 4
                         data[offset] = combined[offset + 2]; data[offset + 1] = combined[offset + 1]
                         data[offset + 2] = combined[offset]; data[offset + 3] = combined[offset + 3]

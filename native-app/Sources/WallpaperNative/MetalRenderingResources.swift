@@ -16,13 +16,16 @@ final class FilamentResources: @unchecked Sendable {
         let source = """
         #include <metal_stdlib>
         using namespace metal;
-        struct Out { float4 position [[position]]; float4 color; };
+        struct Out { float4 position [[position]]; float4 color; float edge; float soft; };
         vertex Out filamentVertex(const device float *v [[buffer(0)]], uint id [[vertex_id]]) {
-            uint i = id * 6;
+            uint i = id * 8;
             Out o; o.position = float4(v[i], v[i+1], 0, 1);
-            o.color = float4(v[i+2], v[i+3], v[i+4], v[i+5]); return o;
+            o.color = float4(v[i+2], v[i+3], v[i+4], v[i+5]); o.edge = v[i+6]; o.soft = v[i+7]; return o;
         }
-        fragment float4 filamentFragment(Out in [[stage_in]]) { return in.color; }
+        fragment float4 filamentFragment(Out in [[stage_in]]) {
+            float falloff = exp(-4.5 * in.edge * in.edge) * (1.0 - smoothstep(0.8, 1.0, abs(in.edge)));
+            return float4(in.color.rgb, in.color.a * mix(1.0, falloff, in.soft));
+        }
         """
         guard let commandQueue = device.makeCommandQueue(),
               let library = try? device.makeLibrary(source: source, options: nil),

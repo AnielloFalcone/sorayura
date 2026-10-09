@@ -404,7 +404,7 @@ struct SettingsView: View {
         case "aurora": return L("Una cortina per risorsa. Altezza e luminosità crescono con il valore.")
         case "pulse": return L("Un impulso per risorsa: frequenza e altezza aumentano con il valore. I colori segnalano warning e critical.")
         case "traces": return L("Andamento degli ultimi 90 secondi, su una corsia distinta per ogni risorsa.")
-        case "ribbon": return L("La S ha una fascia per risorsa: la parte luminosa indica il livello da 0 a 100%. La rete usa la scala configurata.")
+        case "ribbon": return L("Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi.")
         case "jarvis": return L("Filamenti luminosi con i colori delle risorse selezionate.")
         default: return L("Seleziona uno stile per visualizzare le risorse sul desktop.")
         }
