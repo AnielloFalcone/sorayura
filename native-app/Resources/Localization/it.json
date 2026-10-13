@@ -300,5 +300,17 @@
   "Claude Code non ha restituito i limiti. Riproveremo automaticamente.": "Claude Code non ha restituito i limiti. Riproveremo automaticamente.",
   "I contatori locali rimangono sul Mac. I collegamenti account Claude e Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.": "I contatori locali rimangono sul Mac. I collegamenti account Claude e Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.",
   "Spotify non è installato sul Mac.": "Spotify non è installato sul Mac.",
-  "Impossibile aprire Spotify.": "Impossibile aprire Spotify."
+  "Impossibile aprire Spotify.": "Impossibile aprire Spotify.",
+  "Riproduzione casuale": "Riproduzione casuale",
+  "Ripetizione": "Ripetizione",
+  "Abbassa volume": "Abbassa volume",
+  "Alza volume": "Alza volume",
+  "Apri preferito": "Apri preferito",
+  "Rimuovi preferito": "Rimuovi preferito",
+  "Nome preferito": "Nome preferito",
+  "Link playlist o album Spotify": "Link playlist o album Spotify",
+  "La modalità estesa mostra copertina, shuffle, ripetizione, volume e preferiti. Nei widget piccoli passa automaticamente alla vista compatta. Consigliata una dimensione di almeno 360 × 360 punti.": "La modalità estesa mostra copertina, shuffle, ripetizione, volume e preferiti. Nei widget piccoli passa automaticamente alla vista compatta. Consigliata una dimensione di almeno 360 × 360 punti.",
+  "Fino a 6 scorciatoie. Incolla il link condiviso di una playlist, un album o un brano. Il pulsante apre il contenuto in Spotify; non avvia automaticamente la riproduzione.": "Fino a 6 scorciatoie. Incolla il link condiviso di una playlist, un album o un brano. Il pulsante apre il contenuto in Spotify; non avvia automaticamente la riproduzione.",
+  "Dettaglio Spotify non valido.": "Dettaglio Spotify non valido.",
+  "Preferiti Spotify non validi.": "Preferiti Spotify non validi."
 }

@@ -10,6 +10,9 @@ struct SpotifySnapshot: Sendable, Equatable {
     var artwork: Data?
     var error: String?
     var denied = false
+    var volume = 50
+    var shuffle = false
+    var repeatEnabled = false
 }
 actor SpotifyReader {
     private var artworkURL = ""
@@ -27,7 +30,7 @@ actor SpotifyReader {
             let descriptor = try script("""
             tell application id "com.spotify.client"
                 set t to current track
-                return {name of t, artist of t, album of t, (player state is playing), artwork url of t}
+                return {name of t, artist of t, album of t, (player state is playing), artwork url of t, sound volume, shuffling, repeating}
             end tell
             """)
             let url = descriptor.atIndex(5)?.stringValue ?? ""
@@ -38,53 +41,133 @@ actor SpotifyReader {
                     if let (data, response) = try? await URLSession.shared.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200, data.count < 5_000_000 { artwork = data }
                 }
             }
-            return SpotifySnapshot(title: descriptor.atIndex(1)?.stringValue ?? "Nessun brano", artist: descriptor.atIndex(2)?.stringValue ?? "", album: descriptor.atIndex(3)?.stringValue ?? "", playing: descriptor.atIndex(4)?.booleanValue ?? false, available: true, artwork: artwork)
+            return SpotifySnapshot(title: descriptor.atIndex(1)?.stringValue ?? "Nessun brano", artist: descriptor.atIndex(2)?.stringValue ?? "", album: descriptor.atIndex(3)?.stringValue ?? "", playing: descriptor.atIndex(4)?.booleanValue ?? false, available: true, artwork: artwork, volume: min(100, max(0, Int(descriptor.atIndex(6)?.int32Value ?? 50))), shuffle: descriptor.atIndex(7)?.booleanValue ?? false, repeatEnabled: descriptor.atIndex(8)?.booleanValue ?? false)
         } catch {
             let denied = (error as NSError).code == -1743
             return SpotifySnapshot(title: "Spotify", error: denied ? "Consenti Spotify in Privacy e sicurezza → Automazione, poi premi Riprova." : "Nessun brano disponibile o Spotify non risponde.", denied: denied)
         }
     }
     func command(_ name: String) throws {
-        guard ["playpause", "previous track", "next track"].contains(name) else { return }
-        _ = try script("tell application id \"com.spotify.client\" to " + name)
+        let source: String
+        switch name {
+        case "playpause", "previous track", "next track": source = name
+        case "shuffle": source = "set shuffling to not shuffling"
+        case "repeat": source = "set repeating to not repeating"
+        case "volumeDown": source = "set v to sound volume\nif v < 10 then\nset sound volume to 0\nelse\nset sound volume to (v - 10)\nend if"
+        case "volumeUp": source = "set v to sound volume\nif v > 90 then\nset sound volume to 100\nelse\nset sound volume to (v + 10)\nend if"
+        default: return
+        }
+        _ = try script("tell application id \"com.spotify.client\"\n" + source + "\nend tell")
+
     }
 }
+struct SpotifyShortcut: Codable, Identifiable, Equatable {
+    var id = UUID().uuidString
+    var name: String
+    var link: String
+    static func uri(_ text: String) -> URL? {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var parts: [String]
+        if text.hasPrefix("spotify:") { parts = text.split(separator: ":").map(String.init); guard parts.count == 3 else { return nil }; parts.removeFirst() }
+        else {
+            guard let url = URL(string: text), url.scheme == "https", url.host?.lowercased() == "open.spotify.com", url.user == nil, url.password == nil, url.port == nil else { return nil }
+            parts = url.path.split(separator: "/").map(String.init)
+            if parts.first?.hasPrefix("intl-") == true { parts.removeFirst() }
+        }
+        guard parts.count == 2, ["playlist", "album", "track"].contains(parts[0]), parts[1].count == 22,
+              parts[1].utf8.allSatisfy({ (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) }) else { return nil }
+        return URL(string: "spotify:\(parts[0]):\(parts[1])")
+    }
+}
+
+/// Shared geometry keeps desktop hit surfaces aligned with the visible controls.
+struct SpotifyLayout {
+    var artwork: CGRect
+    var info: CGRect
+    var controls: [(String, CGRect)] = []
+    var expanded: Bool
+    init(size: CGSize, expanded: Bool, shortcuts: Int) {
+        let w = max(1, size.width), h = max(1, size.height)
+        if w < 120 || h < 80 {
+            self.expanded=false;artwork = .zero;info = .zero
+            controls=[("open",CGRect(x:0,y:0,width:min(28,w),height:min(28,h)))];return
+        }
+        let count = min(6,max(0,shortcuts)), rows = (count+2)/3
+        self.expanded = expanded && w >= 240 && h >= Double(230 + rows*40 + (rows > 0 ? 8 : 0))
+        let bottom = self.expanded ? 120.0 + Double(rows*40 + (rows > 0 ? 8 : 0)) : 40.0
+        let cover = self.expanded ? min(140, max(64, h - bottom - 34), w * 0.4) : min(48, max(20, h - bottom - 24))
+        artwork = CGRect(x: 0, y: 24, width: cover, height: cover)
+        info = CGRect(x: cover + 12, y: 24, width: max(1, w - cover - 12), height: cover)
+        controls.append(("open", CGRect(x: max(0,w-28), y: 0, width: 28, height: 24)))
+        let transportY = self.expanded ? h - bottom + 4 : h - 32
+        let names = self.expanded ? ["shuffle", "previous track", "playpause", "next track", "repeat"] : ["previous track", "playpause", "next track"]
+        let width = w / Double(names.count)
+        for (i, name) in names.enumerated() { controls.append((name, CGRect(x: Double(i)*width, y: transportY, width: width, height: self.expanded ? 44 : 32))) }
+        if self.expanded {
+            controls.append(("volumeDown", CGRect(x: 0, y: transportY + 52, width: 36, height: 28)))
+            controls.append(("volumeUp", CGRect(x: w-36, y: transportY + 52, width: 36, height: 28)))
+            let columns = min(3,count)
+            for i in 0..<count {
+                controls.append(("shortcut:\(i)",CGRect(x:Double(i%columns)*w/Double(columns)+3,y:h-Double(rows*40)+Double(i/columns*40)+8,width:w/Double(columns)-6,height:32)))
+            }
+        }
+    }
+    func action(at point: CGPoint, available: Bool) -> String? {
+        if let action = controls.first(where: { $0.1.contains(point) })?.0 { return action }
+        return !available && info.contains(point) ? "open" : nil
+    }
+}
+
 struct SpotifyWidget: View {
     @Environment(Model.self) private var model
     var body: some View {
         let _ = LocalizationSettings.shared.choice
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Spotify", systemImage: "music.note").font(.system(size: 12, weight: .semibold))
-            if model.prefs.spotifyEnabled != true { Text(L("Attiva da Integrazioni")).font(.caption).foregroundStyle(.secondary) }
-            else {
-                HStack(spacing: 10) {
-                    if let data = model.spotify.artwork, let image = NSImage(data: data) {
-                        Image(nsImage: image).resizable().scaledToFill().frame(width: 48, height: 48).clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                    VStack(alignment: .leading, spacing: 3) {
+        GeometryReader { geo in
+            let shortcuts = Array((model.prefs.spotifyShortcuts ?? []).prefix(6))
+            let layout = SpotifyLayout(size: geo.size, expanded: model.prefs.spotifyDisplay == "expanded", shortcuts: shortcuts.count)
+            ZStack(alignment: .topLeading) {
+                if layout.info.width > 0 { Label("Spotify", systemImage: "music.note").font(.system(size: 12, weight: .semibold)) }
+                if model.prefs.spotifyEnabled != true {
+                    Text(L("Attiva da Integrazioni")).font(.caption).position(x:geo.size.width/2, y:50)
+                } else {
+                    artwork.frame(width:layout.artwork.width,height:layout.artwork.height).clipShape(RoundedRectangle(cornerRadius:layout.expanded ? 14 : 8)).position(x:layout.artwork.midX,y:layout.artwork.midY)
+                    VStack(alignment:.leading,spacing:5) {
                         if model.spotify.title == "Apri Spotify" {
-                            Button { model.openSpotify() } label: {
-                                Label(L("Apri Spotify"), systemImage: "arrow.up.forward.app")
-                            }.buttonStyle(.plain).foregroundStyle(.tint).font(.system(size: 13, weight: .semibold)).help(L("Apri Spotify"))
-                        } else {
-                            Text(model.spotify.available ? model.spotify.title : L(model.spotify.title)).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                        }
-                        Text(model.spotify.artist).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
-                        if model.widgetUnits("spotify", axis: "height") > 1 { Text(model.spotify.album).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1) }
+                            Button(L("Apri Spotify")) { model.openSpotify() }.buttonStyle(.plain).foregroundStyle(.tint)
+                        } else { Text(model.spotify.available ? model.spotify.title : L(model.spotify.title)).font(.system(size:layout.expanded ? 20 : 13,weight:.semibold)).lineLimit(layout.expanded && layout.info.height >= 110 ? 2 : 1) }
+                        if layout.info.height >= 32 { Text(model.spotify.artist).font(.system(size:layout.expanded ? 13 : 11)).foregroundStyle(.secondary).lineLimit(1) }
+                        if layout.expanded { Text(model.spotify.album).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1) }
+                        if let error = model.spotify.error { Text(L(error)).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(2) }
+                    }.frame(width:layout.info.width,height:layout.info.height,alignment:.topLeading).position(x:layout.info.midX,y:layout.info.midY).opacity(layout.info.width > 0 ? 1:0)
+                    ForEach(layout.controls, id: \.0) { item in
+                        control(item.0, expanded:layout.expanded, shortcuts:shortcuts).frame(width:item.1.width,height:item.1.height).position(x:item.1.midX,y:item.1.midY)
+                    }
+                    if layout.expanded, let down = layout.controls.first(where:{$0.0 == "volumeDown"})?.1 {
+                        VStack(spacing:3) {
+                            ProgressView(value:model.spotify.available ? Double(model.spotify.volume):0,total:100).tint(.green)
+                            Text(model.spotify.available ? "\(model.spotify.volume)%" : "—").font(.system(size:9)).monospacedDigit().foregroundStyle(.secondary)
+                        }.frame(width:max(1,geo.size.width-88)).position(x:geo.size.width/2,y:down.midY)
                     }
                 }
-                if let error = model.spotify.error { Text(L(error)).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(3) }
-                Spacer(minLength: 0)
-                HStack {
-                    musicButton("backward.end.fill", command: "previous track", label: L("Brano precedente"))
-                    musicButton(model.spotify.playing ? "pause.fill" : "play.fill", command: "playpause", label: L("Riproduci o pausa"))
-                    musicButton("forward.end.fill", command: "next track", label: L("Brano successivo"))
-                }.frame(height: 28)
-            }
-        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }.frame(width:geo.size.width,height:geo.size.height)
+        }
     }
-    private func musicButton(_ icon: String, command: String, label: String) -> some View {
-        Button { model.spotifyCommand(command) } label: { Image(systemName: icon).frame(maxWidth: .infinity) }
-            .buttonStyle(.plain).disabled(!model.spotify.available).help(L(label))
+    private var artwork: some View {
+        Group {
+            if let data=model.spotify.artwork,let image=NSImage(data:data) { Image(nsImage:image).resizable().scaledToFill() }
+            else { ZStack { RoundedRectangle(cornerRadius:14).fill(.white.opacity(0.06)); Image(systemName:"music.note").font(.system(size:28)).foregroundStyle(.secondary) } }
+        }
+    }
+    private func control(_ action:String, expanded:Bool, shortcuts:[SpotifyShortcut])->some View {
+        let icon: String = ["open":"arrow.up.forward.app","previous track":"backward.end.fill","playpause":model.spotify.playing ? "pause.fill":"play.fill","next track":"forward.end.fill","shuffle":"shuffle","repeat":"repeat","volumeDown":"speaker.fill","volumeUp":"speaker.wave.3.fill"][action] ?? "music.note.list"
+        let active = (action == "shuffle" && model.spotify.shuffle) || (action == "repeat" && model.spotify.repeatEnabled)
+        let label = ["open":"Apri Spotify","previous track":"Brano precedente","playpause":"Riproduci o pausa","next track":"Brano successivo","shuffle":"Riproduzione casuale","repeat":"Ripetizione","volumeDown":"Abbassa volume","volumeUp":"Alza volume"][action] ?? (Int(action.dropFirst(9)).flatMap { shortcuts.indices.contains($0) ? shortcuts[$0].name:nil } ?? "Apri preferito")
+        return Button { model.spotifyAction(action) } label: {
+            if action.hasPrefix("shortcut:"), let i=Int(action.dropFirst(9)), shortcuts.indices.contains(i) {
+                Text(shortcuts[i].name).font(.system(size:11,weight:.medium)).lineLimit(1).padding(.horizontal,5).frame(maxWidth:.infinity,maxHeight:.infinity).background(.white.opacity(0.07),in:RoundedRectangle(cornerRadius:8))
+            } else {
+                Image(systemName:icon).font(.system(size:action == "playpause" && expanded ? 23 : 15,weight:.medium)).frame(maxWidth:.infinity,maxHeight:.infinity).foregroundStyle(active ? Color.green : Color.white)
+            }
+        }.buttonStyle(.plain).disabled(action != "open" && !action.hasPrefix("shortcut:") && !model.spotify.available).help(L(label)).accessibilityLabel(L(label))
     }
 }

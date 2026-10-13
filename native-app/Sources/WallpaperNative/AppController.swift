@@ -28,6 +28,19 @@ struct WallpaperNative {
             }
             dispatchMain()
         }
+        if let i=CommandLine.arguments.firstIndex(of:"--preview-spotify-widget"), i+1<CommandLine.arguments.count {
+            if #available(macOS 26, *) { NativeWidgetPreview.runSpotify(directory:CommandLine.arguments[i+1]) }
+            return
+        }
+        if CommandLine.arguments.contains("--check-spotify") {
+            let running=NSRunningApplication.runningApplications(withBundleIdentifier:"com.spotify.client").contains {!$0.isTerminated}
+            Task.detached {
+                let result=await SpotifyReader().read(running:running)
+                if result.available { print("Spotify read passed: volume=\(result.volume), shuffle=\(result.shuffle), repeat=\(result.repeatEnabled)");exit(0) }
+                print("Spotify read unavailable: \(result.error ?? result.title)");exit(1)
+            }
+            dispatchMain()
+        }
         if CommandLine.arguments.contains("--check-claude-account") {
             Task.detached {
                 let result = await ClaudeAccountReader().read()
@@ -336,6 +349,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                 hitView.configuration = { [weak self] in
                     guard let self else { return WidgetDisplay() }
                     if widget == "animation" { return WidgetDisplay(chart: self.model.prefs.animationStyle) }
+                    if widget == "spotify" { return WidgetDisplay(density:self.model.prefs.spotifyDisplay ?? "compact") }
                     if widget.hasPrefix("agent") { return WidgetDisplay(chart: self.model.prefs.agentPeriod ?? "all", density: self.model.prefs.agentDensity ?? "compact") }
                     return widget == "memory" ? self.model.prefs.memoryDisplay : self.model.prefs.cpuDisplay
                 }
@@ -345,6 +359,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                         if ["aurora", "pulse", "traces", "ribbon", "jarvis"].contains(setting) { self.model.prefs.animationStyle = setting }
                         return
                     }
+                    if widget == "spotify" { self.model.prefs.spotifyDisplay = setting; return }
                     if widget.hasPrefix("agent") {
                         if ["compact", "expanded"].contains(setting) { self.model.prefs.agentDensity = setting } else { self.model.prefs.agentPeriod = setting }; return
                     }
@@ -371,15 +386,13 @@ final class AppController: NSObject, NSApplicationDelegate {
                     self.model.setContent(screen, content)
                 }
                 if widget == "spotify" {
-                    hitView.onMusicCommand = { [weak self] command in self?.model.spotifyCommand(command) }
+                    hitView.onMusicCommand = { [weak self] command in self?.model.spotifyAction(command) }
                     hitView.onClick = { [weak self, weak hitView] point in
                         guard let self, let hitView else { return }
-                        if self.model.prefs.spotifyEnabled == true, self.model.spotify.title == "Apri Spotify", point.y > 48 {
-                            self.model.openSpotify(); return
-                        }
-                        guard point.y >= 16, point.y <= 48, point.x >= 16, point.x <= hitView.bounds.width - 16 else { return }
-                        let region = Int((point.x - 16) / max(1, hitView.bounds.width - 32) * 3)
-                        self.model.spotifyCommand(["previous track", "playpause", "next track"][min(2, max(0, region))])
+                        let size = CGSize(width:max(1,hitView.bounds.width-32),height:max(1,hitView.bounds.height-32))
+                        let layout = SpotifyLayout(size:size,expanded:self.model.prefs.spotifyDisplay == "expanded",shortcuts:min(6,self.model.prefs.spotifyShortcuts?.count ?? 0))
+                        let local = CGPoint(x:point.x-16,y:hitView.bounds.height-point.y-16)
+                        if let action=layout.action(at:local,available:self.model.spotify.available) { self.model.spotifyAction(action) }
                     }
                 }
                 var dragStart: Point?
@@ -519,7 +532,7 @@ final class LongPressView: NSView {
         menu.addItem(edit)
         menu.addItem(.separator())
         if onMusicCommand != nil {
-            for (title, command) in [("Brano precedente", "previous track"), ("Riproduci / pausa", "playpause"), ("Brano successivo", "next track")] {
+            for (title, command) in [("Brano precedente", "previous track"), ("Riproduci / pausa", "playpause"), ("Brano successivo", "next track"), ("Apri Spotify", "open"), ("Riproduzione casuale", "shuffle"), ("Ripetizione", "repeat"), ("Abbassa volume", "volumeDown"), ("Alza volume", "volumeUp")] {
                 let item = NSMenuItem(title: L(title), action: #selector(musicAction(_:)), keyEquivalent: "")
                 item.representedObject = command; item.target = self; menu.addItem(item)
             }
@@ -537,6 +550,15 @@ final class LongPressView: NSView {
                 sub.addItem(item)
             }
             parent.submenu = sub; menu.addItem(parent); menu.addItem(.separator())
+        }
+        if widgetID == "spotify" {
+            let parent = NSMenuItem(title:L("Dettaglio"),action:nil,keyEquivalent:"")
+            let sub = NSMenu(title:L("Dettaglio"))
+            for (title,value) in [("Compatto","compact"),("Esteso","expanded")] {
+                let item=NSMenuItem(title:L(title),action:#selector(configureAction(_:)),keyEquivalent:"")
+                item.target=self;item.representedObject=value;item.state=configuration?().density == value ? .on:.off;sub.addItem(item)
+            }
+            parent.submenu=sub;menu.addItem(parent);menu.addItem(.separator())
         }
         if ["cpu", "memory"].contains(widgetID) || ["agents", "agentLive", "agentModels", "agentProjects", "agentTrend"].contains(widgetID) {
             let current = configuration?() ?? WidgetDisplay()

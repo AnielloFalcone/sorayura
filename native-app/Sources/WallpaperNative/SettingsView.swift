@@ -10,6 +10,8 @@ struct SettingsView: View {
         nonmutating set { navigation.section = newValue }
     }
     @State private var presetName = ""
+    @State private var spotifyShortcutName = ""
+    @State private var spotifyShortcutLink = ""
     @State private var animationBoxSide = "right"
     @State private var claudeHooksInstalled = ClaudeHooksInstaller.installed
     @State private var claudeBridgeInstalled = ClaudeBridgeInstaller.installed
@@ -272,8 +274,31 @@ struct SettingsView: View {
             panel("Spotify") {
                 Toggle(L("Attiva brano e controlli Spotify"), isOn: Binding(get: { model.prefs.spotifyEnabled ?? false }, set: { model.prefs.spotifyEnabled = $0; model.refreshSpotify(retry: true) }))
                 Text(L("macOS può chiederti il permesso di controllare Spotify. La copertina viene scaricata dal servizio Spotify. I controlli sono disponibili sul widget e nel suo menu secondario.")).font(.caption).foregroundStyle(.secondary)
-                Button(L("Riprova collegamento")) { model.refreshSpotify(retry: true) }.disabled(model.prefs.spotifyEnabled != true)
-                if model.prefs.spotifyEnabled == true { SpotifyWidget().environment(model).frame(height: 160) }
+                Picker(L("Dettaglio"),selection:Binding(get:{model.prefs.spotifyDisplay ?? "compact"},set:{model.prefs.spotifyDisplay=$0})) {
+                    Text(L("Compatto")).tag("compact");Text(L("Esteso")).tag("expanded")
+                }.pickerStyle(.segmented)
+                Text(L("La modalità estesa mostra copertina, shuffle, ripetizione, volume e preferiti. Nei widget piccoli passa automaticamente alla vista compatta. Consigliata una dimensione di almeno 360 × 360 punti.")).font(.caption).foregroundStyle(.secondary)
+                ForEach(model.prefs.spotifyShortcuts ?? []) { item in
+                    HStack {
+                        Button(item.name) { if let url=SpotifyShortcut.uri(item.link) { NSWorkspace.shared.open(url) } }
+                        Spacer()
+                        Button(role:.destructive) { model.prefs.spotifyShortcuts?.removeAll {$0.id == item.id} } label: { Image(systemName:"minus.circle") }.help(L("Rimuovi preferito"))
+                    }
+                }
+                HStack {
+                    TextField(L("Nome preferito"),text:$spotifyShortcutName)
+                    TextField(L("Link playlist o album Spotify"),text:$spotifyShortcutLink)
+                    Button(L("Aggiungi")) {
+                        guard let uri=SpotifyShortcut.uri(spotifyShortcutLink) else { return }
+                        var items=model.prefs.spotifyShortcuts ?? []
+                        items.append(SpotifyShortcut(name:String(spotifyShortcutName.trimmingCharacters(in:.whitespacesAndNewlines).prefix(40)),link:uri.absoluteString))
+                        model.prefs.spotifyShortcuts=items;spotifyShortcutName="";spotifyShortcutLink=""
+                    }.disabled(spotifyShortcutName.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || SpotifyShortcut.uri(spotifyShortcutLink) == nil || (model.prefs.spotifyShortcuts?.count ?? 0) >= 6)
+                }
+                Text(L("Fino a 6 scorciatoie. Incolla il link condiviso di una playlist, un album o un brano. Il pulsante apre il contenuto in Spotify; non avvia automaticamente la riproduzione.")).font(.caption).foregroundStyle(.secondary)
+                Button(L("Riprova collegamento")) { model.refreshSpotify(retry:true) }.disabled(model.prefs.spotifyEnabled != true)
+                if model.prefs.spotifyEnabled == true { SpotifyWidget().environment(model).frame(height:model.prefs.spotifyDisplay == "expanded" ? 360:160) }
+
             }
             panel("Applicazioni") {
                 Toggle(L("Mostra lo stato di Spotify, Codex e Claude"), isOn: Binding(get: { model.prefs.appStatusEnabled ?? false }, set: { model.prefs.appStatusEnabled = $0; model.tick() }))

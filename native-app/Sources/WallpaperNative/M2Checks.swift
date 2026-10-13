@@ -94,6 +94,22 @@ import Foundation
         try check(desktop?.quota.session?.used == 25 && desktop?.quota.week?.used == 62 && desktop?.opus?.used == 40 && desktop?.quota.session?.reset == nil, "Desktop Claude limits or unknown reset incorrect")
         try check(ClaudeDesktopLimits.decode(desktopFixture, now: now.addingTimeInterval(301 * 60))?.quota.session == nil, "Expired desktop session remains visible")
         try check(ClaudeDesktopLimits.decode(Data("{\"version\":99,\"samples\":[]}".utf8)) == nil, "Unknown desktop schema accepted")
+        let spotifyID = "0123456789ABCDEFGHIJKL"
+        try check(SpotifyShortcut.uri("https://open.spotify.com/playlist/" + spotifyID + "?si=example")?.absoluteString == "spotify:playlist:" + spotifyID, "Shared playlist link not normalized")
+        try check(SpotifyShortcut.uri("https://open.spotify.com/intl-es/album/" + spotifyID) != nil, "Localized album link rejected")
+        for invalid in ["https://evil.test/playlist/" + spotifyID, "spotify:playlist:bad", "file:///tmp/test", "https://open.spotify.com/playlist/" + spotifyID + "/extra", "spotify:playlist:\" & do shell script \"bad"] {
+            try check(SpotifyShortcut.uri(invalid) == nil, "Unsafe shortcut accepted")
+        }
+        for (size, expanded, count) in [(CGSize(width:400,height:350),true,3),(CGSize(width:260,height:160),true,6),(CGSize(width:400,height:160),false,0),(CGSize(width:48,height:48),true,6),(CGSize(width:400,height:350),true,6)] {
+            let layout = SpotifyLayout(size:size,expanded:expanded,shortcuts:count)
+            let bounds = CGRect(origin:.zero,size:size)
+            for (action,rect) in layout.controls {
+                try check(bounds.contains(rect) && layout.action(at:CGPoint(x:rect.midX,y:rect.midY),available:true) == action, "Spotify controls are out of bounds or not clickable")
+            }
+            for (index,item) in layout.controls.enumerated() {
+                for other in layout.controls.dropFirst(index+1) { try check(!item.1.intersects(other.1), "Spotify controls overlap") }
+            }
+        }
         let usageNow = ISO8601DateFormatter().date(from: "2026-10-13T14:50:00Z")!
         let usageScreen = "Current session\n39% used\nResets 5:40pm (Europe/Rome)\nCurrent week (all models)\n69% used\nResets Oct 15 at 8am (Europe/Rome)"
         let nativeQuota = ClaudeAccountReader.parse(usageScreen, now: usageNow)

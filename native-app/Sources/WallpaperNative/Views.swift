@@ -213,6 +213,21 @@ struct WidgetView: View {
         let expanded = (id == "cpu" && model.prefs.cpuDisplay.density == "expanded") || (id == "memory" && model.prefs.memoryDisplay.density == "expanded")
         let chart = id == "cpu" ? model.prefs.cpuDisplay.chart : model.prefs.memoryDisplay.chart
         let color = (Model.metricIDs.contains(id) || id == "thermal") ? Color(nsColor:model.metricColor(id,base:ColorValue(model.prefs.widgetTheme == "cyber" ? "#c89bff" : "#a9d9ff")).color) : .white
+        Group {
+        if id == "spotify" {
+            VStack(spacing:8) {
+                SpotifyWidget().environment(model)
+                if model.editing {
+                    HStack {
+                        ForEach(["width", "height"], id: \.self) { axis in
+                            Picker(axis == "width" ? "↔" : "↕", selection: Binding(get:{ displayedUnits(axis) },set:{model.setWidgetUnits(id,axis:axis,units:$0)})) {
+                                ForEach(1...model.maximumUnits(axis:axis),id: \.self) { Text("\($0)").tag($0) }
+                            }
+                        }
+                    }.font(.system(size:9)).controlSize(.mini).padding(.bottom,22)
+                }
+            }.padding(16)
+        } else {
         ScrollView {
         VStack(alignment:.leading,spacing:5) {
             if id == "clock" {
@@ -273,6 +288,8 @@ struct WidgetView: View {
         .padding(id == "clock" ? 0 : 16)
         }
         .scrollIndicators(.hidden)
+        }
+        }
         .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
         .clipped()
         .modifier(DesktopWidgetSurface(theme: model.prefs.widgetTheme ?? "minimal", transparent: id == "clock" || id == "device"))
@@ -284,6 +301,12 @@ struct WidgetView: View {
         .foregroundStyle(.white)
         .contextMenu {
             Button(L("Modifica layout…")) { model.editing = true }
+            if id == "spotify" {
+                Menu(L("Dettaglio")) {
+                    Button(L("Compatto")) { model.prefs.spotifyDisplay = "compact" }
+                    Button(L("Esteso")) { model.prefs.spotifyDisplay = "expanded" }
+                }
+            }
             if ["cpu", "memory"].contains(id) {
                 Menu(L("Dettaglio")) {
                     Button(L("Compatto")) { setDisplay(density: "compact") }

@@ -155,6 +155,11 @@ extension Prefs {
         }
         try require(["today", "week", "month", "all"].contains(agentPeriod ?? "all"), "Periodo AI non valido.")
         try require(["compact", "expanded"].contains(agentDensity ?? "compact"), "Dettaglio AI non valido.")
+        try require(["compact", "expanded"].contains(spotifyDisplay ?? "compact"), "Dettaglio Spotify non valido.")
+        let favorites = spotifyShortcuts ?? []
+        try require(favorites.count <= 6 && Set(favorites.map(\.id)).count == favorites.count && favorites.allSatisfy {
+            !$0.id.isEmpty && $0.id.count <= 80 && !$0.name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && $0.name.count <= 40 && SpotifyShortcut.uri($0.link) != nil
+        }, "Preferiti Spotify non validi.")
         try require(["gradient", "midnight", "image"].contains(wallpaper), "Sfondo non valido.")
         try require(["off", "aurora", "pulse", "traces", "ribbon", "jarvis"].contains(animationStyle), "Animazione non valida.")
         try require(["free", "grid"].contains(layout), "Layout non valido.")

@@ -300,5 +300,17 @@
   "Claude Code non ha restituito i limiti. Riproveremo automaticamente.": "Claude Code no devolvió límites. Se reintentará automáticamente.",
   "I contatori locali rimangono sul Mac. I collegamenti account Claude e Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.": "Los contadores locales permanecen en el Mac. Las conexiones de cuenta de Claude y Codex y las portadas de Spotify usan la red solo al activarlas. El wallpaper no lee credenciales. El historial no equivale a la factura ni al coste de la suscripción.",
   "Spotify non è installato sul Mac.": "Spotify no está instalado en este Mac.",
-  "Impossibile aprire Spotify.": "No se pudo abrir Spotify."
+  "Impossibile aprire Spotify.": "No se pudo abrir Spotify.",
+  "Riproduzione casuale": "Reproducción aleatoria",
+  "Ripetizione": "Repetir",
+  "Abbassa volume": "Bajar volumen",
+  "Alza volume": "Subir volumen",
+  "Apri preferito": "Abrir favorito",
+  "Rimuovi preferito": "Eliminar favorito",
+  "Nome preferito": "Nombre del favorito",
+  "Link playlist o album Spotify": "Enlace de playlist o álbum de Spotify",
+  "La modalità estesa mostra copertina, shuffle, ripetizione, volume e preferiti. Nei widget piccoli passa automaticamente alla vista compatta. Consigliata una dimensione di almeno 360 × 360 punti.": "El modo ampliado muestra portada, reproducción aleatoria, repetición, volumen y favoritos. Los widgets pequeños usan automáticamente el modo compacto. Tamaño recomendado: al menos 360 × 360 puntos.",
+  "Fino a 6 scorciatoie. Incolla il link condiviso di una playlist, un album o un brano. Il pulsante apre il contenuto in Spotify; non avvia automaticamente la riproduzione.": "Hasta 6 atajos. Pega el enlace compartido de una playlist, álbum o canción. El botón abre el contenido en Spotify; no inicia la reproducción automáticamente.",
+  "Dettaglio Spotify non valido.": "Modo de detalle de Spotify no válido.",
+  "Preferiti Spotify non validi.": "Favoritos de Spotify no válidos."
 }

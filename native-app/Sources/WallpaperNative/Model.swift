@@ -158,6 +158,7 @@ final class Model {
         }
     }
     func openSpotify() {
+        guard servicesEnabled else { return }
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") else {
             spotify.error = "Spotify non è installato sul Mac."
             return
@@ -170,7 +171,18 @@ final class Model {
             }
         }
     }
+    func spotifyAction(_ action: String) {
+        guard servicesEnabled else { return }
+        guard prefs.spotifyEnabled == true else { return }
+        if action == "open" { openSpotify(); return }
+        if action.hasPrefix("shortcut:"), let index = Int(action.dropFirst(9)), let shortcuts = prefs.spotifyShortcuts, shortcuts.indices.contains(index), let url = SpotifyShortcut.uri(shortcuts[index].link) {
+            if !NSWorkspace.shared.open(url) { spotify.error = "Impossibile aprire Spotify." }
+            return
+        }
+        spotifyCommand(action)
+    }
     func spotifyCommand(_ command: String) {
+        guard servicesEnabled else { return }
         guard prefs.spotifyEnabled == true, spotify.available else { return }
         Task { [weak self, spotifyReader] in
             do { try await spotifyReader.command(command); self?.lastSpotify = .distantPast; self?.refreshSpotify() }
@@ -470,6 +482,8 @@ struct Prefs: Codable {
     var codexAccountEnabled: Bool? = nil
     var codexExecutable: String? = nil
     var spotifyEnabled: Bool? = nil
+    var spotifyDisplay: String? = nil
+    var spotifyShortcuts: [SpotifyShortcut]? = nil
     var agentUsageEnabled: Bool? = nil
     var appStatusEnabled: Bool? = nil
     var adaptiveAnimation: Bool? = nil
