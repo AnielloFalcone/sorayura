@@ -137,6 +137,9 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
     private var readoutLayers: [CALayer] = []
     private var glassRoot: NSView?
     private var usesGlass = false
+    private var nativeValues: [String: NSTextField] = [:]
+    private var nativeNames: [String: NSTextField] = [:]
+    private var nativeBars: [String: NSView] = [:]
     private var readouts: [String: CATextLayer] = [:]
     private var names: [String: CATextLayer] = [:]
     private var bars: [String: CALayer] = [:]
@@ -291,7 +294,9 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
                   let content = container.contentView, content.subviews.count == 4,
                   content.subviews.allSatisfy({ ($0 as? NSGlassEffectView)?.contentView != nil && view.bounds.contains($0.frame) }),
                   view.readoutLayers.allSatisfy({ $0.backgroundColor == nil && $0.borderWidth == 0 }),
-                  view.names.count == 4, view.bars.count == 4 else {
+                  view.names.count == 4, view.bars.count == 4,
+                  view.nativeValues.count == 4,
+                  view.nativeValues.values.allSatisfy({ $0.stringValue == "42%" && $0.superview != nil }) else {
                 throw SettingsError.invalid("Native glass boxes lost content, bounds or retained opaque panels")
             }
             view.configure(metrics: [metric], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: boxes, glass: false)
@@ -323,12 +328,16 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         readoutLayers.forEach { $0.removeFromSuperlayer() }
         glassRoot?.removeFromSuperview(); glassRoot = nil
         readoutLayers.removeAll(); readouts.removeAll(); names.removeAll(); bars.removeAll()
+        nativeValues.removeAll(); nativeNames.removeAll(); nativeBars.removeAll()
         guard let root = layer else { return }
         let visual = AnimationView.visualSize(style: style, bounds: bounds.size, scale: scale)
         var glassContent: NSView?
         if usesGlass, #available(macOS 26, *) {
             let container = NSGlassEffectContainerView(frame: bounds)
             let content = FlippedGlassContent(frame: bounds)
+            content.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([content.widthAnchor.constraint(equalToConstant: bounds.width),
+                                         content.heightAnchor.constraint(equalToConstant: bounds.height)])
             container.contentView = content; container.spacing = 0
             addSubview(container); glassRoot = container; glassContent = content
         }
@@ -340,14 +349,19 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
             box.backgroundColor = NSColor(hex: "#101a2a").withAlphaComponent(0.92).cgColor
             box.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
             box.borderWidth = 1; box.cornerRadius = 13; box.masksToBounds = true
+            var nativeContent: NSView?
             if let glassContent, #available(macOS 26, *) {
                 let glass = NSGlassEffectView(frame: geometry.frame)
                 glass.style = .clear; glass.cornerRadius = 13
                 let content = FlippedGlassContent(frame: CGRect(origin: .zero, size: geometry.frame.size))
-                content.wantsLayer = true
+                content.translatesAutoresizingMaskIntoConstraints = false
+                NSLayoutConstraint.activate([content.widthAnchor.constraint(equalToConstant: geometry.frame.width),
+                                             content.heightAnchor.constraint(equalToConstant: geometry.frame.height)])
+                nativeContent = content
                 box.frame = CGRect(origin: .zero, size: geometry.frame.size)
                 box.backgroundColor = nil; box.borderWidth = 0
-                content.layer?.addSublayer(box)
+                // Use actual AppKit subviews inside glass; custom backing
+                // sublayers are not reliable content for its compositing path.
                 glass.contentView = content; glassContent.addSubview(glass)
             } else { root.addSublayer(box) }
             readoutLayers.append(box)
@@ -371,6 +385,29 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
                 value.frame = CGRect(x: x + 26, y: y + 14, width: contentWidth, height: 27)
                 value.contentsScale = backingScale; value.truncationMode = .end
                 box.addSublayer(value); readouts[key] = value
+                if let nativeContent {
+                    func label(_ frame: CGRect, font: NSFont, color: NSColor) -> NSTextField {
+                        let field = NSTextField(labelWithString: "")
+                        field.frame = frame; field.font = font; field.textColor = color
+                        field.lineBreakMode = .byTruncatingTail
+                        nativeContent.addSubview(field)
+                        return field
+                    }
+                    func strip(_ frame: CGRect, color: NSColor) -> NSView {
+                        let strip = NSView(frame: frame); strip.wantsLayer = true
+                        strip.layer?.backgroundColor = color.cgColor; strip.layer?.cornerRadius = 1.5
+                        nativeContent.addSubview(strip); return strip
+                    }
+                    _ = strip(CGRect(x: x + 13, y: y + 5, width: 3, height: 36), color: metric.color)
+                    nativeNames[key] = label(CGRect(x: x + 26, y: y, width: contentWidth, height: 14),
+                                             font: NSFont.monospacedSystemFont(ofSize: 10, weight: .medium), color: .white.withAlphaComponent(0.78))
+                    nativeValues[key] = label(CGRect(x: x + 26, y: y + 14, width: contentWidth, height: 27),
+                                              font: NSFont.monospacedDigitSystemFont(ofSize: 19, weight: .semibold), color: metric.color)
+                    if metric.animated {
+                        _ = strip(CGRect(x: x + 26, y: y + 43, width: contentWidth, height: 2), color: metric.color.withAlphaComponent(0.18))
+                        nativeBars[key] = strip(CGRect(x: x + 26, y: y + 43, width: 0, height: 2), color: metric.color)
+                    }
+                }
                 if metric.animated {
                     let track = CALayer()
                     track.frame = CGRect(x: x + 26, y: y + 43, width: contentWidth, height: 2)
@@ -398,6 +435,11 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
                 readouts[key]?.fontSize = valueSize
                 readouts[key]?.isWrapped = metric.displayValue.count > 17
                 readouts[key]?.string = metric.displayValue
+                nativeNames[key]?.stringValue = metric.subtitle ?? Model.animationTitle(metric.id).uppercased()
+                nativeValues[key]?.stringValue = metric.displayValue
+                nativeValues[key]?.font = NSFont.monospacedDigitSystemFont(ofSize: valueSize, weight: .semibold)
+                nativeValues[key]?.maximumNumberOfLines = metric.displayValue.count > 17 ? 2 : 1
+                nativeBars[key]?.frame.size.width = max(0, (readouts[key]?.bounds.width ?? 180)) * CGFloat(metric.fraction)
                 bars[key]?.bounds.size.width = max(0, (readouts[key]?.bounds.width ?? 180)) * CGFloat(metric.fraction)
             }
         }
