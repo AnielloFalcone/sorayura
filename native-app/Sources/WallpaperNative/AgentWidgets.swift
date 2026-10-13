@@ -102,6 +102,7 @@ struct AgentWidget: View {
                 provider("Claude", color: claudeColor)
                 provider("Codex", color: codexColor)
             }
+            .overlay { Rectangle().fill(.white.opacity(0.14)).frame(width: 0.5).padding(.vertical, 8).allowsHitTesting(false) }
             HStack {
                 Text(LF("\(periodTitle) · \(tokenLabel(summary.tokens)) token"))
                 Spacer()
@@ -118,7 +119,7 @@ struct AgentWidget: View {
     }
     private var usesClaudeDesktop: Bool { claudeQuota?.date == snapshot.claudeDesktop?.quota.date }
     private func provider(_ name: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Circle().fill(color).frame(width: 7, height: 7)
                 Text(name).font(.system(size: 13, weight: .semibold))
@@ -127,7 +128,7 @@ struct AgentWidget: View {
             }
             quota(L("Sessione"), limit: name == "Codex" ? codexQuota?.session : claudeQuota?.session, color: color)
             quota(L("Settimana"), limit: name == "Codex" ? codexQuota?.week : claudeQuota?.week, color: color)
-            if let quota = name == "Codex" ? codexQuota : claudeQuota {
+            if let quota = name == "Codex" ? codexQuota : claudeQuota, model.prefs.agentDensity == "expanded" {
                 Text(LF("Rilevato \(quota.date.localizedFormatted(date: .abbreviated, time: .shortened))")).font(.system(size: 8)).foregroundStyle(.secondary).lineLimit(1)
             }
             if name == "Claude", usesClaudeDesktop {
@@ -142,9 +143,7 @@ struct AgentWidget: View {
             } else if name == "Claude", claudeQuota != nil {
                 Text(L("Claude Code · status line")).font(.system(size: 8)).foregroundStyle(.secondary)
             }
-        }.padding(10).frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.10), lineWidth: 0.5))
+        }.padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .topLeading)
     }
     private func quota(_ title: String, limit: AgentLimit?, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {

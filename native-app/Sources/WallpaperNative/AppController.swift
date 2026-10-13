@@ -5,6 +5,10 @@ import CoreGraphics
 @main
 struct WallpaperNative {
     @MainActor static func main() {
+        if let index = CommandLine.arguments.firstIndex(of: "--preview-ai-widget"), index + 1 < CommandLine.arguments.count {
+            if #available(macOS 26, *) { NativeWidgetPreview.run(directory: CommandLine.arguments[index + 1]) }
+            return
+        }
         if CommandLine.arguments.contains("--benchmark-agents") {
             Task.detached {
                 let reader = AgentUsageReader()
@@ -104,12 +108,30 @@ struct WallpaperNative {
 }
 
 @MainActor
+/// Desktop surfaces accept focus only during user-requested layout editing.
+final class DesktopSurfaceWindow: NSWindow {
+    var editingEnabled = false {
+        didSet { if !editingEnabled && isKeyWindow { resignKey() } }
+    }
+    override var canBecomeKey: Bool { editingEnabled }
+    override var canBecomeMain: Bool { false }
+    override func sendEvent(_ event: NSEvent) {
+        if editingEnabled && [.leftMouseDown, .rightMouseDown].contains(event.type) && !isKeyWindow {
+            NSApp.activate(ignoringOtherApps: true)
+            makeKeyAndOrderFront(nil)
+        }
+        super.sendEvent(event)
+    }
+}
+
+@MainActor
 final class AppController: NSObject, NSApplicationDelegate {
     private let model = Model.shared
     private var statusItem: NSStatusItem?
     private let settingsPresentation = SettingsPresentation()
     private var componentProfile: ComponentProfile?
     private var windows: [String:NSWindow] = [:]
+    private var editingPreviousApplication: NSRunningApplication?
     private var hitWindows: [String:NSWindow] = [:]
     private var lastWallpaperSignature = ""
     private var screenSignatures: [String: String] = [:]
@@ -132,8 +154,26 @@ final class AppController: NSObject, NSApplicationDelegate {
         statusItem = item
         model.refreshDisplays = { [weak self] in self?.refreshScreens() }
         model.editChanged = { [weak self] editing in
-            if editing { self?.componentProfile?.cancel(reason: "Editing started") }
-            self?.refreshScreens()
+            guard let self else { return }
+            if editing {
+                self.componentProfile?.cancel(reason: "Editing started")
+                self.editingPreviousApplication = NSWorkspace.shared.frontmostApplication
+            }
+            self.refreshScreens()
+            if editing {
+                let pointer = NSEvent.mouseLocation
+                let screen = NSScreen.screens.first(where: { $0.frame.contains(pointer) }) ?? NSScreen.main
+                if let screen, let window = self.windows[self.screenID(screen)] {
+                    NSApp.activate(ignoringOtherApps: true)
+                    window.makeKeyAndOrderFront(nil)
+                }
+            } else {
+                if NSApp.isActive, let previous = self.editingPreviousApplication,
+                   previous.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+                    previous.activate(options: [])
+                }
+                self.editingPreviousApplication = nil
+            }
         }
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         let workspace = NSWorkspace.shared.notificationCenter
@@ -240,7 +280,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             let window: NSWindow
             if let existing = windows[id] { window = existing }
             else {
-                window = NSWindow(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                window = DesktopSurfaceWindow(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
                 window.isReleasedWhenClosed = false
                 window.backgroundColor = .clear
                 window.isOpaque = false
@@ -250,6 +290,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                 windows[id] = window
             }
             window.setFrame(screen.frame, display: true)
+            (window as? DesktopSurfaceWindow)?.editingEnabled = model.editing
             window.ignoresMouseEvents = !model.editing
             window.level = model.editing ? .normal : NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
             if !window.isVisible { window.orderFrontRegardless() }

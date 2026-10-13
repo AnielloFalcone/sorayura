@@ -163,7 +163,7 @@ final class Model {
     func history(for metric: String) -> [Double] {
         switch metric { case "cpu": return cpuHistory.values; case "memory": return memoryHistory.values; default: return [] }
     }
-    var editing = false { didSet { editChanged?(editing) } }
+    var editing = false { didSet { if oldValue != editing { editChanged?(editing) } } }
     var identifyUntil = Date.distantPast
     @ObservationIgnored var refreshDisplays: (() -> Void)?
     @ObservationIgnored var editChanged: ((Bool) -> Void)?

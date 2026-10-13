@@ -94,6 +94,13 @@ enum M1Checks {
         badBox.settings.animationBoxes?["middle"] = ["cpu"]
         try rejects(badBox)
         badBox = boxed; badBox.settings.animationBoxes?["left"] = ["cpu", "cpu"]; try rejects(badBox)
+        let editingWindow = DesktopSurfaceWindow(contentRect: CGRect(x:0,y:0,width:100,height:100), styleMask:[.borderless], backing:.buffered, defer:false)
+        editingWindow.isReleasedWhenClosed = false
+        try check(!editingWindow.canBecomeKey && !editingWindow.canBecomeMain, "Desktop window accepts focus outside editing")
+        editingWindow.editingEnabled = true
+        try check(editingWindow.canBecomeKey && !editingWindow.canBecomeMain, "Edit window cannot accept key focus")
+        editingWindow.editingEnabled = false
+        try check(!editingWindow.canBecomeKey, "Leaving editing retains key-window capability")
         let dataModel = Model.isolated()
         try check(dataModel.animationFields("right") == dataModel.prefs.layers.map(\.metric), "Legacy right box lost its selected metrics")
         dataModel.setAnimationFields(["clock", "device"], side: "left")
