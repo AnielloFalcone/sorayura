@@ -28,6 +28,16 @@ struct WallpaperNative {
             }
             dispatchMain()
         }
+        if CommandLine.arguments.contains("--check-claude-account") {
+            Task.detached {
+                let result = await ClaudeAccountReader().read()
+                guard let quota = result.quota else { fputs("Claude check failed: \(result.error ?? "missing quota")\n", stderr); exit(1) }
+                let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+                if let data = try? encoder.encode(quota) { print(String(decoding: data, as: UTF8.self)) }
+                exit(0)
+            }
+            dispatchMain()
+        }
         if CommandLine.arguments.contains("--check-codex-account") {
             Task.detached {
                 let result = await CodexAccountReader().read(executable: CodexAccountReader.defaultExecutable, threads: [])

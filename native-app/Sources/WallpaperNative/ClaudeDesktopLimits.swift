@@ -32,6 +32,8 @@ struct ClaudeDesktopLimits: Sendable {
         }
         let quota = AgentQuota(date: latest.0, plan: nil, session: limit("fh", minutes: 300), week: limit("sd", minutes: 10080))
         let result = Self(quota: quota, opus: limit("so", minutes: 10080), sonnet: limit("sn", minutes: 10080))
-        return quota.session != nil || quota.week != nil || result.opus != nil || result.sonnet != nil ? result : nil
+        // Retain the last observation date even when all windows have expired,
+        // so the UI can distinguish a stopped source from absent history.
+        return result
     }
 }

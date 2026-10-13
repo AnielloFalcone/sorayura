@@ -55,7 +55,6 @@
   "AI Agents": "Agentes de IA",
   "Leggi utilizzo locale di Codex e Claude Code": "Leer el uso local de Codex y Claude Code",
   "Token, cache, modelli, progetti e attività dai contatori delle sessioni locali. Aggiornamento automatico quando cambiano i registri, con eventi raggruppati entro circa 2 secondi; controllo di sicurezza ogni 30 secondi. I limiti Codex riportano la data dell'ultimo dato registrato; Claude può fornire limiti tramite la status line o il file locale dell’app desktop. La fonte più recente viene indicata: l’account desktop può essere diverso da Claude Code.": "Tokens, caché, modelos, proyectos y actividad de los contadores de sesiones locales. Se actualizan al cambiar los registros, agrupando los eventos en unos 2 segundos y con una comprobación de respaldo cada 30 segundos. Los límites de Codex muestran la fecha del último dato registrado; Claude puede proporcionar límites mediante su línea de estado o el archivo local de la app de escritorio. Se indica la fuente más reciente: la cuenta de escritorio puede ser distinta de la de Claude Code.",
-  "I contatori locali rimangono sul Mac. Il collegamento account Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.": "Los contadores locales permanecen en el Mac. El acceso a la cuenta de Codex y las carátulas de Spotify usan la red solo si habilitas esas integraciones. El fondo de pantalla no lee credenciales. El historial no equivale a una factura ni al coste de la suscripción.",
   "Periodo grafici": "Periodo de los gráficos",
   "Oggi": "Hoy",
   "7 giorni": "7 días",
@@ -288,6 +287,16 @@
   "Box dati…": "Paneles de datos…",
   "Filamenti di luce scorrono lungo una S tridimensionale. Intensità e movimento seguono le risorse; le box mostrano i valori precisi.": "Filamentos de luz recorren una S tridimensional. La intensidad y el movimiento siguen los recursos; los cuadros muestran los valores exactos.",
   "Lettura scaduta": "Lectura caducada",
-  "Claude · apri l’app per aggiornare": "Claude · abre la app para actualizar",
-  "Usa Codex CLI e il suo login esistente; aggiorna ogni 5 minuti, ogni minuto se la lettura è scaduta o assente. I limiti vengono mostrati prima delle stime delle chat. Nessuna conversazione viene avviata.": "Usa Codex CLI y su inicio de sesión existente; actualiza cada 5 minutos, cada minuto si la lectura ha caducado o falta. Los límites aparecen antes de las estimaciones de chats. No se inicia ninguna conversación."
+  "Usa Codex CLI e il suo login esistente; aggiorna ogni 5 minuti, ogni minuto se la lettura è scaduta o assente. I limiti vengono mostrati prima delle stime delle chat. Nessuna conversazione viene avviata.": "Usa Codex CLI y su inicio de sesión existente; actualiza cada 5 minutos, cada minuto si la lectura ha caducado o falta. Los límites aparecen antes de las estimaciones de chats. No se inicia ninguna conversación.",
+  "Claude · dati desktop non aggiornati": "Claude · datos de escritorio sin actualizar",
+  "Claude desktop: ultimo dato locale {0}": "Claude desktop: última lectura local {0}",
+  "Claude può sospendere il salvataggio dei limiti dopo 24 ore senza aprire il suo menu nella barra. Il refresh della finestra principale non aggiorna necessariamente questo file. Sorayura rileva automaticamente ogni nuovo salvataggio; la status line di Claude Code fornisce una seconda fonte quando il client è autenticato e in uso.": "Claude puede pausar las actualizaciones de límites tras 24 horas sin abrir su menú en la barra. Actualizar la ventana principal no actualiza necesariamente este archivo. Sorayura detecta automáticamente los nuevos registros; la línea de estado de Claude Code proporciona otra fuente cuando el cliente tiene sesión iniciada y está en uso.",
+  "Claude Code · account": "Claude Code · cuenta",
+  "Aggiorna limiti Claude tramite Claude Code": "Actualizar límites de Claude mediante Claude Code",
+  "Usa il comando nativo /usage ogni 5 minuti con il login di Claude Code. Non invia prompt e non legge credenziali. Non richiede di aprire Claude desktop. La lettura dipende dal formato del client installato.": "Usa el comando nativo /usage cada 5 minutos con la sesión de Claude Code. No envía prompts ni lee credenciales. No requiere abrir Claude desktop. La lectura depende del formato del cliente instalado.",
+  "Claude Code non installato.": "Claude Code no está instalado.",
+  "Lettura Claude Code non riuscita.": "No se pudieron leer los límites de Claude Code.",
+  "Claude Code richiede il login.": "Inicia sesión en Claude Code.",
+  "Claude Code non ha restituito i limiti. Riproveremo automaticamente.": "Claude Code no devolvió límites. Se reintentará automáticamente.",
+  "I contatori locali rimangono sul Mac. I collegamenti account Claude e Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.": "Los contadores locales permanecen en el Mac. Las conexiones de cuenta de Claude y Codex y las portadas de Spotify usan la red solo al activarlas. El wallpaper no lee credenciales. El historial no equivale a la factura ni al coste de la suscripción."
 }

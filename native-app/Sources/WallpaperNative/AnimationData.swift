@@ -50,13 +50,11 @@ extension Model {
         case "claudeSession", "claudeWeek", "codexSession", "codexWeek":
             let quota: AgentQuota?
             if id.hasPrefix("claude") {
-                let local = agentUsage.claudeSessions.max(by: { $0.date < $1.date })?.quota
-                let desktop = agentUsage.claudeDesktop?.quota
-                quota = (desktop?.date ?? .distantPast) > (local?.date ?? .distantPast) ? desktop : local ?? desktop
+                quota = currentClaudeQuota
             } else { quota = prefs.codexAccountEnabled == true ? codexAccount.quota ?? agentUsage.codexQuota : agentUsage.codexQuota }
             guard let quota, let limit = id.hasSuffix("Week") ? quota.week : quota.session else {
-                if id == "claudeSession", let date = agentUsage.claudeDesktop?.quota.date, now.timeIntervalSince(date) >= 300 * 60 {
-                    return AnimationReading(value: L("Lettura scaduta"), title: L("Claude · apri l’app per aggiornare"))
+                if prefs.claudeAccountEnabled != true, id == "claudeSession", let date = agentUsage.claudeDesktop?.quota.date, now.timeIntervalSince(date) >= 300 * 60 {
+                    return AnimationReading(value: L("Lettura scaduta"), title: L("Claude · dati desktop non aggiornati"))
                 }
                 if id.hasPrefix("codex"), prefs.codexAccountEnabled == true {
                     return AnimationReading(value: L(updatingCodexAccount ? "Aggiornamento…" : "Limiti non disponibili"))
@@ -64,7 +62,7 @@ extension Model {
                 return unavailable
             }
             if let reset = limit.reset, reset <= now {
-                return AnimationReading(value: L(id.hasPrefix("codex") && updatingCodexAccount ? "Aggiornamento…" : "Lettura scaduta"))
+                return AnimationReading(value: L((id.hasPrefix("codex") ? updatingCodexAccount : updatingClaudeAccount) ? "Aggiornamento…" : "Lettura scaduta"))
             }
             let text = String(format: "%.0f%%", locale: Localizer.locale, limit.used)
             if now.timeIntervalSince(quota.date) > 1800 { return AnimationReading(value: text + " · " + L("Lettura non recente")) }

@@ -94,6 +94,17 @@ import Foundation
         try check(desktop?.quota.session?.used == 25 && desktop?.quota.week?.used == 62 && desktop?.opus?.used == 40 && desktop?.quota.session?.reset == nil, "Desktop Claude limits or unknown reset incorrect")
         try check(ClaudeDesktopLimits.decode(desktopFixture, now: now.addingTimeInterval(301 * 60))?.quota.session == nil, "Expired desktop session remains visible")
         try check(ClaudeDesktopLimits.decode(Data("{\"version\":99,\"samples\":[]}".utf8)) == nil, "Unknown desktop schema accepted")
+        let usageNow = ISO8601DateFormatter().date(from: "2026-10-13T14:50:00Z")!
+        let usageScreen = "Current session\n39% used\nResets 5:40pm (Europe/Rome)\nCurrent week (all models)\n69% used\nResets Oct 15 at 8am (Europe/Rome)"
+        let nativeQuota = ClaudeAccountReader.parse(usageScreen, now: usageNow)
+        try check(nativeQuota?.session?.used == 39 && nativeQuota?.week?.used == 69 && nativeQuota?.session?.reset == ISO8601DateFormatter().date(from: "2026-10-13T15:40:00Z"), "Native usage percentages or timezone incorrect")
+        try check(ClaudeAccountReader.parse(usageScreen.replacingOccurrences(of: "39% used", with: "Unavailable"), now: usageNow) == nil, "Missing session borrowed the weekly limit")
+        try check(ClaudeAccountReader.parse(usageScreen.replacingOccurrences(of: "39%", with: "139%"), now: usageNow) == nil, "Invalid usage accepted")
+        let expiredDesktop = ClaudeDesktopLimits.decode(desktopFixture, now: now.addingTimeInterval(8 * 86400))
+        try check(expiredDesktop?.quota.date == desktop?.quota.date && expiredDesktop?.quota.session == nil && expiredDesktop?.quota.week == nil, "Expired history loses its last observation or invents current limits")
+        let historyWatchFile = testFolder.appending(path: "history.json")
+        try Data("{}".utf8).write(to: historyWatchFile, options: .atomic)
+        try check(AgentFileWatcher.watchDirectory(for: historyWatchFile.path) == testFolder.path, "History watch uses a file instead of its atomic-write parent")
         let running = try ClaudeActivity.decode(Data("{\"session_id\":\"sample\",\"cwd\":\"/tmp/work\",\"hook_event_name\":\"UserPromptSubmit\"}".utf8), now: now)
         try check(running.displayState(now: now) == "Al lavoro" && running.displayState(now: now.addingTimeInterval(301)) == "Da verificare", "Stale live state remains running")
         let waiting = try ClaudeActivity.decode(Data("{\"session_id\":\"sample\",\"hook_event_name\":\"PermissionRequest\"}".utf8))

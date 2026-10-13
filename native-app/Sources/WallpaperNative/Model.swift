@@ -13,6 +13,7 @@ final class Model {
         if servicesEnabled {
             scheduleSave(); refreshDisplays?()
             if oldValue.agentUsageEnabled != prefs.agentUsageEnabled { configureAgentWatcher(); refreshAgentUsage(force: true) }
+            if oldValue.claudeAccountEnabled != prefs.claudeAccountEnabled { claudeAccount = ClaudeAccountSnapshot(); lastClaudeAccount = .distantPast }
             if oldValue.codexAccountEnabled != prefs.codexAccountEnabled { codexAccount = CodexAccountSnapshot(); lastAccount = .distantPast }
             if oldValue.spotifyEnabled != prefs.spotifyEnabled { spotifyDenied = false; lastSpotify = .distantPast; if prefs.spotifyEnabled != true { spotify = SpotifySnapshot() } }
         }
@@ -27,6 +28,38 @@ final class Model {
     var agentUsage = AgentUsageSnapshot()
     var liveAgents: [AgentLiveState] = []
     var codexAccount = CodexAccountSnapshot()
+    var claudeAccount = ClaudeAccountSnapshot()
+    var updatingClaudeAccount = false
+    private let claudeAccountReader = ClaudeAccountReader()
+    @ObservationIgnored private var claudeAccountTask: Task<Void, Never>?
+    @ObservationIgnored private var lastClaudeAccount = Date.distantPast
+    var currentClaudeQuota: AgentQuota? {
+        let local = agentUsage.claudeSessions.max(by: { $0.date < $1.date })?.quota
+        if prefs.claudeAccountEnabled == true {
+            return [claudeAccount.quota, local].compactMap { $0 }.max(by: { $0.date < $1.date })
+        }
+        return [local, agentUsage.claudeDesktop?.quota].compactMap { $0 }.max(by: { $0.date < $1.date })
+    }
+    func refreshClaudeAccount(force: Bool = false) {
+        let expired = claudeAccount.quota?.session?.reset.map { $0 <= Date() } ?? false
+        let interval: TimeInterval = expired ? 60 : 300
+        guard prefs.agentUsageEnabled == true, prefs.claudeAccountEnabled == true, claudeAccountTask == nil,
+              force || Date().timeIntervalSince(lastClaudeAccount) >= interval else { return }
+        lastClaudeAccount = Date(); updatingClaudeAccount = true
+        claudeAccountTask = Task { [weak self, claudeAccountReader] in
+            let result = await claudeAccountReader.read()
+            guard let self else { return }
+            if self.prefs.agentUsageEnabled == true, self.prefs.claudeAccountEnabled == true {
+                self.claudeAccount = .init(quota: result.quota ?? self.claudeAccount.quota, error: result.error)
+                struct Status: Encodable { var checked: Date; var quota: AgentQuota?; var error: String? }
+                let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+                if let data = try? encoder.encode(Status(checked: Date(), quota: self.claudeAccount.quota, error: result.error)) {
+                    try? data.write(to: Self.preferencesURL.deletingLastPathComponent().appending(path: "claude-limit-status.json"), options: .atomic)
+                }
+            }
+            self.claudeAccountTask = nil; self.updatingClaudeAccount = false
+        }
+    }
     var spotify = SpotifySnapshot()
     private let liveReader = AgentLiveReader()
     private let agentWatcher = AgentFileWatcher()
@@ -217,7 +250,7 @@ final class Model {
         applySample(sample)
         let presence = prefs.appStatusEnabled == true ? AppIntegrations.sample() : []
         if appPresence != presence { appPresence = presence }
-        if prefs.agentUsageEnabled == true { refreshAgentUsage(); refreshLive(); refreshCodexAccount() }
+        if prefs.agentUsageEnabled == true { refreshAgentUsage(); refreshLive(); refreshCodexAccount(); refreshClaudeAccount() }
         refreshSpotify()
     }
     func applySample(_ sample: Metrics) {
@@ -348,6 +381,7 @@ final class Model {
         refreshAgentUsage(force: true)
         refreshLive(force: true)
         refreshCodexAccount(force: true)
+        refreshClaudeAccount(force: true)
     }
     func widgetUnits(_ id: String, axis: String) -> Int {
         if axis == "width" { return prefs.widths[id] ?? (id.hasPrefix("agent") ? 3 : 2) }
@@ -419,6 +453,7 @@ struct Prefs: Codable {
     ]
     var agentPeriod: String? = nil
     var agentDensity: String? = nil
+    var claudeAccountEnabled: Bool? = nil
     var codexAccountEnabled: Bool? = nil
     var codexExecutable: String? = nil
     var spotifyEnabled: Bool? = nil

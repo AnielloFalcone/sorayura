@@ -15,9 +15,7 @@ import CoreServices
                  ClaudeBridge.folder.path, ClaudeActivity.folder.path, ClaudeDesktopLimits.file.path].map { URL(fileURLWithPath: $0).resolvingSymlinksInPath().path }
         // Watch existing ancestors so first installation/new directories are detected too.
         let paths = Set(roots.map { root -> String in
-            var url = URL(fileURLWithPath: root)
-            while !FileManager.default.fileExists(atPath: url.path), url.path != "/" { url.deleteLastPathComponent() }
-            return url.path
+            Self.watchDirectory(for: root)
         })
         var context = FSEventStreamContext(version: 0, info: Unmanaged.passUnretained(self).toOpaque(), retain: nil, release: nil, copyDescription: nil)
         let callback: FSEventStreamCallback = { _, info, count, rawPaths, _, _ in
@@ -32,6 +30,15 @@ import CoreServices
             FSEventStreamSetDispatchQueue(stream, .main)
             if !FSEventStreamStart(stream) { stop() }
         }
+    }
+    static func watchDirectory(for root: String) -> String {
+        var url = URL(fileURLWithPath: root)
+        var directory: ObjCBool = false
+        while !FileManager.default.fileExists(atPath: url.path, isDirectory: &directory), url.path != "/" { url.deleteLastPathComponent() }
+        // FSEvents watches directories. Watching the history file itself misses
+        // replacements written atomically by Claude desktop.
+        if !directory.boolValue { url.deleteLastPathComponent() }
+        return url.path
     }
     private func receive(_ paths: [String]) {
         guard paths.contains(where: { raw in

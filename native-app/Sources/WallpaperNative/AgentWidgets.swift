@@ -18,7 +18,7 @@ struct AgentWidget: View {
                 Text(L("Attiva da Integrazioni")).font(.caption).foregroundStyle(.secondary)
             } else if snapshot.updated == nil {
                 Text(L("Lettura dei contatori locali…")).font(.caption).foregroundStyle(.secondary)
-            } else if snapshot.events.isEmpty && snapshot.claudeSessions.isEmpty && snapshot.claudeDesktop == nil {
+            } else if snapshot.events.isEmpty && snapshot.claudeSessions.isEmpty && snapshot.claudeDesktop == nil && model.claudeAccount.quota == nil && codexQuota == nil {
                 Text(L("Nessun contatore locale disponibile")).font(.caption).foregroundStyle(.secondary)
             } else {
                 switch id {
@@ -112,12 +112,10 @@ struct AgentWidget: View {
         }
     }
     private var claudeQuota: AgentQuota? {
-        let status = snapshot.claudeSessions.max(by: { $0.date < $1.date })?.quota
-        let desktop = snapshot.claudeDesktop?.quota
-        if let desktop, desktop.date > (status?.date ?? .distantPast) { return desktop }
-        return status ?? desktop
+        model.currentClaudeQuota
     }
-    private var usesClaudeDesktop: Bool { claudeQuota?.date == snapshot.claudeDesktop?.quota.date }
+    private var usesClaudeDesktop: Bool { model.prefs.claudeAccountEnabled != true && claudeQuota?.date == snapshot.claudeDesktop?.quota.date }
+
     private func provider(_ name: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -141,7 +139,7 @@ struct AgentWidget: View {
                     quota(L("Sonnet · settimana"), limit: desktop.sonnet, color: color)
                 }
             } else if name == "Claude", claudeQuota != nil {
-                Text(L("Claude Code · status line")).font(.system(size: 8)).foregroundStyle(.secondary)
+                Text(L(model.prefs.claudeAccountEnabled == true ? "Claude Code · account" : "Claude Code · status line")).font(.system(size: 8)).foregroundStyle(.secondary)
             }
         }.padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .topLeading)
     }
