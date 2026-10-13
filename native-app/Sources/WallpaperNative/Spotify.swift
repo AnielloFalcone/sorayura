@@ -62,7 +62,13 @@ struct SpotifyWidget: View {
                         Image(nsImage: image).resizable().scaledToFill().frame(width: 48, height: 48).clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(model.spotify.available ? model.spotify.title : L(model.spotify.title)).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                        if model.spotify.title == "Apri Spotify" {
+                            Button { model.openSpotify() } label: {
+                                Label(L("Apri Spotify"), systemImage: "arrow.up.forward.app")
+                            }.buttonStyle(.plain).foregroundStyle(.tint).font(.system(size: 13, weight: .semibold)).help(L("Apri Spotify"))
+                        } else {
+                            Text(model.spotify.available ? model.spotify.title : L(model.spotify.title)).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                        }
                         Text(model.spotify.artist).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
                         if model.widgetUnits("spotify", axis: "height") > 1 { Text(model.spotify.album).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1) }
                     }

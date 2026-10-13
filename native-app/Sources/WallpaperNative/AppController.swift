@@ -373,7 +373,11 @@ final class AppController: NSObject, NSApplicationDelegate {
                 if widget == "spotify" {
                     hitView.onMusicCommand = { [weak self] command in self?.model.spotifyCommand(command) }
                     hitView.onClick = { [weak self, weak hitView] point in
-                        guard let self, let hitView, point.y >= 16, point.y <= 48, point.x >= 16, point.x <= hitView.bounds.width - 16 else { return }
+                        guard let self, let hitView else { return }
+                        if self.model.prefs.spotifyEnabled == true, self.model.spotify.title == "Apri Spotify", point.y > 48 {
+                            self.model.openSpotify(); return
+                        }
+                        guard point.y >= 16, point.y <= 48, point.x >= 16, point.x <= hitView.bounds.width - 16 else { return }
                         let region = Int((point.x - 16) / max(1, hitView.bounds.width - 32) * 3)
                         self.model.spotifyCommand(["previous track", "playpause", "next track"][min(2, max(0, region))])
                     }

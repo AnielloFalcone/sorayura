@@ -298,5 +298,7 @@
   "Lettura Claude Code non riuscita.": "No se pudieron leer los límites de Claude Code.",
   "Claude Code richiede il login.": "Inicia sesión en Claude Code.",
   "Claude Code non ha restituito i limiti. Riproveremo automaticamente.": "Claude Code no devolvió límites. Se reintentará automáticamente.",
-  "I contatori locali rimangono sul Mac. I collegamenti account Claude e Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.": "Los contadores locales permanecen en el Mac. Las conexiones de cuenta de Claude y Codex y las portadas de Spotify usan la red solo al activarlas. El wallpaper no lee credenciales. El historial no equivale a la factura ni al coste de la suscripción."
+  "I contatori locali rimangono sul Mac. I collegamenti account Claude e Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.": "Los contadores locales permanecen en el Mac. Las conexiones de cuenta de Claude y Codex y las portadas de Spotify usan la red solo al activarlas. El wallpaper no lee credenciales. El historial no equivale a la factura ni al coste de la suscripción.",
+  "Spotify non è installato sul Mac.": "Spotify no está instalado en este Mac.",
+  "Impossibile aprire Spotify.": "No se pudo abrir Spotify."
 }

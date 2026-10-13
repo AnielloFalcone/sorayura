@@ -157,6 +157,19 @@ final class Model {
             self.spotifyTask = nil
         }
     }
+    func openSpotify() {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") else {
+            spotify.error = "Spotify non è installato sul Mac."
+            return
+        }
+        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration()) { [weak self] _, error in
+            Task { @MainActor in
+                guard let self else { return }
+                if error != nil { self.spotify.error = "Impossibile aprire Spotify." }
+                else { self.refreshSpotify(retry: true) }
+            }
+        }
+    }
     func spotifyCommand(_ command: String) {
         guard prefs.spotifyEnabled == true, spotify.available else { return }
         Task { [weak self, spotifyReader] in
