@@ -142,7 +142,9 @@ struct AgentWidget: View {
             } else if name == "Claude", claudeQuota != nil {
                 Text(L("Claude Code · status line")).font(.system(size: 8)).foregroundStyle(.secondary)
             }
-        }.padding(10).frame(maxWidth: .infinity, alignment: .topLeading).wallpaperGlass(cornerRadius: 12)
+        }.padding(10).frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.10), lineWidth: 0.5))
     }
     private func quota(_ title: String, limit: AgentLimit?, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {

@@ -89,6 +89,7 @@ struct ScreenView: View {
             }.frame(width:geometry.size.width,height:geometry.size.height)
                 .coordinateSpace(name: "widgetEditor")
         }.ignoresSafeArea()
+            .modifier(DesktopGlassGroup())
             .environment(\.wallpaperGlassDisabled, model.performanceVariant.disablesGlass)
     }
     private func dimension(_ id:String,_ axis:String) -> CGFloat {
@@ -274,17 +275,12 @@ struct WidgetView: View {
         .scrollIndicators(.hidden)
         .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
         .clipped()
-         .background {
-            if id != "clock" && id != "device" {
-                if model.prefs.widgetTheme == "glass" && !glassDisabled {
-                    if #available(macOS 26, *) { RoundedRectangle(cornerRadius: 18).fill(.clear).glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18)) }
-                    else { RoundedRectangle(cornerRadius: 18).fill(.ultraThinMaterial) }
-                } else {
-                    RoundedRectangle(cornerRadius: 18).fill(Color(red:0.05,green:0.09,blue:0.16).opacity(model.prefs.widgetTheme == "cyber" ? 0.85 : 0.62))
-                }
+        .modifier(DesktopWidgetSurface(theme: model.prefs.widgetTheme ?? "minimal", transparent: id == "clock" || id == "device"))
+        .overlay {
+            if id != "clock" && id != "device" && model.severity(id) != "normal" {
+                RoundedRectangle(cornerRadius: 18).stroke(color.opacity(0.7), lineWidth: 1)
             }
         }
-        .overlay { if id != "clock" && id != "device" { RoundedRectangle(cornerRadius:18).stroke(color.opacity(model.severity(id) == "normal" ? 0.1 : 0.7),lineWidth:1) } }
         .foregroundStyle(.white)
         .contextMenu {
             Button(L("Modifica layout…")) { model.editing = true }

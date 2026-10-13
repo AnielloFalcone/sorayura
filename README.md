@@ -12,7 +12,7 @@ The name evokes a **sky in motion**: a changing space filled with light and shap
 
 Open **native-app/build.noindex/Sorayura.app**. In the menu bar, choose “Widgets and wallpaper…” or “Edit layout…” (Italian: “Widget e sfondo…” / “Modifica layout…”). The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
 
-Building requires Xcode Command Line Tools and macOS 14 or later:
+Building requires full Xcode 26 or later (including the macOS SDK for Liquid Glass); Command Line Tools alone are insufficient. The app targets macOS 14 or later, with older-system material fallbacks. Builds have been verified with Xcode 27 on Apple Silicon:
 
 ```sh
 cd native-app

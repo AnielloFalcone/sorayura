@@ -26,7 +26,8 @@ struct AnimationView: View {
                         scale: model.animationScale(screen), style: model.prefs.animationStyle,
                         frameRate: ThermalPresentation.frames(model.metrics.thermal, lowPower: model.metrics.lowPower,
                                                                adaptive: model.prefs.adaptiveAnimation ?? true),
-                        paused: model.performanceVariant.pausesAnimation)
+                        paused: model.performanceVariant.pausesAnimation,
+                        glass: model.prefs.widgetTheme == "glass" && !model.performanceVariant.disablesGlass)
     }
 
     static func interactionRect(style: String, bounds: CGSize, scale: Double, position: Point, layers: Int, boxes: [String: Int]? = nil) -> CGRect {
@@ -73,12 +74,13 @@ private struct FilamentSurface: NSViewRepresentable {
     let style: String
     let frameRate: Int
     let paused: Bool
+    let glass: Bool
 
     func makeNSView(context: Context) -> FilamentAnimationView { FilamentAnimationView(frame: .zero) }
     func updateNSView(_ view: FilamentAnimationView, context: Context) {
         view.setFrameRate(frameRate)
         view.setRenderingPaused(paused)
-        view.configure(metrics: metrics, position: position, scale: scale, style: style, boxes: boxes)
+        view.configure(metrics: metrics, position: position, scale: scale, style: style, boxes: boxes, glass: glass)
     }
     static func dismantleNSView(_ view: FilamentAnimationView, coordinator: ()) {
         view.stopRendering()
@@ -122,6 +124,8 @@ private final class TransparentMTKView: MTKView {
     override var isOpaque: Bool { false }
 }
 
+private final class FlippedGlassContent: NSView { override var isFlipped: Bool { true } }
+
 final class FilamentAnimationView: NSView, AnimationFrameClient {
     private let renderer = FilamentRenderer()
     private var metalView: MTKView?
@@ -131,6 +135,8 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
     private var metrics: [FilamentMetric] = []
     private var boxes: [FilamentBox] = []
     private var readoutLayers: [CALayer] = []
+    private var glassRoot: NSView?
+    private var usesGlass = false
     private var readouts: [String: CATextLayer] = [:]
     private var names: [String: CATextLayer] = [:]
     private var bars: [String: CALayer] = [:]
@@ -248,7 +254,8 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         guard view.animationFrameActive else { throw SettingsError.invalid("Reattached renderer did not resume") }
     }
 
-    fileprivate func configure(metrics: [FilamentMetric], position: Point, scale: Double, style: String, boxes: [FilamentBox]? = nil) {
+    fileprivate func configure(metrics: [FilamentMetric], position: Point, scale: Double, style: String, boxes: [FilamentBox]? = nil, glass: Bool = false) {
+        self.usesGlass = glass
         self.metrics = metrics
         self.boxes = boxes ?? (metrics.isEmpty ? [] : [FilamentBox(side: "right", entries: metrics)])
         self.position = position
@@ -266,7 +273,7 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
             halo.locations = [0, 0.45, 1]
         }
         arrange()
-        let next = self.boxes.map { box in box.side + ":" + box.entries.map { "\($0.id):\($0.color.hexString):\($0.animated)" }.joined(separator: "|") }.joined(separator: ";") + "\(bounds.size):\(style)"
+        let next = self.boxes.map { box in box.side + ":" + box.entries.map { "\($0.id):\($0.color.hexString):\($0.animated)" }.joined(separator: "|") }.joined(separator: ";") + "\(bounds.size):\(style):\(usesGlass)"
         if signature != next { signature = next; makeReadoutBox() }
         updateReadouts()
     }
@@ -278,6 +285,18 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         view.configure(metrics: [metric], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: boxes)
         guard view.readoutLayers.count == 4, view.names.count == 4, view.bars.count == 4 else { throw SettingsError.invalid("Box sides share or lose row identities") }
         guard view.readoutLayers.allSatisfy({ view.bounds.contains($0.frame) }) else { throw SettingsError.invalid("Box layout exceeds the view") }
+        if #available(macOS 26, *) {
+            view.configure(metrics: [metric], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: boxes, glass: true)
+            guard let container = view.glassRoot as? NSGlassEffectContainerView,
+                  let content = container.contentView, content.subviews.count == 4,
+                  content.subviews.allSatisfy({ ($0 as? NSGlassEffectView)?.contentView != nil && view.bounds.contains($0.frame) }),
+                  view.readoutLayers.allSatisfy({ $0.backgroundColor == nil && $0.borderWidth == 0 }),
+                  view.names.count == 4, view.bars.count == 4 else {
+                throw SettingsError.invalid("Native glass boxes lost content, bounds or retained opaque panels")
+            }
+            view.configure(metrics: [metric], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: boxes, glass: false)
+            guard view.glassRoot == nil else { throw SettingsError.invalid("Glass container survives fallback switch") }
+        }
         let text = FilamentMetric(id: "device", color: .cyan, fraction: 0, displayValue: "Mac", subtitle: nil, animated: false)
         view.configure(metrics: [], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: [FilamentBox(side: "top", entries: [text])])
         guard view.readoutLayers.count == 1, view.bars.isEmpty, view.dataOnly, view.metalView?.isHidden == true else { throw SettingsError.invalid("Text information generated a progress bar or active renderer") }
@@ -302,9 +321,17 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
     private func makeReadoutBox() {
         lastReadoutSize = bounds.size
         readoutLayers.forEach { $0.removeFromSuperlayer() }
+        glassRoot?.removeFromSuperview(); glassRoot = nil
         readoutLayers.removeAll(); readouts.removeAll(); names.removeAll(); bars.removeAll()
         guard let root = layer else { return }
         let visual = AnimationView.visualSize(style: style, bounds: bounds.size, scale: scale)
+        var glassContent: NSView?
+        if usesGlass, #available(macOS 26, *) {
+            let container = NSGlassEffectContainerView(frame: bounds)
+            let content = FlippedGlassContent(frame: bounds)
+            container.contentView = content; container.spacing = 0
+            addSubview(container); glassRoot = container; glassContent = content
+        }
         for data in boxes {
             let geometry = AnimationBoxGeometry.layout(side: data.side, bounds: bounds.size, visual: visual, point: position, count: data.entries.count)
             let box = CALayer()
@@ -313,7 +340,17 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
             box.backgroundColor = NSColor(hex: "#101a2a").withAlphaComponent(0.92).cgColor
             box.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
             box.borderWidth = 1; box.cornerRadius = 13; box.masksToBounds = true
-            root.addSublayer(box); readoutLayers.append(box)
+            if let glassContent, #available(macOS 26, *) {
+                let glass = NSGlassEffectView(frame: geometry.frame)
+                glass.style = .clear; glass.cornerRadius = 13
+                let content = FlippedGlassContent(frame: CGRect(origin: .zero, size: geometry.frame.size))
+                content.wantsLayer = true
+                box.frame = CGRect(origin: .zero, size: geometry.frame.size)
+                box.backgroundColor = nil; box.borderWidth = 0
+                content.layer?.addSublayer(box)
+                glass.contentView = content; glassContent.addSubview(glass)
+            } else { root.addSublayer(box) }
+            readoutLayers.append(box)
             let backingScale = window?.backingScaleFactor ?? 2
             for (index, metric) in data.entries.enumerated() {
                 let key = data.side + ":" + metric.id
