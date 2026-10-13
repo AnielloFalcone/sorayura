@@ -94,6 +94,13 @@ import Foundation
         try check(desktop?.quota.session?.used == 25 && desktop?.quota.week?.used == 62 && desktop?.opus?.used == 40 && desktop?.quota.session?.reset == nil, "Desktop Claude limits or unknown reset incorrect")
         try check(ClaudeDesktopLimits.decode(desktopFixture, now: now.addingTimeInterval(301 * 60))?.quota.session == nil, "Expired desktop session remains visible")
         try check(ClaudeDesktopLimits.decode(Data("{\"version\":99,\"samples\":[]}".utf8)) == nil, "Unknown desktop schema accepted")
+        var predicted=SpotifySnapshot(playing:true,available:true,volume:100)
+        predicted.predict("playpause");predicted.predict("shuffle");predicted.predict("repeat");predicted.predict("volumeUp")
+        try check(!predicted.playing && predicted.shuffle && predicted.repeatEnabled && predicted.volume == 100,"Spotify feedback or volume clamp incorrect")
+        predicted.volume=0;predicted.predict("volumeDown");try check(predicted.volume == 0,"Negative Spotify volume feedback")
+        let centered=SpotifyLayout(size:CGSize(width:600,height:400),expanded:true,shortcuts:0)
+        let buttons=centered.controls.filter {["shuffle","previous track","playpause","next track","repeat"].contains($0.0)}
+        try check((buttons.first!.1.minX+buttons.last!.1.maxX)/2 == 300 && centered.volumeBar?.midY == centered.controls.first(where:{$0.0 == "volumeDown"})?.1.midY,"Spotify transport or volume alignment incorrect")
         let spotifyID = "0123456789ABCDEFGHIJKL"
         try check(SpotifyShortcut.uri("https://open.spotify.com/playlist/" + spotifyID + "?si=example")?.absoluteString == "spotify:playlist:" + spotifyID, "Shared playlist link not normalized")
         try check(SpotifyShortcut.uri("https://open.spotify.com/intl-es/album/" + spotifyID) != nil, "Localized album link rejected")

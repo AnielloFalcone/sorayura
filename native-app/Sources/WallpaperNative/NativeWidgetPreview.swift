@@ -59,6 +59,7 @@ enum NativeWidgetPreview {
                 let folder=URL(fileURLWithPath:directory,isDirectory:true);try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
                 for (name,w,h,mode) in [("expanded",440.0,380.0,"expanded"),("compact",440.0,180.0,"compact"),("small",260.0,180.0,"expanded")] {
                     model.prefs.spotifyDisplay=mode
+                    model.spotifyHover["preview"] = name == "expanded" ? "playpause":nil
                     window.setContentSize(NSSize(width:w+80,height:h+80))
                     let root=ZStack { LinearGradient(colors:[Color(red:0.04,green:0.09,blue:0.20),Color(red:0.20,green:0.29,blue:0.44)],startPoint:.bottomLeading,endPoint:.topTrailing);WidgetView(id:"spotify").environment(model).frame(width:w,height:h) }.frame(width:w+80,height:h+80)
                     window.contentView=NSHostingView(rootView:root);window.center();window.makeKeyAndOrderFront(nil);app.activate(ignoringOtherApps:true)

@@ -35,8 +35,9 @@ struct WallpaperNative {
         if CommandLine.arguments.contains("--check-spotify") {
             let running=NSRunningApplication.runningApplications(withBundleIdentifier:"com.spotify.client").contains {!$0.isTerminated}
             Task.detached {
-                let result=await SpotifyReader().read(running:running)
-                if result.available { print("Spotify read passed: volume=\(result.volume), shuffle=\(result.shuffle), repeat=\(result.repeatEnabled)");exit(0) }
+                let start=Date()
+                let result=await SpotifyReader().read(running:running,includeArtwork:false)
+                if result.available { print("Spotify read passed in \(Int(Date().timeIntervalSince(start)*1000)) ms: volume=\(result.volume), shuffle=\(result.shuffle), repeat=\(result.repeatEnabled)");exit(0) }
                 print("Spotify read unavailable: \(result.error ?? result.title)");exit(1)
             }
             dispatchMain()
@@ -386,6 +387,16 @@ final class AppController: NSObject, NSApplicationDelegate {
                     self.model.setContent(screen, content)
                 }
                 if widget == "spotify" {
+                    window.acceptsMouseMovedEvents=true
+                    hitView.onHover = { [weak self, weak hitView] point in
+                        guard let self,let hitView else { return }
+                        let key=self.model.displayKey(screen)
+                        let layout=SpotifyLayout(size:CGSize(width:max(1,hitView.bounds.width-32),height:max(1,hitView.bounds.height-32)),expanded:self.model.prefs.spotifyDisplay == "expanded",shortcuts:min(6,self.model.prefs.spotifyShortcuts?.count ?? 0))
+                        let action=point.flatMap { p in layout.controls.first { item in
+                            (item.0 == "open" || item.0.hasPrefix("shortcut:") || self.model.spotify.available) && item.1.contains(CGPoint(x:p.x-16,y:hitView.bounds.height-p.y-16))
+                        }?.0 }
+                        if self.model.spotifyHover[key] != action { self.model.spotifyHover[key]=action }
+                    }
                     hitView.onMusicCommand = { [weak self] command in self?.model.spotifyAction(command) }
                     hitView.onClick = { [weak self, weak hitView] point in
                         guard let self, let hitView else { return }
@@ -472,6 +483,19 @@ final class LongPressView: NSView {
     var onRemove: (() -> Void)?
     var onClick: ((CGPoint) -> Void)?
     var onMusicCommand: ((String) -> Void)?
+    var onHover: ((CGPoint?) -> Void)? { didSet { updateTrackingAreas() } }
+    private var hoverArea:NSTrackingArea?
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea);self.hoverArea=nil }
+        if onHover != nil {
+            let area=NSTrackingArea(rect:.zero,options:[.activeAlways,.inVisibleRect,.mouseMoved,.mouseEnteredAndExited],owner:self,userInfo:nil)
+            addTrackingArea(area);hoverArea=area
+        }
+    }
+    override func mouseMoved(with event:NSEvent) { onHover?(convert(event.locationInWindow,from:nil)) }
+    override func mouseEntered(with event:NSEvent) { mouseMoved(with:event) }
+    override func mouseExited(with event:NSEvent) { onHover?(nil) }
     var onDragStart: (() -> Void)?
     var onDragEnd: (() -> Void)?
     var onDrag: ((CGPoint) -> Void)?

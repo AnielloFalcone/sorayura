@@ -15,7 +15,7 @@ final class Model {
             if oldValue.agentUsageEnabled != prefs.agentUsageEnabled { configureAgentWatcher(); refreshAgentUsage(force: true) }
             if oldValue.claudeAccountEnabled != prefs.claudeAccountEnabled { claudeAccount = ClaudeAccountSnapshot(); lastClaudeAccount = .distantPast }
             if oldValue.codexAccountEnabled != prefs.codexAccountEnabled { codexAccount = CodexAccountSnapshot(); lastAccount = .distantPast }
-            if oldValue.spotifyEnabled != prefs.spotifyEnabled { spotifyDenied = false; lastSpotify = .distantPast; if prefs.spotifyEnabled != true { spotify = SpotifySnapshot() } }
+            if oldValue.spotifyEnabled != prefs.spotifyEnabled { configureSpotifyObserver(); spotifyDenied = false; lastSpotify = .distantPast; if prefs.spotifyEnabled != true { spotify = SpotifySnapshot() } }
         }
     } }
     var savedPresets: [SavedPreset] = []
@@ -61,6 +61,24 @@ final class Model {
         }
     }
     var spotify = SpotifySnapshot()
+    var spotifyHover: [String:String] = [:]
+    @ObservationIgnored private var spotifyObserver: NSObjectProtocol?
+    @ObservationIgnored private var spotifyRevision = 0
+    @ObservationIgnored private var spotifyCommandsPending = 0
+    @ObservationIgnored private var spotifyDirty = false
+    private func configureSpotifyObserver() {
+        if let spotifyObserver { DistributedNotificationCenter.default().removeObserver(spotifyObserver); self.spotifyObserver=nil }
+        guard prefs.spotifyEnabled == true else { return }
+        spotifyObserver=DistributedNotificationCenter.default().addObserver(forName:Notification.Name("com.spotify.client.PlaybackStateChanged"),object:nil,queue:.main) { [weak self] note in
+            let state=note.userInfo?["Player State"] as? String
+            Task { @MainActor in
+                guard let self,self.prefs.spotifyEnabled == true else { return }
+                self.spotifyRevision += 1
+                if self.spotifyCommandsPending == 0, self.spotify.available, let state, ["Playing","Paused","Stopped"].contains(state) { self.spotify.playing = state == "Playing" }
+                self.refreshSpotify(force:true)
+            }
+        }
+    }
     private let liveReader = AgentLiveReader()
     private let agentWatcher = AgentFileWatcher()
     @ObservationIgnored private var usageDirty = false
@@ -84,6 +102,7 @@ final class Model {
     var updatingCounters = false
     var updatingCodexAccount = false
     @ObservationIgnored private var spotifyTask: Task<Void, Never>?
+    @ObservationIgnored private var spotifyArtworkTask: Task<Void, Never>?
     @ObservationIgnored private var lastLive = Date.distantPast
     @ObservationIgnored private var lastAccount = Date.distantPast
     @ObservationIgnored private var lastSpotify = Date.distantPast
@@ -142,19 +161,33 @@ final class Model {
             self.liveTask = nil
         }
     }
-    func refreshSpotify(retry: Bool = false) {
+    func refreshSpotify(retry: Bool = false, force:Bool = false) {
         if retry { spotifyDenied = false; lastSpotify = .distantPast }
-        guard prefs.spotifyEnabled == true, !spotifyDenied, spotifyTask == nil, Date().timeIntervalSince(lastSpotify) > 3 else { return }
+        guard prefs.spotifyEnabled == true, !spotifyDenied else { return }
+        if spotifyTask != nil { if force || retry { spotifyDirty=true }; return }
+        guard force || retry || Date().timeIntervalSince(lastSpotify)>3 else { return }
+        spotifyDirty=false
+        let revision=spotifyRevision
         lastSpotify = Date()
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").contains { !$0.isTerminated }
         spotifyTask = Task { [weak self, spotifyReader] in
-            let value = await spotifyReader.read(running: running)
+            let value = await spotifyReader.read(running: running, includeArtwork:false)
             guard let self else { return }
-            if self.prefs.spotifyEnabled == true {
+            if self.prefs.spotifyEnabled == true, revision == self.spotifyRevision, self.spotifyCommandsPending == 0 {
                 if self.spotify != value { self.spotify = value }
                 self.spotifyDenied = value.denied
             }
+            if value.available, value.artwork == nil, self.spotifyArtworkTask == nil, self.prefs.spotifyEnabled == true, revision == self.spotifyRevision {
+                self.spotifyArtworkTask=Task { [weak self,spotifyReader] in
+                    let complete=await spotifyReader.read(running:running)
+                    guard let self else { return }
+                    if self.prefs.spotifyEnabled == true, self.spotify.trackID == complete.trackID, self.spotify.title == complete.title { self.spotify.artwork=complete.artwork }
+                    self.spotifyArtworkTask=nil
+                    if revision != self.spotifyRevision { self.refreshSpotify(force:true) }
+                }
+            }
             self.spotifyTask = nil
+            if self.spotifyDirty { self.refreshSpotify(force:true) }
         }
     }
     func openSpotify() {
@@ -184,9 +217,14 @@ final class Model {
     func spotifyCommand(_ command: String) {
         guard servicesEnabled else { return }
         guard prefs.spotifyEnabled == true, spotify.available else { return }
+        spotifyRevision += 1
+        spotify.predict(command)
+        spotifyCommandsPending += 1
         Task { [weak self, spotifyReader] in
-            do { try await spotifyReader.command(command); self?.lastSpotify = .distantPast; self?.refreshSpotify() }
+            do { try await spotifyReader.command(command) }
             catch { self?.spotify.error = "Spotify non ha accettato il comando." }
+            self?.spotifyCommandsPending -= 1
+            self?.refreshSpotify(force:true)
         }
     }
     private let usageReader = AgentUsageReader()
@@ -249,6 +287,7 @@ final class Model {
         if let data = try? Data(contentsOf: Self.presetsURL), let saved = try? JSONDecoder().decode([SavedPreset].self, from: data) { savedPresets = saved }
         migrateDisplays()
         configureAgentWatcher()
+        configureSpotifyObserver()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in Task { @MainActor in self?.tick() } }
         tick()
     }

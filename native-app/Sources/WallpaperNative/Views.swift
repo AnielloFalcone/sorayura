@@ -216,7 +216,7 @@ struct WidgetView: View {
         Group {
         if id == "spotify" {
             VStack(spacing:8) {
-                SpotifyWidget().environment(model)
+                SpotifyWidget(interactionID:screen.map { model.displayKey($0) } ?? "preview").environment(model)
                 if model.editing {
                     HStack {
                         ForEach(["width", "height"], id: \.self) { axis in
