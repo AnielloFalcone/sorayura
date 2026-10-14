@@ -128,6 +128,9 @@ import Foundation
         }
         let usageNow = ISO8601DateFormatter().date(from: "2026-10-13T14:50:00Z")!
         let usageScreen = "Current session\n39% used\nResets 5:40pm (Europe/Rome)\nCurrent week (all models)\n69% used\nResets Oct 15 at 8am (Europe/Rome)"
+        let terminalUsage = "\u{1b}[2J\u{1b}[H" + usageScreen.replacingOccurrences(of: "\n", with: "\r\n")
+        let renderedUsage = UsageTerminal.render(terminalUsage)
+        try check(ClaudeAccountReader.parse(renderedUsage, now: usageNow)?.session?.used == 39, "CRLF terminal output loses Claude usage rows")
         let nativeQuota = ClaudeAccountReader.parse(usageScreen, now: usageNow)
         try check(nativeQuota?.session?.used == 39 && nativeQuota?.week?.used == 69 && nativeQuota?.session?.reset == ISO8601DateFormatter().date(from: "2026-10-13T15:40:00Z"), "Native usage percentages or timezone incorrect")
         try check(ClaudeAccountReader.parse(usageScreen.replacingOccurrences(of: "39% used", with: "Unavailable"), now: usageNow) == nil, "Missing session borrowed the weekly limit")

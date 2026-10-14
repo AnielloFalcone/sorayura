@@ -119,10 +119,12 @@ actor ClaudeAccountReader {
 
 /// Reconstruct a bounded terminal screen; cursor updates must not turn fragments
 /// from different redraws into a fabricated quota reading. Raw output is not saved.
-private enum UsageTerminal {
+enum UsageTerminal {
     static func render(_ raw: String) -> String {
         var cells = Array(repeating: Array(repeating: Character(" "), count: 160), count: 80)
-        let chars = Array(raw); var i = 0, row = 0, col = 0
+        // Swift groups CRLF into one Character; terminals execute both controls.
+        let chars = raw.flatMap { $0 == "\r\n" ? [Character("\r"), Character("\n")] : [$0] }
+        var i = 0, row = 0, col = 0
         while i < chars.count {
             let c = chars[i]; i += 1
             if c == "\u{1b}" {
