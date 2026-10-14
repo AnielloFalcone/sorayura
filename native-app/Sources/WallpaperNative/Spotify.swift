@@ -25,6 +25,17 @@ struct SpotifySnapshot: Sendable, Equatable {
         }
     }
 }
+/// Keep the requested state stable while Spotify acknowledges a transport change.
+/// Late notifications are refresh triggers, never a competing UI state source.
+struct SpotifyPlaybackIntent {
+    var playing:Bool
+    var trackID:String
+    var deadline:Date
+    func reconcile(_ sample:SpotifySnapshot, now:Date = Date())->Bool {
+        guard sample.available, sample.trackID == trackID, now < deadline else { return sample.playing }
+        return playing
+    }
+}
 actor SpotifyReader {
     private var artworkURL = ""
     private var artwork: Data?
@@ -65,7 +76,7 @@ actor SpotifyReader {
     func command(_ name: String) throws {
         let source: String
         switch name {
-        case "playpause", "previous track", "next track": source = name
+        case "playpause", "play", "pause", "previous track", "next track": source = name
         case "shuffle": source = "set shuffling to not shuffling"
         case "repeat": source = "set repeating to not repeating"
         case "volumeDown": source = "set v to sound volume\nif v < 10 then\nset sound volume to 0\nelse\nset sound volume to (v - 10)\nend if"

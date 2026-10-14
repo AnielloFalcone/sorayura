@@ -65,16 +65,17 @@ final class Model {
     @ObservationIgnored private var spotifyObserver: NSObjectProtocol?
     @ObservationIgnored private var spotifyRevision = 0
     @ObservationIgnored private var spotifyCommandsPending = 0
+    @ObservationIgnored private var spotifyPlaybackIntent:SpotifyPlaybackIntent?
+    @ObservationIgnored private var spotifySettleTask:Task<Void,Never>?
+    @ObservationIgnored private var spotifyPlaybackSerial=0
     @ObservationIgnored private var spotifyDirty = false
     private func configureSpotifyObserver() {
         if let spotifyObserver { DistributedNotificationCenter.default().removeObserver(spotifyObserver); self.spotifyObserver=nil }
         guard prefs.spotifyEnabled == true else { return }
         spotifyObserver=DistributedNotificationCenter.default().addObserver(forName:Notification.Name("com.spotify.client.PlaybackStateChanged"),object:nil,queue:.main) { [weak self] note in
-            let state=note.userInfo?["Player State"] as? String
             Task { @MainActor in
                 guard let self,self.prefs.spotifyEnabled == true else { return }
                 self.spotifyRevision += 1
-                if self.spotifyCommandsPending == 0, self.spotify.available, let state, ["Playing","Paused","Stopped"].contains(state) { self.spotify.playing = state == "Playing" }
                 self.refreshSpotify(force:true)
             }
         }
@@ -171,9 +172,13 @@ final class Model {
         lastSpotify = Date()
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").contains { !$0.isTerminated }
         spotifyTask = Task { [weak self, spotifyReader] in
-            let value = await spotifyReader.read(running: running, includeArtwork:false)
+            var value = await spotifyReader.read(running: running, includeArtwork:false)
             guard let self else { return }
             if self.prefs.spotifyEnabled == true, revision == self.spotifyRevision, self.spotifyCommandsPending == 0 {
+                if let intent=self.spotifyPlaybackIntent {
+                    value.playing=intent.reconcile(value)
+                    if Date() >= intent.deadline || value.trackID != intent.trackID || !value.available { self.spotifyPlaybackIntent=nil }
+                }
                 if self.spotify != value { self.spotify = value }
                 self.spotifyDenied = value.denied
             }
@@ -219,12 +224,32 @@ final class Model {
         guard prefs.spotifyEnabled == true, spotify.available else { return }
         spotifyRevision += 1
         spotify.predict(command)
+        let delivered = command == "playpause" ? (spotify.playing ? "play":"pause") : command
+        if command == "playpause" {
+            spotifyPlaybackSerial += 1
+            spotifyPlaybackIntent=SpotifyPlaybackIntent(playing:spotify.playing,trackID:spotify.trackID,deadline:Date().addingTimeInterval(1.5))
+            spotifySettleTask?.cancel()
+        }
+        let serial=spotifyPlaybackSerial
         spotifyCommandsPending += 1
         Task { [weak self, spotifyReader] in
-            do { try await spotifyReader.command(command) }
-            catch { self?.spotify.error = "Spotify non ha accettato il comando." }
+            do { try await spotifyReader.command(delivered) }
+            catch {
+                if command == "playpause", self?.spotifyPlaybackSerial == serial { self?.spotifyPlaybackIntent=nil }
+                self?.spotify.error = "Spotify non ha accettato il comando."
+            }
             self?.spotifyCommandsPending -= 1
             self?.refreshSpotify(force:true)
+            if command == "playpause", let self, self.spotifyPlaybackSerial == serial {
+                self.spotifySettleTask=Task { [weak self] in
+                    do {
+                        try await Task.sleep(for:.milliseconds(150))
+                        self?.refreshSpotify(force:true)
+                        try await Task.sleep(for:.milliseconds(1400))
+                        self?.refreshSpotify(force:true)
+                    } catch { }
+                }
+            }
         }
     }
     private let usageReader = AgentUsageReader()

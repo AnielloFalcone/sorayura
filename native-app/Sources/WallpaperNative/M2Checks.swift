@@ -98,6 +98,15 @@ import Foundation
         predicted.predict("playpause");predicted.predict("shuffle");predicted.predict("repeat");predicted.predict("volumeUp")
         try check(!predicted.playing && predicted.shuffle && predicted.repeatEnabled && predicted.volume == 100,"Spotify feedback or volume clamp incorrect")
         predicted.volume=0;predicted.predict("volumeDown");try check(predicted.volume == 0,"Negative Spotify volume feedback")
+        let transitionTime=Date()
+        let pauseIntent=SpotifyPlaybackIntent(playing:false,trackID:"track",deadline:transitionTime.addingTimeInterval(1.5))
+        for playing in [true,false,true,false] {
+            let delayed=SpotifySnapshot(playing:playing,available:true,trackID:"track")
+            try check(!pauseIntent.reconcile(delayed,now:transitionTime.addingTimeInterval(0.2)),"Late playback sample reverses pause feedback")
+        }
+        let resumed=SpotifySnapshot(playing:true,available:true,trackID:"track")
+        try check(pauseIntent.reconcile(resumed,now:transitionTime.addingTimeInterval(2)),"Playback intent hides later external changes")
+        try check(pauseIntent.reconcile(SpotifySnapshot(playing:true,available:true,trackID:"new"),now:transitionTime),"Playback intent overrides a different track")
         let centered=SpotifyLayout(size:CGSize(width:600,height:400),expanded:true,shortcuts:0)
         let buttons=centered.controls.filter {["shuffle","previous track","playpause","next track","repeat"].contains($0.0)}
         try check((buttons.first!.1.minX+buttons.last!.1.maxX)/2 == 300 && centered.volumeBar?.midY == centered.controls.first(where:{$0.0 == "volumeDown"})?.1.midY,"Spotify transport or volume alignment incorrect")
