@@ -13,6 +13,7 @@ final class Model {
         if servicesEnabled {
             scheduleSave(); refreshDisplays?()
             if oldValue.agentUsageEnabled != prefs.agentUsageEnabled { configureAgentWatcher(); refreshAgentUsage(force: true) }
+            if oldValue.claudeControlEnabled != prefs.claudeControlEnabled { claudeAccount = ClaudeAccountSnapshot(); lastClaudeAccount = .distantPast }
             if oldValue.codexAccountEnabled != prefs.codexAccountEnabled { codexAccount = CodexAccountSnapshot(); lastAccount = .distantPast }
             if oldValue.spotifyEnabled != prefs.spotifyEnabled { configureSpotifyObserver(); spotifyDenied = false; lastSpotify = .distantPast; if prefs.spotifyEnabled != true { spotify = SpotifySnapshot() } }
         }
@@ -27,8 +28,31 @@ final class Model {
     var agentUsage = AgentUsageSnapshot()
     var liveAgents: [AgentLiveState] = []
     var codexAccount = CodexAccountSnapshot()
+    var claudeAccount = ClaudeAccountSnapshot()
+    private let claudeReader = ClaudeAccountReader()
+    @ObservationIgnored private var claudeTask: Task<Void, Never>?
+    @ObservationIgnored private var lastClaudeAccount = Date.distantPast
+    func refreshClaudeAccount(force: Bool = false) {
+        guard servicesEnabled, prefs.agentUsageEnabled == true, prefs.claudeControlEnabled == true,
+              claudeTask == nil, force || Date().timeIntervalSince(lastClaudeAccount) >= 300 else { return }
+        lastClaudeAccount = Date()
+        claudeTask = Task { [weak self, claudeReader] in
+            let result = await claudeReader.read()
+            guard let self else { return }
+            if self.prefs.agentUsageEnabled == true, self.prefs.claudeControlEnabled == true {
+                self.claudeAccount = .init(quota: result.quota ?? self.claudeAccount.quota, error: result.error)
+                struct Status: Encodable { var checked: Date; var quota: AgentQuota?; var error: String? }
+                let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+                if let data = try? encoder.encode(Status(checked: Date(), quota: self.claudeAccount.quota, error: result.error)) {
+                    try? data.write(to: Self.preferencesURL.deletingLastPathComponent().appending(path: "claude-limit-status.json"), options: .atomic)
+                }
+            }
+            self.claudeTask = nil
+        }
+    }
     var currentClaudeQuota: AgentQuota? {
         let local = agentUsage.claudeSessions.max(by: { $0.date < $1.date })?.quota
+        if prefs.claudeControlEnabled == true { return [claudeAccount.quota, local].compactMap { $0 }.max(by: { $0.date < $1.date }) }
         return [local, agentUsage.claudeDesktop?.quota].compactMap { $0 }.max(by: { $0.date < $1.date })
     }
     var spotify = SpotifySnapshot()
@@ -310,7 +334,7 @@ final class Model {
         applySample(sample)
         let presence = prefs.appStatusEnabled == true ? AppIntegrations.sample() : []
         if appPresence != presence { appPresence = presence }
-        if prefs.agentUsageEnabled == true { refreshAgentUsage(); refreshLive(); refreshCodexAccount() }
+        if prefs.agentUsageEnabled == true { refreshAgentUsage(); refreshLive(); refreshCodexAccount(); refreshClaudeAccount() }
         refreshSpotify()
     }
     func applySample(_ sample: Metrics) {
@@ -441,6 +465,7 @@ final class Model {
         refreshAgentUsage(force: true)
         refreshLive(force: true)
         refreshCodexAccount(force: true)
+        refreshClaudeAccount(force: true)
     }
     func widgetUnits(_ id: String, axis: String) -> Int {
         if axis == "width" { return prefs.widths[id] ?? (id.hasPrefix("agent") ? 3 : 2) }
@@ -512,6 +537,7 @@ struct Prefs: Codable {
     ]
     var agentPeriod: String? = nil
     var agentDensity: String? = nil
+    var claudeControlEnabled: Bool? = nil
     var codexAccountEnabled: Bool? = nil
     var codexExecutable: String? = nil
     var spotifyEnabled: Bool? = nil

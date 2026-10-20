@@ -298,7 +298,6 @@
   "Lettura Claude Code non riuscita.": "No se pudieron leer los límites de Claude Code.",
   "Claude Code richiede il login.": "Inicia sesión en Claude Code.",
   "Claude Code non ha restituito i limiti. Riproveremo automaticamente.": "Claude Code no devolvió límites. Se reintentará automáticamente.",
-  "I contatori locali rimangono sul Mac. Il collegamento account Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.": "Los contadores locales permanecen en el Mac. La conexión de cuenta de Codex y las portadas de Spotify usan la red solo al activarlas. El wallpaper no lee credenciales. El historial no equivale a la factura ni al coste de la suscripción.",
   "Spotify non è installato sul Mac.": "Spotify no está instalado en este Mac.",
   "Impossibile aprire Spotify.": "No se pudo abrir Spotify.",
   "Riproduzione casuale": "Reproducción aleatoria",
@@ -312,5 +311,9 @@
   "La modalità estesa mostra copertina, shuffle, ripetizione, volume e preferiti. Nei widget piccoli passa automaticamente alla vista compatta. Consigliata una dimensione di almeno 360 × 360 punti.": "El modo ampliado muestra portada, reproducción aleatoria, repetición, volumen y favoritos. Los widgets pequeños usan automáticamente el modo compacto. Tamaño recomendado: al menos 360 × 360 puntos.",
   "Fino a 6 scorciatoie. Incolla il link condiviso di una playlist, un album o un brano. Il pulsante apre il contenuto in Spotify; non avvia automaticamente la riproduzione.": "Hasta 6 atajos. Pega el enlace compartido de una playlist, álbum o canción. El botón abre el contenido en Spotify; no inicia la reproducción automáticamente.",
   "Dettaglio Spotify non valido.": "Modo de detalle de Spotify no válido.",
-  "Preferiti Spotify non validi.": "Favoritos de Spotify no válidos."
+  "Preferiti Spotify non validi.": "Favoritos de Spotify no válidos.",
+  "Aggiorna Claude Code e verifica il login per leggere i limiti.": "Actualiza Claude Code y comprueba tu inicio de sesión para leer los límites.",
+  "Claude non ha restituito limiti aggiornati. Riproveremo automaticamente.": "Claude no devolvió límites actualizados. Se reintentará automáticamente.",
+  "I contatori locali rimangono sul Mac. I collegamenti account Claude e Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.": "Los contadores locales permanecen en el Mac. Las conexiones de cuenta de Claude y Codex y las portadas de Spotify usan la red solo al activarlas. El wallpaper no lee credenciales. El historial no equivale a la factura ni al coste de la suscripción.",
+  "Legge i limiti dell’account ogni 5 minuti tramite il protocollo di controllo di Claude Code, senza prompt e con salvataggio delle sessioni disabilitato. Richiede il login in Claude Code.": "Lee los límites de la cuenta cada 5 minutos mediante el protocolo de control de Claude Code, sin prompts y sin guardar sesiones. Requiere iniciar sesión en Claude Code."
 }

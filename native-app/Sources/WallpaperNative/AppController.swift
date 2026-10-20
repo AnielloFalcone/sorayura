@@ -42,6 +42,15 @@ struct WallpaperNative {
             }
             dispatchMain()
         }
+        if CommandLine.arguments.contains("--check-claude-control") {
+            Task.detached {
+                let result = await ClaudeAccountReader().read()
+                guard let quota = result.quota else { fputs("Claude control check failed: \(result.error ?? "missing quota")\n", stderr); exit(1) }
+                print("Claude control check passed: session=\(quota.session?.used.description ?? "unavailable"), week=\(quota.week?.used.description ?? "unavailable")")
+                exit(0)
+            }
+            dispatchMain()
+        }
         if CommandLine.arguments.contains("--check-codex-account") {
             Task.detached {
                 let result = await CodexAccountReader().read(executable: CodexAccountReader.defaultExecutable, threads: [])

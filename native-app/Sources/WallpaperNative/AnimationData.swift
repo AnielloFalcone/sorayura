@@ -53,7 +53,7 @@ extension Model {
                 quota = currentClaudeQuota
             } else { quota = prefs.codexAccountEnabled == true ? codexAccount.quota ?? agentUsage.codexQuota : agentUsage.codexQuota }
             guard let quota, let limit = id.hasSuffix("Week") ? quota.week : quota.session else {
-                if id == "claudeSession", let date = agentUsage.claudeDesktop?.quota.date, now.timeIntervalSince(date) >= 300 * 60 {
+                if prefs.claudeControlEnabled != true, id == "claudeSession", let date = agentUsage.claudeDesktop?.quota.date, now.timeIntervalSince(date) >= 300 * 60 {
                     return AnimationReading(value: L("Lettura scaduta"), title: L("Claude · dati desktop non aggiornati"))
                 }
                 if id.hasPrefix("codex"), prefs.codexAccountEnabled == true {

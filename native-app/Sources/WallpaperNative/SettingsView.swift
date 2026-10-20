@@ -205,13 +205,16 @@ struct SettingsView: View {
             panel(L("AI Agents")) {
                 Toggle(L("Leggi utilizzo locale di Codex e Claude Code"), isOn: Binding(get: { model.prefs.agentUsageEnabled ?? false }, set: { model.prefs.agentUsageEnabled = $0; model.refreshAgentUsage(force: true) }))
                 Text(L("Token, cache, modelli, progetti e attività dai contatori delle sessioni locali. Aggiornamento automatico quando cambiano i registri, con eventi raggruppati entro circa 2 secondi; controllo di sicurezza ogni 30 secondi. I limiti Codex riportano la data dell'ultimo dato registrato; Claude può fornire limiti tramite la status line o il file locale dell’app desktop. La fonte più recente viene indicata: l’account desktop può essere diverso da Claude Code.")).font(.caption).foregroundStyle(.secondary)
-                Text(L("I contatori locali rimangono sul Mac. Il collegamento account Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.")).font(.caption).foregroundStyle(.secondary)
+                Text(L("I contatori locali rimangono sul Mac. I collegamenti account Claude e Codex e le copertine Spotify usano la rete solo se abiliti quelle integrazioni. Nessuna credenziale viene letta dal wallpaper. Lo storico non equivale alla fattura o al costo dell'abbonamento.")).font(.caption).foregroundStyle(.secondary)
                 Picker(L("Periodo grafici"), selection: Binding(get: { model.prefs.agentPeriod ?? "all" }, set: { model.prefs.agentPeriod = $0 })) {
                     Text(L("Oggi")).tag("today"); Text(L("7 giorni")).tag("week"); Text(L("30 giorni")).tag("month"); Text(L("Storico")).tag("all")
                 }.pickerStyle(.segmented)
                 Picker(L("Dettaglio AI"), selection: Binding(get: { model.prefs.agentDensity ?? "compact" }, set: { model.prefs.agentDensity = $0 })) {
                     Text(L("Compatto · 3 righe")).tag("compact"); Text(L("Esteso · 6 righe")).tag("expanded")
                 }
+                Toggle(L("Aggiorna limiti Claude tramite Claude Code"), isOn: Binding(get: { model.prefs.claudeControlEnabled ?? false }, set: { model.prefs.claudeControlEnabled = $0; model.refreshClaudeAccount(force: true) }))
+                Text(L("Legge i limiti dell’account ogni 5 minuti tramite il protocollo di controllo di Claude Code, senza prompt e con salvataggio delle sessioni disabilitato. Richiede il login in Claude Code.")).font(.caption).foregroundStyle(.secondary)
+                if let error = model.claudeAccount.error { Text(error).font(.caption).foregroundStyle(.orange) }
                 Toggle(L("Aggiorna limiti e stime Codex dall'account"), isOn: Binding(get: { model.prefs.codexAccountEnabled ?? false }, set: { model.prefs.codexAccountEnabled = $0; model.refreshCodexAccount(force: true) }))
                 Text(L("Usa Codex CLI e il suo login esistente; aggiorna ogni 5 minuti, ogni minuto se la lettura è scaduta o assente. I limiti vengono mostrati prima delle stime delle chat. Nessuna conversazione viene avviata.")).font(.caption).foregroundStyle(.secondary)
                 Button(L("Scegli Codex CLI…")) {
@@ -235,7 +238,7 @@ struct SettingsView: View {
                     }.disabled(model.prefs.agentUsageEnabled != true && !claudeBridgeInstalled)
                 }
                 Text(L("Il collegamento aggiorna la status line di Claude Code e preserva quella esistente. Fornisce limiti e valore API quando Claude li rende disponibili. Apri una nuova sessione dopo il collegamento.")).font(.caption).foregroundStyle(.secondary)
-                if let desktop = model.agentUsage.claudeDesktop, Date().timeIntervalSince(desktop.quota.date) > 1800 {
+                if model.prefs.claudeControlEnabled != true, let desktop = model.agentUsage.claudeDesktop, Date().timeIntervalSince(desktop.quota.date) > 1800 {
                     Text(LF("Claude desktop: ultimo dato locale \(desktop.quota.date.localizedFormatted(date: .abbreviated, time: .shortened))")).font(.caption).foregroundStyle(.orange)
                     Text(L("Claude può sospendere il salvataggio dei limiti dopo 24 ore senza aprire il suo menu nella barra. Il refresh della finestra principale non aggiorna necessariamente questo file. Sorayura rileva automaticamente ogni nuovo salvataggio; la status line di Claude Code fornisce una seconda fonte quando il client è autenticato e in uso.")).font(.caption).foregroundStyle(.secondary)
                 }

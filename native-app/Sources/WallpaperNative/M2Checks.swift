@@ -131,6 +131,16 @@ import Foundation
         let legacyClaudePreferences = try JSONDecoder().decode(Prefs.self, from: JSONSerialization.data(withJSONObject: legacyClaudeJSON))
         let encodedPreferences = try JSONSerialization.jsonObject(with: JSONEncoder().encode(legacyClaudePreferences)) as! [String: Any]
         try check(encodedPreferences["claudeAccountEnabled"] == nil, "Removed Claude CLI polling survives settings migration")
+        try check(ClaudeAccountReader.isRecent(now.addingTimeInterval(-180), now: now), "Valid Claude cache timestamp rejected during its write throttle")
+        try check(!ClaudeAccountReader.isRecent(now.addingTimeInterval(-600), now: now) && !ClaudeAccountReader.isRecent(now.addingTimeInterval(60), now: now), "Stale or future Claude timestamp accepted")
+        let controlResult: [String: Any] = ["rate_limits_available":true, "rate_limits":["five_hour":["utilization":28, "resets_at":NSNull()], "seven_day":["utilization":64, "resets_at":"2099-01-01T00:00:00.123456+00:00"]]]
+        let controlQuota = ClaudeAccountReader.quota(controlResult, observed: now)
+        try check(controlQuota?.session?.used == 28 && controlQuota?.session?.reset == nil && controlQuota?.week?.used == 64, "Structured Claude quota parsing failed")
+        for invalid: Any in [true, -1, 101, Double.infinity, "25"] {
+            try check(ClaudeAccountReader.quota(["rate_limits_available":true,"rate_limits":["five_hour":["utilization":invalid]]], observed:now) == nil, "Invalid Claude percentage accepted")
+        }
+        try check(ClaudeAccountReader.quota(["rate_limits_available":true,"rate_limits":["five_hour":["utilization":10,"resets_at":"2000-01-01T00:00:00Z"]]], observed:now) == nil, "Expired Claude limit accepted")
+        try check(ClaudeAccountReader.arguments.contains("--no-session-persistence") && ClaudeAccountReader.arguments.contains("--print"), "Claude quota reader could save an interactive session")
         let expiredDesktop = ClaudeDesktopLimits.decode(desktopFixture, now: now.addingTimeInterval(8 * 86400))
         try check(expiredDesktop?.quota.date == desktop?.quota.date && expiredDesktop?.quota.session == nil && expiredDesktop?.quota.week == nil, "Expired history loses its last observation or invents current limits")
         let historyWatchFile = testFolder.appending(path: "history.json")
