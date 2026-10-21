@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.1 — build 33
+# Sorayura 0.5.1-beta.2 — build 34
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,10 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## Fixed in beta 2
+
+Fresh installations now keep the existing macOS wallpaper on each display. Widgets and animations are overlaid without replacing the system wallpaper. Select a Sorayura background explicitly in Wallpaper settings; synchronization with macOS starts disabled. Existing saved wallpaper preferences are preserved, so upgrading from beta 1 does not automatically restore a previous wallpaper.
 
 ## Beta limitations
 

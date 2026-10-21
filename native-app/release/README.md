@@ -9,7 +9,7 @@ still require verification. Review READ-ME.txt, RELEASE-NOTES.md and PRIVACY.md.
 From the project root:
 
 ```sh
-python3 native-app/release/prepare.py candidate --version 0.5.1 --build 33
+python3 native-app/release/prepare.py candidate --version 0.5.1 --build 34
 ```
 
 This creates a new folder in `native-app/releases/`, builds with hardened runtime
@@ -27,7 +27,7 @@ on another Mac.
 ## Public beta without Apple membership
 
 ```sh
-python3 native-app/release/prepare.py adhoc-release --version 0.5.1 --build 33
+python3 native-app/release/prepare.py adhoc-release --version 0.5.1 --build 34
 ```
 
 This runs the same build and functional checks and creates an `-ADHOC.dmg` plus
@@ -52,7 +52,7 @@ Configure notarization credentials with the secure interactive prompt from
 passwords or API keys in chat, project files or release script arguments.
 
 ```sh
-python3 native-app/release/prepare.py release --version 0.5.1 --build 33 \
+python3 native-app/release/prepare.py release --version 0.5.1 --build 34 \
   --identity 'Developer ID Application: NAME (TEAMID)' \
   --notary-profile 'KEYCHAIN_PROFILE'
 ```
@@ -80,8 +80,8 @@ Do not upload the local candidate as the public beta.
 
 ```sh
 python3 native-app/release/write-cask.py \
-  native-app/releases/0.5.1-33-release/manifest.json \
-  --repository AnielloFalcone/sorayura --tag v0.5.1-beta.1 \
+  native-app/releases/0.5.1-34-release/manifest.json \
+  --repository AnielloFalcone/sorayura --tag v0.5.1-beta.2 \
   --output native-app/releases/sorayura.rb
 ```
 
