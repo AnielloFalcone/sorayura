@@ -10,7 +10,7 @@ The name evokes a **sky in motion**: a changing space filled with light and shap
 
 ## Getting started
 
-Open **native-app/build.noindex/Sorayura.app**. In the menu bar, choose “Widgets and wallpaper…” or “Edit layout…” (Italian: “Widget e sfondo…” / “Modifica layout…”). The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
+Download the Apple Silicon beta from [GitHub Releases](https://github.com/AnielloFalcone/sorayura/releases) and move Sorayura to Applications. The ADHOC beta is not notarized; see the first-launch instructions below. To build from source instead, use the commands below and open **native-app/build.noindex/Sorayura.app**. In the menu bar, choose “Widgets and wallpaper…” or “Edit layout…” (Italian: “Widget e sfondo…” / “Modifica layout…”). The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
 
 Building requires full Xcode 26 or later (including the macOS SDK for Liquid Glass); Command Line Tools alone are insufficient. The app targets macOS 14 or later, with older-system material fallbacks. Builds have been verified with Xcode 27 on Apple Silicon:
 
@@ -76,7 +76,7 @@ Local Codex/Claude Code dashboards, optional Claude status line connections, a t
 
 ## Beta distribution
 
-DMG preparation, checks, signing and notarization: [release procedure](native-app/release/README.md). Local 0.5.1 candidates are separate from the public Developer ID signed package. Verification status: [performance and verification](native-app/PERFORMANCE.md).
+DMG preparation, checks, signing and notarization: [release procedure](native-app/release/README.md). Public betas can use an explicitly labeled ad hoc signature without Apple notarization; local candidates remain separate. Verification status: [performance and verification](native-app/PERFORMANCE.md).
 
 Homebrew support is being prepared in the [Sorayura tap](https://github.com/AnielloFalcone/homebrew-sorayura). The Cask will become installable after the first signed and notarized release. See the [Homebrew procedure](native-app/release/HOMEBREW.md).
 
@@ -85,3 +85,7 @@ Repository: [AnielloFalcone/sorayura](https://github.com/AnielloFalcone/sorayura
 ## License
 
 [MIT](LICENSE) — Copyright © 2026 Aniello Falcone.
+
+### Download the beta
+
+[GitHub Releases](https://github.com/AnielloFalcone/sorayura/releases) provides the Apple Silicon beta. Packages marked **ADHOC are not notarized by Apple**. Move the app to Applications; if macOS blocks its first launch, approve Sorayura in System Settings → Privacy & Security → Open Anyway. See [Apple’s instructions](https://support.apple.com/en-ie/102445) and the release notes for compatibility and verification limits. Managed Macs may disallow this exception. Source builds remain available through the instructions above.

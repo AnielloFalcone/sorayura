@@ -1,7 +1,7 @@
 Sorayura — beta 0.5.1
 
 Drag Sorayura into Applications, eject the disk image and open the app.
-The controller appears in the menu bar. Choose “Widget e sfondo…” to configure it.
+The controller appears in the menu bar. Open its settings to configure widgets and wallpaper.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
 
 Apple Silicon. The build requires macOS 14; real-world verification has been
@@ -21,6 +21,18 @@ In-app automatic updates are not included. To remove the app, disable Open at
 Login and app-installed Claude connections, quit the app and move it to the Trash.
 Layouts remain in ~/Library/Application Support/dev.aniello.macsystemwallpaper/.
 
-Packages whose names contain CANDIDATE-NON-DISTRIBUIRE are for local verification
-and lack Developer ID signing and notarization. Public packages must pass signing,
-notarization and testing of the downloaded package on another Mac.
+Signing and first launch
+
+Packages marked ADHOC are public betas with a local ad hoc signature. They are
+NOT Developer ID signed or notarized by Apple. macOS may block the first launch.
+After attempting to open Sorayura, go to System Settings → Privacy & Security,
+find the Sorayura notice and select Open Anyway, then confirm. Approve only the
+copy downloaded from https://github.com/AnielloFalcone/sorayura/releases.
+Managed Macs may not allow this exception. Do not disable Gatekeeper globally.
+Apple's instructions: https://support.apple.com/en-ie/102445
+
+Verify the DMG against SHA256SUMS from the same release if desired:
+  shasum -a 256 Sorayura-0.5.1-arm64-ADHOC.dmg
+
+Packages marked CANDIDATE-NON-DISTRIBUIRE remain local test builds.
+The downloaded public beta has not yet been tested on a separate clean Mac.

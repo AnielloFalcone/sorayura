@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build/check/package a local candidate or Developer ID notarized beta.
+"""Build/check/package a local candidate, public ad hoc beta, or Developer ID notarized beta.
 
 Never publishes to GitHub or alters login items, hooks or user preferences.
 Credentials stay in an existing Keychain profile. No passwords are arguments.
@@ -41,7 +41,7 @@ def notarize(path, profile, log):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=['candidate', 'release'])
+    parser.add_argument('mode', choices=['candidate', 'adhoc-release', 'release'])
     parser.add_argument('--version', default='0.5.1')
     parser.add_argument('--build', default='33')
     parser.add_argument('--identity', help='Exact Developer ID Application identity')
@@ -49,11 +49,11 @@ def main():
     args = parser.parse_args()
     if not re.fullmatch(r'\d+\.\d+\.\d+', args.version) or not re.fullmatch(r'\d+', args.build):
         parser.error('Version must be x.y.z and build must be numeric')
-    public = args.mode == 'release'
-    if public and (not args.identity or not args.identity.startswith('Developer ID Application:') or not args.notary_profile):
+    notarized = args.mode == 'release'
+    if notarized and (not args.identity or not args.identity.startswith('Developer ID Application:') or not args.notary_profile):
         parser.error('Release requires --identity "Developer ID Application: …" and --notary-profile')
-    if not public and (args.identity or args.notary_profile):
-        parser.error('Candidate mode uses a local signature; signing credentials belong to release mode')
+    if not notarized and (args.identity or args.notary_profile):
+        parser.error('Local-signature modes do not accept credentials; use release mode for notarization')
     destination = ROOT / 'releases' / f'{args.version}-{args.build}-{args.mode}'
     destination.mkdir(parents=True, exist_ok=False)
     log = destination / 'preparation.log'
@@ -66,7 +66,7 @@ def main():
             env = os.environ.copy()
             env.update(WALLPAPER_VERSION=args.version, WALLPAPER_BUILD=args.build,
                        WALLPAPER_OUTPUT_ROOT=str(staging / 'build'), WALLPAPER_HARDENED='1',
-                       WALLPAPER_SIGN_ID=args.identity if public else '-')
+                       WALLPAPER_SIGN_ID=args.identity if notarized else '-')
             run([ROOT / 'build-native.sh'], log, cwd=ROOT, env=env, timeout=300)
             app = staging / 'build' / 'Sorayura.app'
             binary = app / 'Contents/MacOS/Sorayura'
@@ -94,12 +94,14 @@ def main():
             signature = run(['codesign', '-dvv', app], log)
             if 'runtime' not in signature:
                 raise RuntimeError('Hardened runtime missing')
-            if public and ('Authority=Developer ID Application:' not in signature or 'Timestamp=' not in signature):
+            if notarized and ('Authority=Developer ID Application:' not in signature or 'Timestamp=' not in signature):
                 raise RuntimeError('Developer ID signature or secure timestamp missing')
+            if not notarized and 'Signature=adhoc' not in signature:
+                raise RuntimeError('Expected ad hoc signature')
             manifest.update(architecture=architecture, minimum_macos=info['LSMinimumSystemVersion'],
                             tested_macos=run(['sw_vers', '-productVersion'], log).strip(),
                             binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest())
-            if public:
+            if notarized:
                 upload = staging / 'notarize-app.zip'
                 run(['ditto', '-c', '-k', '--keepParent', app, upload], log)
                 manifest['app_notarization'] = notarize(upload, args.notary_profile, log)
@@ -113,11 +115,11 @@ def main():
             for name in ['READ-ME.txt', 'PRIVACY.md', 'RELEASE-NOTES.md']:
                 shutil.copy2(ROOT / 'release' / name, contents / name)
             shutil.copy2(ROOT.parent / 'LICENSE', contents / 'LICENSE')
-            suffix = '' if public else '-CANDIDATE-NON-DISTRIBUIRE'
+            suffix = {'release': '', 'adhoc-release': '-ADHOC', 'candidate': '-CANDIDATE-NON-DISTRIBUIRE'}[args.mode]
             dmg = destination / f'Sorayura-{args.version}-arm64{suffix}.dmg'
             run(['hdiutil', 'create', '-volname', f'Sorayura {args.version}',
                  '-srcfolder', contents, '-format', 'UDZO', '-ov', dmg], log, timeout=180)
-            if public:
+            if notarized:
                 run(['codesign', '--sign', args.identity, '--timestamp', dmg], log)
                 manifest['dmg_notarization'] = notarize(dmg, args.notary_profile, log)
                 run(['xcrun', 'stapler', 'staple', dmg], log)
@@ -127,10 +129,12 @@ def main():
             sha = hashlib.sha256(dmg.read_bytes()).hexdigest()
             (destination / 'SHA256SUMS').write_text(f'{sha}  {dmg.name}\n')
             manifest.update(state='prepared', artifact=dmg.name, sha256=sha,
-                            signing='Developer ID + notarized' if public else 'ad hoc + hardened runtime',
+                            signing='Developer ID + notarized' if notarized else 'ad hoc + hardened runtime',
                             public_distribution_ready=False,
                             remaining_gate=('Physical QA for this exact artifact, downloaded artifact on another Mac, and approval of release destination/materials'
-                                            if public else 'Developer ID signing/notarization, physical QA, downloaded final artifact on another Mac, and approval of release destination/materials'))
+                                            if notarized else 'Developer ID signing/notarization, physical QA, downloaded final artifact on another Mac, and approval of release destination/materials'))
+            if args.mode == 'adhoc-release':
+                manifest['remaining_gate'] = 'Unnotarized beta: downloaded first launch on another Mac remains unverified; explicit per-app approval may be required'
             print(str(dmg))
     except Exception as error:
         manifest.update(state='failed', error=str(error))

@@ -24,6 +24,22 @@ This preceded the Sorayura rename. It does not simulate Gatekeeper for an Intern
 download; that requires the final notarized package, with download quarantine,
 on another Mac.
 
+## Public beta without Apple membership
+
+```sh
+python3 native-app/release/prepare.py adhoc-release --version 0.5.1 --build 33
+```
+
+This runs the same build and functional checks and creates an `-ADHOC.dmg` plus
+`SHA256SUMS`. It verifies the local ad hoc signature and hardened runtime, but
+does not submit to Apple or claim Gatekeeper acceptance. Publish only the DMG
+and checksum as a GitHub **prerelease**, with the explicit first-launch notice
+in RELEASE-NOTES.md. Do not publish preparation logs, local manifests or user data.
+The candidate channel remains private and the notarized `release` channel remains
+available for future use. An ad hoc beta does not satisfy the Homebrew Cask generator.
+A clean-Mac download/first-launch test remains outstanding and must be stated in
+release notes; users may need per-app approval in Privacy & Security.
+
 ## Signing and notarization
 
 A **Developer ID Application** certificate and its private key must be available
@@ -58,7 +74,7 @@ Developer ID signing and the notarization profile still need setup. Apple signin
 and notarization have not been performed on the local candidate.
 
 Source code is public under the MIT license. Package preparation does not publish
-downloads. After reviewing the materials, publish a prerelease with an immutable
+downloads. For the notarized channel, after reviewing the materials, publish a prerelease with an immutable
 tag, notarized DMG, SHA256SUMS and beta notes. The DMG includes the MIT license.
 Do not upload the local candidate as the public beta.
 

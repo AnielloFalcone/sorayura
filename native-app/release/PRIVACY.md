@@ -13,8 +13,15 @@ contact OpenAI services to retrieve limits. The app does not ask for a password
 or API key in its own settings.
 
 Claude desktop limits use locally available Claude app data. Optional Claude
-connections modify local Claude configuration to receive events/status and
+event/status-line connections modify local Claude configuration to receive events/status and
 retain restoration information for the settings they manage.
+
+The optional Claude account connection starts the authenticated Claude Code
+client to request usage limits through its control protocol, with session
+persistence disabled and without model prompts. The client contacts Anthropic
+and manages authentication; Sorayura does not extract tokens. Only quota values,
+timestamps and sanitized errors are retained. Organization-managed client hooks
+may still apply.
 
 Spotify uses AppleEvents after macOS consent. Track, artist and playback are
 read from the Spotify app; artwork is downloaded over HTTPS from allowed

@@ -1,11 +1,11 @@
-# Sorayura 0.5.1 — beta
+# Sorayura 0.5.1-beta.1 — build 33
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
 
 - Per-monitor layouts, adjustable grid, dragging and resizing. Widget edit handles support continuous per-display dimensions, with snapping when the grid is enabled.
 - System widgets with charts and history; compact or expanded memory views.
-- Four animations with layers and colors linked to Mac resources and available AI quotas. Four independently configurable data cards can show summaries from all widgets.
+- Animations with layers and colors linked to Mac resources and available AI quotas. Four independently configurable data cards can show summaries from all widgets.
 - Presets and layout backups; optional Codex, Claude and Spotify integrations.
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
@@ -26,5 +26,12 @@ Installation from the local DMG into Applications was tested on October 8.
 The user confirmed that widgets, positions and animation returned correctly
 after Mission Control, monitor reconnection and sleep/wake. Diagnostics confirmed
 that all three displays returned, but recorded no sleep notifications and therefore
-do not verify renderer pausing during sleep. First launch of the signed and
-notarized download on another Mac still requires verification.
+do not verify renderer pausing during sleep. First launch of this downloaded package on another Mac still requires verification.
+
+## Download and first launch
+
+This prerelease is **ad hoc signed, not Developer ID signed and not notarized by Apple**. Download the DMG, drag Sorayura into Applications, eject the image and open the app. If macOS blocks it, use System Settings → Privacy & Security → Open Anyway for this app, following [Apple’s instructions](https://support.apple.com/en-ie/102445). Managed Macs may prohibit this exception. Do not disable Gatekeeper globally.
+
+`SHA256SUMS` identifies the uploaded DMG. No in-app updater is included; future builds will be published here. The Homebrew Cask is not available for this unsigned-by-Developer-ID channel.
+
+Claude account limits use the authenticated CLI control protocol with session persistence disabled. Spotify includes expanded controls and shortcuts. Account integrations are optional and require their respective clients and login.
