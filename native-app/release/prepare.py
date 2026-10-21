@@ -43,7 +43,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['candidate', 'adhoc-release', 'release'])
     parser.add_argument('--version', default='0.5.1')
-    parser.add_argument('--build', default='33')
+    parser.add_argument('--build', default='34')
     parser.add_argument('--identity', help='Exact Developer ID Application identity')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile name')
     args = parser.parse_args()

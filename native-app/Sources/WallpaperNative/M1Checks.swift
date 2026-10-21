@@ -19,6 +19,21 @@ enum M1Checks {
         try check(tiny == WidgetSize(width: 50, height: 65), "Resize did not honor minimum size or small display bounds")
         let base = Prefs()
         try base.validate()
+        try check(base.wallpaper == "system" && !base.syncWallpaper, "First launch must preserve the macOS wallpaper")
+        let restoredDefaults = try JSONDecoder().decode(Prefs.self, from: JSONEncoder().encode(base))
+        try check(restoredDefaults.wallpaper == "system" && !restoredDefaults.syncWallpaper, "System wallpaper preference did not survive reload")
+        var existing = base
+        existing.wallpaper = "gradient"
+        existing.syncWallpaper = true
+        let restoredExisting = try JSONDecoder().decode(Prefs.self, from: JSONEncoder().encode(existing))
+        try check(restoredExisting.wallpaper == "gradient" && restoredExisting.syncWallpaper, "Existing wallpaper choice was overwritten")
+        for screen in NSScreen.screens {
+            let before = NSWorkspace.shared.desktopImageURL(for: screen)
+            var system = base
+            system.syncWallpaper = true
+            WallpaperRenderer.apply(to: screen, prefs: system)
+            try check(NSWorkspace.shared.desktopImageURL(for: screen) == before, "System mode changed the desktop wallpaper")
+        }
         for preset in BuiltInPreset.all {
             let prefs = preset.settings(from: base, displayKeys: ["laptop", "external"])
             try prefs.validate()

@@ -547,9 +547,9 @@ struct Prefs: Codable {
     var appStatusEnabled: Bool? = nil
     var adaptiveAnimation: Bool? = nil
     var widgetTheme: String? = nil
-    var wallpaper = "gradient"
+    var wallpaper = "system"
     var imagePath: String? = nil
-    var syncWallpaper = true
+    var syncWallpaper = false
     var displays: [String:DisplayContent] = [:]
     var positions: [String:[String:Point]] = [:]
     var animationPositions: [String:Point] = [:]

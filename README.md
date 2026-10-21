@@ -39,9 +39,11 @@ The repository contains the native Swift app and does not require Node, Rust or 
 
 ## Wallpaper and Spaces
 
+On a fresh installation, Sorayura keeps the current macOS wallpaper on every display and overlays only widgets and animations. Choose a different style in Wallpaper settings to use a Sorayura background; macOS wallpaper synchronization starts disabled. Existing saved preferences are preserved.
+
 When wallpaper synchronization is enabled (“Usa lo stesso sfondo anche in macOS”), the app also sets the static macOS wallpaper. Mission Control shows this image; widgets and animations are desktop windows.
 
-On Space changes and wake, the app reapplies the wallpaper to the active Space. Unvisited Spaces may retain their previous wallpaper until opened. Use the reapply wallpaper action (“Riapplica sfondo”) in Displays settings if needed. The app does not set a video as the system wallpaper.
+With synchronization enabled and a Sorayura background selected, on Space changes and wake the app reapplies the wallpaper to the active Space. Unvisited Spaces may retain their previous wallpaper until opened. Use the reapply wallpaper action (“Riapplica sfondo”) in Displays settings if needed. The app does not set a video as the system wallpaper.
 
 ## Preferences and backups
 

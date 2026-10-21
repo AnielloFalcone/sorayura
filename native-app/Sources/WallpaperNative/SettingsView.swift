@@ -377,6 +377,7 @@ struct SettingsView: View {
     private var wallpaperSection:some View {
         panel(L("Sfondo")) {
             Picker(L("Stile"),selection:Bindable(model).prefs.wallpaper) {
+                Text(L("Sfondo di macOS")).tag("system")
                 Text("Aurora").tag("gradient");Text(L("Mezzanotte")).tag("midnight");Text(L("Immagine")).tag("image")
             }.pickerStyle(.segmented)
             Button(L("Scegli immagine…")) {
@@ -384,6 +385,7 @@ struct SettingsView: View {
                 if picker.runModal() == .OK { model.prefs.imagePath=picker.url?.path; model.prefs.wallpaper="image" }
             }
             Toggle(L("Usa lo stesso sfondo anche in macOS"),isOn:Bindable(model).prefs.syncWallpaper)
+                .disabled(model.prefs.wallpaper == "system")
             Text(L("macOS mostra l’immagine statica nello Space attivo; widget e animazioni sono visibili sul desktop. Per altri Space usa “Riapplica sfondo” sul monitor interessato.")).font(.caption).foregroundStyle(.secondary)
         }
     }

@@ -11,8 +11,10 @@ struct ScreenView: View {
         let _ = LocalizationSettings.shared.choice
         GeometryReader { geometry in
             ZStack(alignment:.topLeading) {
-                Image(nsImage: WallpaperRenderer.image(for:screen,prefs:model.prefs))
-                    .resizable().scaledToFill().frame(width:geometry.size.width,height:geometry.size.height).clipped()
+                if model.prefs.wallpaper != "system" {
+                    Image(nsImage: WallpaperRenderer.image(for:screen,prefs:model.prefs))
+                        .resizable().scaledToFill().frame(width:geometry.size.width,height:geometry.size.height).clipped()
+                }
                 if model.editing && model.prefs.layout == "grid" {
                     Canvas { context, size in
                         var grid = Path()

@@ -643,6 +643,7 @@ enum WallpaperRenderer {
         imageCache[key] = image
     }
     static func apply(to screen: NSScreen, prefs: Prefs) {
+        guard prefs.wallpaper != "system" else { return }
         autoreleasepool { applyCollected(to: screen, prefs: prefs) }
     }
     private static func applyCollected(to screen: NSScreen, prefs: Prefs) {
