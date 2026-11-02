@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>Sorayura updates</title>
+    <item>
+      <title>Sorayura 0.5.1-beta.3 (build 35)</title>
+      <sparkle:version>35</sparkle:version>
+      <sparkle:shortVersionString>0.5.1-beta.3</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description>Update Sorayura while keeping your settings. This beta is not notarized by Apple.</description>
+      <enclosure url="https://github.com/AnielloFalcone/sorayura/releases/download/v0.5.1-beta.3/Sorayura-0.5.1-arm64-ADHOC.dmg" length="7920816" type="application/octet-stream" sparkle:edSignature="4AAQDyftMOlEjNU7vE+g/ieE+Nb9+BuyP1Ife16LEbR1yr4SUC+ysSlxZqr6AV3yij9v7BiXmyx3L5idgKjwAQ=="></enclosure>
+    </item>
+  </channel>
+</rss><!-- sparkle-signatures:
+edSignature: zVmM3zmyYqCVdF0IlJil3z6G2Jh60FjP7Ew6rEY+ZYIb3jqzSA3qSX5pblw7r8VZ/5blIk2soTyL/eOHal4sAw==
+length: 1132
+-->
