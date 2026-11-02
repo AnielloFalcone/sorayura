@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Sorayura Spotify Web",
+  "version": "0.1.0",
+  "description": "Connect the Spotify Web player to your local Sorayura widgets.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvfC8WeSRoWKJvYVYKgienL8kxNYKMKxFCxUpel1w90D6BLbQ1aRP/SdnW2HFUJcoTFzotkzaFWYwLybgKY78GnPbKrGkCMOF/e1yAB81pQRja3NFPjEEhIpklz8+XaogUmhkXJHSRd+lGc/aQiBTyVmoACNpIOEYkbIoaA0tCNjWETsqFkwLHfhHA29jKHWwfD9+EZApu3fgjU/ZRezqZwRcdH0yxtjgMYhdb8AEdA5e3PyoychtUlM7I0pbEclAgmK7lxJith8vfxSjSPyS8eEFlkDtZRWR7I7jaZ5crx5f9UdO1h8fhPg3rawk3vQjhuqbzissTgyNuNoKfU+HuQIDAQAB",
+  "permissions": [
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://open.spotify.com/*"
+  ],
+  "background": {
+    "service_worker": "worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://open.spotify.com/*"
+      ],
+      "js": [
+        "page.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Sorayura Spotify Web"
+  }
+}

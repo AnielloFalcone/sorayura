@@ -61,7 +61,7 @@ struct SettingsView: View {
                     .padding(17)
             }
             .frame(width:210)
-            .background(.regularMaterial)
+            .wallpaperGlass(cornerRadius: 16)
             Divider()
             VStack(alignment:.leading,spacing:0) {
                 Text(L(section))
@@ -90,8 +90,10 @@ struct SettingsView: View {
             }
             .padding(.horizontal,28).padding(.top,28)
             .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
-            .background(Color(red:0.07,green:0.11,blue:0.18))
+
         }
+        .wallpaperGlass(cornerRadius: 16)
+        .modifier(DesktopGlassGroup())
         .frame(minWidth:860,minHeight:680)
         .preferredColorScheme(.dark)
         .onAppear { loginItem.refresh(); if let notice = model.storageMessage { message = notice } }
@@ -282,14 +284,25 @@ struct SettingsView: View {
             }
             panel("Spotify") {
                 Toggle(L("Attiva brano e controlli Spotify"), isOn: Binding(get: { model.prefs.spotifyEnabled ?? false }, set: { model.prefs.spotifyEnabled = $0; model.refreshSpotify(retry: true) }))
-                Text(L("macOS può chiederti il permesso di controllare Spotify. La copertina viene scaricata dal servizio Spotify. I controlli sono disponibili sul widget e nel suo menu secondario.")).font(.caption).foregroundStyle(.secondary)
+                Picker(L("Sorgente Spotify"), selection: Binding(get: { model.prefs.spotifySource ?? "desktop" }, set: { model.prefs.spotifySource = $0; model.refreshSpotify(retry: true) })) {
+                    Text(L("App Spotify")).tag("desktop")
+                    Text("Spotify Web · Chrome").tag("web")
+                }.pickerStyle(.segmented)
+                if model.prefs.spotifySource == "web" {
+                    Button(L("Prepara estensione Chrome…")) {
+                        perform { let folder = try SpotifyWebBridge.install(); NSWorkspace.shared.open(folder) }
+                    }
+                    Text(L("Apri chrome://extensions, attiva Modalità sviluppatore e scegli Carica estensione non pacchettizzata. Seleziona la cartella aperta, poi ricarica Spotify Web. Il login resta in Chrome; Sorayura riceve solo il brano e i controlli disponibili.")).font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text(L("macOS può chiederti il permesso di controllare Spotify. La copertina viene scaricata dal servizio Spotify. I controlli sono disponibili sul widget e nel suo menu secondario.")).font(.caption).foregroundStyle(.secondary)
+                }
                 Picker(L("Dettaglio"),selection:Binding(get:{model.prefs.spotifyDisplay ?? "compact"},set:{model.prefs.spotifyDisplay=$0})) {
                     Text(L("Compatto")).tag("compact");Text(L("Esteso")).tag("expanded")
                 }.pickerStyle(.segmented)
                 Text(L("La modalità estesa mostra copertina, shuffle, ripetizione, volume e preferiti. Nei widget piccoli passa automaticamente alla vista compatta. Consigliata una dimensione di almeno 360 × 360 punti.")).font(.caption).foregroundStyle(.secondary)
                 ForEach(model.prefs.spotifyShortcuts ?? []) { item in
                     HStack {
-                        Button(item.name) { if let url=SpotifyShortcut.uri(item.link) { NSWorkspace.shared.open(url) } }
+                        Button(item.name) { if let index = model.prefs.spotifyShortcuts?.firstIndex(where: { $0.id == item.id }) { model.spotifyAction("shortcut:\(index)") } }
                         Spacer()
                         Button(role:.destructive) { model.prefs.spotifyShortcuts?.removeAll {$0.id == item.id} } label: { Image(systemName:"minus.circle") }.help(L("Rimuovi preferito"))
                     }
@@ -391,7 +404,12 @@ struct SettingsView: View {
             }.pickerStyle(.segmented)
             Button(L("Scegli immagine…")) {
                 let picker=NSOpenPanel();picker.allowedContentTypes=[.image];picker.allowsMultipleSelection=false
-                if picker.runModal() == .OK { model.prefs.imagePath=picker.url?.path; model.prefs.wallpaper="image" }
+                if picker.runModal() == .OK, let url = picker.url {
+                    perform {
+                        let stored = try WallpaperRenderer.storeImage(url)
+                        var next = model.prefs; next.imagePath = stored.path; next.wallpaper = "image"; model.prefs = next
+                    }
+                }
             }
             Toggle(L("Usa lo stesso sfondo anche in macOS"),isOn:Bindable(model).prefs.syncWallpaper)
                 .disabled(model.prefs.wallpaper == "system")

@@ -10,7 +10,7 @@ The name evokes a **sky in motion**: a changing space filled with light and shap
 
 ## Getting started
 
-Download the Apple Silicon beta from [GitHub Releases](https://github.com/AnielloFalcone/sorayura/releases) and move Sorayura to Applications. The ADHOC beta is not notarized; see the first-launch instructions below. To build from source instead, use the commands below and open **native-app/build.noindex/Sorayura.app**. In the menu bar, choose “Widgets and wallpaper…” or “Edit layout…” (Italian: “Widget e sfondo…” / “Modifica layout…”). The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
+Download the Apple Silicon beta from [GitHub Releases](https://github.com/AnielloFalcone/sorayura/releases) and move Sorayura to Applications. The ADHOC beta is not notarized; see the first-launch instructions below. To build from source instead, use the commands below and open **native-app/build.noindex/Sorayura.app**. In the menu bar, choose “Settings…” or “Edit layout…” (Italian: “Impostazioni…” / “Modifica layout…”). The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
 
 Building requires full Xcode 26 or later (including the macOS SDK for Liquid Glass); Command Line Tools alone are insufficient. The app targets macOS 14 or later, with older-system material fallbacks. Builds have been verified with Xcode 27 on Apple Silicon:
 
@@ -43,7 +43,7 @@ On a fresh installation, Sorayura keeps the current macOS wallpaper on every dis
 
 When wallpaper synchronization is enabled (“Usa lo stesso sfondo anche in macOS”), the app also sets the static macOS wallpaper. Mission Control shows this image; widgets and animations are desktop windows.
 
-With synchronization enabled and a Sorayura background selected, on Space changes and wake the app reapplies the wallpaper to the active Space. Unvisited Spaces may retain their previous wallpaper until opened. Use the reapply wallpaper action (“Riapplica sfondo”) in Displays settings if needed. The app does not set a video as the system wallpaper.
+Wallpaper synchronization runs when you change the selected background or a display configuration requires a new image. Layout edits, Space changes and wake recovery do not force wallpaper replacement. Unvisited Spaces may retain their previous wallpaper until opened. Use the reapply wallpaper action (“Riapplica sfondo”) in Displays settings if needed. The app does not set a video as the system wallpaper.
 
 ## Preferences and backups
 
@@ -95,3 +95,14 @@ Repository: [AnielloFalcone/sorayura](https://github.com/AnielloFalcone/sorayura
 ### In-app updates
 
 Starting with build 35, General settings includes **Check for updates…**. Sparkle checks a signed feed hosted in this repository and installs a verified GitHub release after confirmation. Builds 33 and 34 need one manual upgrade. Checks and installs are user-initiated; existing settings are retained. Ad hoc builds remain unnotarized and disable library validation to load Sparkle without an Apple Team ID.
+
+### Spotify Web
+
+Spotify can use the desktop app or an existing Spotify Web tab in Google Chrome.
+Choose the source in Settings → Integrations and use **Set up Chrome extension…**
+for the Web option. The first version requires loading the bundled extension
+manually. Login stays in Chrome; Sorayura controls the visible player. See
+[setup, privacy and limitations](native-app/release/SPOTIFY-WEB.md).
+
+AI model and project widgets paginate all locally collected entries for the chosen
+period, with independent pages on each display and fewer rows in small widgets.

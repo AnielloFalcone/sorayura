@@ -43,7 +43,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['candidate', 'adhoc-release', 'release'])
     parser.add_argument('--version', default='0.5.1')
-    parser.add_argument('--build', default='36')
+    parser.add_argument('--build', default='37')
     parser.add_argument('--identity', help='Exact Developer ID Application identity')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile name')
     args = parser.parse_args()
@@ -116,7 +116,7 @@ def main():
             contents.mkdir()
             shutil.copytree(app, contents / app.name, symlinks=True)
             (contents / 'Applications').symlink_to('/Applications')
-            for name in ['READ-ME.txt', 'PRIVACY.md', 'RELEASE-NOTES.md']:
+            for name in ['READ-ME.txt', 'PRIVACY.md', 'RELEASE-NOTES.md', 'SPOTIFY-WEB.md']:
                 shutil.copy2(ROOT / 'release' / name, contents / name)
             shutil.copy2(ROOT.parent / 'LICENSE', contents / 'LICENSE')
             suffix = {'release': '', 'adhoc-release': '-ADHOC', 'candidate': '-CANDIDATE-NON-DISTRIBUIRE'}[args.mode]

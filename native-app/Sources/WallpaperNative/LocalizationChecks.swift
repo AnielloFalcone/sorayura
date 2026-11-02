@@ -33,7 +33,7 @@ import Foundation
         try check(Localizer.validated("unknown") == "system", "Invalid persisted language accepted")
         try check(Localizer.text("Memoria", language: "en") == "Memory", "Widget name not translated")
         try check(Localizer.text("Memoria", language: "it") == "Memoria", "Italian widget name changed")
-        try check(Localizer.text("Widget e sfondo…", language: "es") == "Widgets y fondo de pantalla…", "Spanish app menu not translated")
+        try check(Localizer.text("Impostazioni…", language: "es") == "Ajustes…", "Spanish app menu not translated")
         try check(Localizer.format("Rimuovi {0}", arguments: ["{1} · CPU"], language: "es") == "Eliminar {1} · CPU", "Spanish interpolation changed user content")
         try check(Localizer.text("My custom preset", language: "en") == "My custom preset", "Unknown user content changed")
         try check(Localizer.format("Rimuovi {0}", arguments: ["{1} · Memory"], language: "en") == "Remove {1} · Memory", "Interpolated content was reinterpreted")

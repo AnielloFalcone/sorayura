@@ -33,6 +33,19 @@ enum M1Checks {
         }
         let gridEdge = WidgetSizing.draggedPosition(start: edgeStart, translation: CGSize(width: 1000, height: 1000), size: dragSize, bounds: dragBounds, cell: 120)
         try check(gridEdge.x == 70 && gridEdge.y == 75, "Grid snapping stored a position outside the visible display")
+        var wallpaper = Prefs(); wallpaper.wallpaper = "image"; wallpaper.imagePath = "/fixture.png"; wallpaper.syncWallpaper = true
+        var sync = WallpaperSync()
+        let syncSize = CGSize(width: 3440, height: 1440)
+        try check(sync.needsApply(id: "a", prefs: wallpaper, size: syncSize, scale: 1), "Initial explicit wallpaper sync missing")
+        wallpaper.animationPositions["a"] = Point(x: 30, y: 70); wallpaper.animationStyle = "aurora"
+        try check(!sync.needsApply(id: "a", prefs: wallpaper, size: syncSize, scale: 1), "Animation editing reapplies wallpaper")
+        wallpaper.positions["a"] = ["cpu": Point(x: 12, y: 30)]; wallpaper.layout = "grid"
+        try check(!sync.needsApply(id: "a", prefs: wallpaper, size: syncSize, scale: 1), "Widget/layout recovery reapplies wallpaper")
+        try check(sync.needsApply(id: "b", prefs: wallpaper, size: syncSize, scale: 1) && !sync.needsApply(id: "a", prefs: wallpaper, size: syncSize, scale: 1), "Connecting another monitor replaces an existing wallpaper")
+        wallpaper.wallpaper = "midnight"
+        try check(sync.needsApply(id: "a", prefs: wallpaper, size: syncSize, scale: 1), "Background selection no longer syncs")
+        wallpaper.wallpaper = "system"
+        try check(!sync.needsApply(id: "a", prefs: wallpaper, size: syncSize, scale: 1), "System wallpaper is overwritten")
         let base = Prefs()
         try base.validate()
         try check(base.wallpaper == "system" && !base.syncWallpaper, "First launch must preserve the macOS wallpaper")

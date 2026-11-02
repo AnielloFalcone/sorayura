@@ -17,6 +17,11 @@ import Observation
         let next = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 760),
                             styleMask: [.titled, .closable, .miniaturizable, .resizable],
                             backing: .buffered, defer: false)
+        next.styleMask.insert(.fullSizeContentView)
+        next.titlebarAppearsTransparent = true
+        next.titleVisibility = .hidden
+        next.isOpaque = false
+        next.backgroundColor = .clear
         next.minSize = NSSize(width: 860, height: 680)
         next.title = L("Sorayura — Impostazioni")
         next.isReleasedWhenClosed = false

@@ -1,10 +1,46 @@
 import Foundation
+import CryptoKit
 
 @MainActor enum M2Checks {
     static func run() throws {
         func check(_ passed: Bool, _ message: String) throws {
             if !passed { throw SettingsError.invalid(message) }
         }
+        try check(AgentRankingPage.pageSize(expanded: false, height: 120) == 1 && AgentRankingPage.pageSize(expanded: true, height: 240) == 6, "Pagination hides rows in a small widget")
+        for total in [0, 1, 3, 4, 7, 40] {
+            var visited: [Int] = []
+            let first = AgentRankingPage(total: total, size: 3, requested: 0)
+            for index in 0..<first.count { visited += AgentRankingPage(total: total, size: 3, requested: index).range }
+            try check(visited == Array(0..<total), "Rankings pagination loses or duplicates entries")
+            try check(AgentRankingPage(total: total, size: 3, requested: 999).index == first.count - 1, "Rankings page is not clamped after refresh")
+        }
+        try check(AgentRankingPage.action(at: CGPoint(x: 25, y: 58), width: 260) == -1 && AgentRankingPage.action(at: CGPoint(x: 232, y: 58), width: 260) == 1, "Ranking button hit areas differ from their layout")
+        let paginationModel = Model.isolated()
+        var summary = AgentPeriodSummary(); summary.models = (0..<10).map { ("model-\($0)", Double($0)) }
+        paginationModel.agentUsage.periods["all"] = summary
+        paginationModel.moveRankingPage("agentModels", display: "a", delta: 1)
+        try check(paginationModel.rankingPage("agentModels", display: "a", total: 10).index == 1 && paginationModel.rankingPage("agentModels", display: "b", total: 10).index == 0, "Ranking pages leak between monitors")
+        var web = SpotifyWebSnapshot(title: "Track", artist: "Artist", album: "", available: true, playing: true, artworkURL: "https://i.scdn.co/image/example", trackID: "/track/example", volume: 50, shuffle: false, repeatEnabled: false, supportedCommands: ["play", "pause"])
+        try check(web.valid, "Valid Spotify Web snapshot rejected")
+        web.artworkURL = "https://i.scdn.co.evil.test/image"; try check(!web.valid, "Untrusted artwork host accepted")
+        web.artworkURL = ""; web.supportedCommands = ["shell"]; try check(!web.valid, "Unknown browser command accepted")
+        let resources = Bundle.main.resourceURL!
+        let extensionManifest = try JSONSerialization.jsonObject(with: Data(contentsOf: resources.appending(path: "SpotifyWebExtension/manifest.json"))) as! [String: Any]
+        let extensionKey = Data(base64Encoded: extensionManifest["key"] as! String)!
+        let alphabet = Array("abcdefghijklmnop")
+        let extensionID = SHA256.hash(data: extensionKey).prefix(16).flatMap { [alphabet[Int($0 >> 4)], alphabet[Int($0 & 15)]] }
+        try check(String(extensionID) == SpotifyWebBridge.extensionID && FileManager.default.isExecutableFile(atPath: resources.appending(path: "spotify-web-host").path), "Packaged Chrome extension identity/host does not match the native bridge")
+        let framed = SpotifyNativeHost.frame(Data("{}".utf8))
+        let framing = Pipe(); framing.fileHandleForWriting.write(framed); try framing.fileHandleForWriting.close()
+        try check(try SpotifyNativeHost.readMessage(framing.fileHandleForReading) == Data("{}".utf8), "Native messaging framing corrupted")
+        try check(try SpotifyNativeHost.readMessage(framing.fileHandleForReading) == nil, "Native message EOF not recognized")
+        for invalid in [Data([0, 0, 0, 0]), Data([1, 0, 1, 0]), Data([8, 0, 0, 0, 123])] {
+            let pipe = Pipe(); pipe.fileHandleForWriting.write(invalid); try pipe.fileHandleForWriting.close()
+            var rejected = false
+            do { _ = try SpotifyNativeHost.readMessage(pipe.fileHandleForReading) } catch { rejected = true }
+            try check(rejected, "Invalid native message accepted")
+        }
+        try check(SpotifyShortcut.webURL("spotify:track:0123456789ABCDEFGHIJKL")?.absoluteString == "https://open.spotify.com/track/0123456789ABCDEFGHIJKL", "Web shortcut left the browser")
         let codex = """
         {"type":"session_meta","payload":{"id":"session","cwd":"/tmp/project"},"timestamp":"2026-10-01T10:00:00Z"}
         {"type":"turn_context","payload":{"model":"example-model"},"timestamp":"2026-10-01T10:00:00Z"}

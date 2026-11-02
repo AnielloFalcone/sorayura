@@ -9,7 +9,7 @@ still require verification. Review READ-ME.txt, RELEASE-NOTES.md and PRIVACY.md.
 From the project root:
 
 ```sh
-python3 native-app/release/prepare.py candidate --version 0.5.1 --build 36
+python3 native-app/release/prepare.py candidate --version 0.5.1 --build 37
 ```
 
 This creates a new folder in `native-app/releases/`, builds with hardened runtime
@@ -27,7 +27,7 @@ on another Mac.
 ## Public beta without Apple membership
 
 ```sh
-python3 native-app/release/prepare.py adhoc-release --version 0.5.1 --build 36
+python3 native-app/release/prepare.py adhoc-release --version 0.5.1 --build 37
 ```
 
 This runs the same build and functional checks and creates an `-ADHOC.dmg` plus
@@ -52,7 +52,7 @@ Configure notarization credentials with the secure interactive prompt from
 passwords or API keys in chat, project files or release script arguments.
 
 ```sh
-python3 native-app/release/prepare.py release --version 0.5.1 --build 36 \
+python3 native-app/release/prepare.py release --version 0.5.1 --build 37 \
   --identity 'Developer ID Application: NAME (TEAMID)' \
   --notary-profile 'KEYCHAIN_PROFILE'
 ```
@@ -80,8 +80,8 @@ Do not upload the local candidate as the public beta.
 
 ```sh
 python3 native-app/release/write-cask.py \
-  native-app/releases/0.5.1-36-release/manifest.json \
-  --repository AnielloFalcone/sorayura --tag v0.5.1-beta.4 \
+  native-app/releases/0.5.1-37-release/manifest.json \
+  --repository AnielloFalcone/sorayura --tag v0.5.1-beta.5 \
   --output native-app/releases/sorayura.rb
 ```
 
@@ -108,7 +108,7 @@ for installed ad hoc builds. Never commit or upload it.
 Prepare the DMG, then sign the package and feed:
 
 ```sh
-python3 native-app/release/write-appcast.py native-app/releases/0.5.1-36-adhoc-release/manifest.json --tag v0.5.1-beta.4 --output updates/appcast.xml
+python3 native-app/release/write-appcast.py native-app/releases/0.5.1-37-adhoc-release/manifest.json --tag v0.5.1-beta.5 --output updates/appcast.xml
 ```
 
 The script verifies the prepared hash, matching public key and both signatures.
@@ -121,3 +121,6 @@ Test the update on a disposable copy before declaring installation/relaunch
 verified. Never remove quarantine or disable Gatekeeper as part of the updater.
 Ad hoc hardened builds use entitlements-adhoc.plist to load Sparkle without a
 Team ID; Developer ID builds retain library validation and re-sign nested helpers.
+
+Spotify Web extension checks: `node --test native-app/Tests/SpotifyWeb.test.cjs`.
+Native framing, schema and resource fixtures also run in `--check-m2`. Setup instructions are in [SPOTIFY-WEB.md](SPOTIFY-WEB.md).

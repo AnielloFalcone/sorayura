@@ -44,3 +44,9 @@ the signed GitHub feed and download, then installs after your confirmation.
 Builds 33 and 34 need one manual upgrade first. Automatic background checks and
 unattended installation are disabled. The Sparkle license is included inside
 the app Resources folder.
+
+Spotify Web (Chrome)
+--------------------
+Select Spotify Web in Settings > Integrations, choose Set up Chrome extension,
+and follow the Load unpacked instructions. Login and audio stay in Chrome.
+See SPOTIFY-WEB.md for setup, privacy and first-beta limitations.

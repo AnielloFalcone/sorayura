@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AgentWidget: View {
     let id: String
+    var interactionID = "preview"
     @Environment(Model.self) private var model
     private var snapshot: AgentUsageSnapshot { model.agentUsage }
     private var period: String { model.prefs.agentPeriod ?? "all" }
@@ -13,7 +14,7 @@ struct AgentWidget: View {
     var body: some View {
         let _ = LocalizationSettings.shared.choice
         VStack(alignment: .leading, spacing: 10) {
-            Label(Model.localizedName(id), systemImage: icon).font(.system(size: 14, weight: .semibold))
+            Label(Model.localizedName(id), systemImage: icon).font(.system(size: 14, weight: .semibold)).frame(height: 20)
             if model.prefs.agentUsageEnabled != true {
                 Text(L("Attiva da Integrazioni")).font(.caption).foregroundStyle(.secondary)
             } else if snapshot.updated == nil {
@@ -202,13 +203,25 @@ struct AgentWidget: View {
         }
     }
     private func rankings(_ values: [(String, Double)]) -> some View {
-        VStack(spacing: 8) {
-            ForEach(Array(values.prefix(model.prefs.agentDensity == "expanded" ? 6 : 3).enumerated()), id: \.offset) { _, value in
+        let page = model.rankingPage(id, display: interactionID, total: values.count)
+        return VStack(spacing: 8) {
+            if page.count > 1 {
+                HStack(spacing: 0) {
+                    Button { model.moveRankingPage(id, display: interactionID, delta: -1) } label: {
+                        Image(systemName: "chevron.left").frame(width: 24, height: 24)
+                    }.disabled(page.index == 0).help(L("Pagina precedente")).accessibilityLabel(L("Pagina precedente"))
+                    Text("\(page.index + 1) / \(page.count)").font(.system(size: 10)).lineLimit(1).frame(maxWidth: .infinity)
+                    Button { model.moveRankingPage(id, display: interactionID, delta: 1) } label: {
+                        Image(systemName: "chevron.right").frame(width: 24, height: 24)
+                    }.disabled(page.index + 1 == page.count).help(L("Pagina successiva")).accessibilityLabel(L("Pagina successiva"))
+                }.buttonStyle(.plain).frame(height: 24)
+            }
+            ForEach(Array(values[page.range].enumerated()), id: \.offset) { _, value in
                 HStack {
-                    Text(value.0).lineLimit(1).truncationMode(.middle)
+                    Text(value.0).lineLimit(1).truncationMode(.middle).help(value.0)
                     Spacer(minLength: 8)
                     Text(tokenLabel(value.1)).monospacedDigit().foregroundStyle(.secondary)
-                }.font(.system(size: 11))
+                }.font(.system(size: 11)).frame(height: 14)
             }
             Text(LF("Token · \(periodTitle)")).font(.system(size: 9)).foregroundStyle(.secondary)
         }

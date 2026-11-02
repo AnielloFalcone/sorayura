@@ -11,8 +11,8 @@ struct ScreenView: View {
         let _ = LocalizationSettings.shared.choice
         GeometryReader { geometry in
             ZStack(alignment:.topLeading) {
-                if model.prefs.wallpaper != "system" {
-                    Image(nsImage: WallpaperRenderer.image(for:screen,prefs:model.prefs))
+                if model.prefs.wallpaper != "system", let image = WallpaperRenderer.image(for: screen, prefs: model.prefs) {
+                    Image(nsImage: image)
                         .resizable().scaledToFill().frame(width:geometry.size.width,height:geometry.size.height).clipped()
                 }
                 if model.editing && model.prefs.layout == "grid" {
@@ -238,7 +238,7 @@ struct WidgetView: View {
             } else if id == "spotify" {
                 SpotifyWidget().environment(model)
             } else if id.hasPrefix("agent") {
-                AgentWidget(id: id).environment(model)
+                AgentWidget(id: id, interactionID: screen.map { model.displayKey($0) } ?? "preview").environment(model)
             } else if id == "apps" {
                 IntegrationWidget().environment(model)
             } else {

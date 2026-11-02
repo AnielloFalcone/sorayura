@@ -3,7 +3,7 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-36}"
+wallpaper_build="${WALLPAPER_BUILD:-37}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build.noindex}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
@@ -17,6 +17,9 @@ ditto .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sp
 mkdir -p "$app/Contents/Resources/Localization"
 cp .build/artifacts/sparkle/Sparkle/LICENSE "$app/Contents/Resources/Sparkle-LICENSE.txt"
 cp Resources/Localization/*.json "$app/Contents/Resources/Localization/"
+ditto Resources/SpotifyWebExtension "$app/Contents/Resources/SpotifyWebExtension"
+cp Resources/spotify-web-host "$app/Contents/Resources/spotify-web-host"
+chmod +x "$app/Contents/Resources/spotify-web-host"
 mkdir -p "$app/Contents/Resources/Icons"
 cp Resources/Icons/*.png "$app/Contents/Resources/Icons/"
 # Remove legacy icon renditions from previous builds of this generated bundle.

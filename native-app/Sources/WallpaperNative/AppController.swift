@@ -5,6 +5,7 @@ import CoreGraphics
 @main
 struct WallpaperNative {
     @MainActor static func main() {
+        if CommandLine.arguments.contains("--spotify-native-host") { SpotifyNativeHost.run(); return }
         if let index = CommandLine.arguments.firstIndex(of: "--preview-ai-widget"), index + 1 < CommandLine.arguments.count {
             if #available(macOS 26, *) { NativeWidgetPreview.run(directory: CommandLine.arguments[index + 1]) }
             return
@@ -117,7 +118,7 @@ struct WallpaperNative {
         }
         let application = NSApplication.shared
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: "dev.aniello.macsystemwallpaper.native")
-            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier && $0.activationPolicy != .prohibited }
         if !others.isEmpty {
             if CommandLine.arguments.contains("--settings") {
                 DistributedNotificationCenter.default().postNotificationName(.init("dev.aniello.macsystemwallpaper.openSettings"), object: nil, userInfo: nil, deliverImmediately: true)
@@ -163,7 +164,7 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var windows: [String:NSWindow] = [:]
     private var editingPreviousApplication: NSRunningApplication?
     private var hitWindows: [String:NSWindow] = [:]
-    private var lastWallpaperSignature = ""
+    private var wallpaperSync = WallpaperSync()
     private var screenSignatures: [String: String] = [:]
     private var recoveryTask: DispatchWorkItem?
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -173,7 +174,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = BrandIcon.menuImage()
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: L("Widget e sfondo…"), action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(NSMenuItem(title: L("Impostazioni…"), action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem(title: L("Modifica layout…"), action: #selector(beginEditing), keyEquivalent: "e"))
         menu.addItem(NSMenuItem(title: L("Identifica monitor"), action: #selector(identify), keyEquivalent: ""))
         menu.addItem(.separator())
@@ -254,7 +255,6 @@ final class AppController: NSObject, NSApplicationDelegate {
         recoveryTask?.cancel()
         let task = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            self.lastWallpaperSignature = ""
             self.refreshScreens()
             for window in self.windows.values { window.orderFrontRegardless() }
         }
@@ -268,7 +268,7 @@ final class AppController: NSObject, NSApplicationDelegate {
     @objc private func identify() { model.identifyUntil = Date().addingTimeInterval(6) }
     @objc private func languageChanged() {
         if let menu = statusItem?.menu {
-            let titles = [L("Widget e sfondo…"), L("Modifica layout…"), L("Identifica monitor"), "", L("Esci")]
+            let titles = [L("Impostazioni…"), L("Modifica layout…"), L("Identifica monitor"), "", L("Esci")]
             for (item, title) in zip(menu.items, titles) where !item.isSeparatorItem { item.title = title }
         }
         settingsPresentation.updateLanguage()
@@ -306,7 +306,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         let active = Set(screens.map(screenID))
         for (id, window) in windows where !active.contains(id) { window.close(); windows[id] = nil; screenSignatures[id] = nil }
         for (id, window) in hitWindows where !active.contains(String(id.split(separator: ":").first ?? "")) { window.close(); hitWindows[id] = nil }
-        let wallpaperSignature = "\(model.prefs.wallpaper)|\(model.prefs.imagePath ?? "")|\(model.prefs.syncWallpaper)|\(screens.map(screenID))"
+        wallpaperSync.retainDisplays(active)
         for screen in screens {
             let id = screenID(screen)
             let signature = "\(model.displayNumber(screen))|\(screen.frame)|\(screen.backingScaleFactor)|\(screen.localizedName)"
@@ -334,12 +334,11 @@ final class AppController: NSObject, NSApplicationDelegate {
             window.level = model.editing ? .normal : NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
             if window.frame != screen.frame { window.setFrame(screen.frame, display: true) }
             if !window.isVisible { window.orderFrontRegardless() }
-            if wallpaperSignature != lastWallpaperSignature, model.prefs.syncWallpaper {
+            if wallpaperSync.needsApply(id: id, prefs: model.prefs, size: screen.frame.size, scale: screen.backingScaleFactor) {
                 WallpaperRenderer.apply(to: screen, prefs: model.prefs)
             }
             refreshHitWindows(for: screen)
         }
-        lastWallpaperSignature = wallpaperSignature
     }
     private func refreshHitWindows(for screen: NSScreen) {
         let screenID = screenID(screen)
@@ -402,6 +401,13 @@ final class AppController: NSObject, NSApplicationDelegate {
                     else { content.widgets.removeAll { $0 == widget } }
                     self.model.setContent(screen, content)
                 }
+                if ["agentModels", "agentProjects"].contains(widget) {
+                    hitView.onClick = { [weak self, weak hitView] point in
+                        guard let self, let hitView, let delta = AgentRankingPage.action(
+                            at: CGPoint(x: point.x, y: hitView.bounds.height - point.y), width: hitView.bounds.width) else { return }
+                        self.model.moveRankingPage(widget, display: screenID, delta: delta)
+                    }
+                }
                 if widget == "spotify" {
                     window.acceptsMouseMovedEvents=true
                     hitView.onHover = { [weak self, weak hitView] point in
@@ -419,7 +425,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                         let size = CGSize(width:max(1,hitView.bounds.width-32),height:max(1,hitView.bounds.height-32))
                         let layout = SpotifyLayout(size:size,expanded:self.model.prefs.spotifyDisplay == "expanded",shortcuts:min(6,self.model.prefs.spotifyShortcuts?.count ?? 0))
                         let local = CGPoint(x:point.x-16,y:hitView.bounds.height-point.y-16)
-                        if let action=layout.action(at:local,available:self.model.spotify.available) { self.model.spotifyAction(action) }
+                        if let action=layout.action(at:local,available:self.model.spotify.available), self.model.spotifySupports(action) { self.model.spotifyAction(action) }
                     }
                 }
                 var dragStart: Point?
@@ -628,20 +634,29 @@ final class LongPressView: NSView {
 @MainActor
 enum WallpaperRenderer {
     private static var imageCache: [String:NSImage] = [:]
-    static func image(for screen: NSScreen, prefs: Prefs) -> NSImage {
+    static func storeImage(_ source: URL, directory: URL? = nil) throws -> URL {
+        guard NSImage(contentsOf: source) != nil else { throw SettingsError.invalid("Immagine non leggibile. Scegli un’altra immagine.") }
+        let directory = directory ?? Model.preferencesURL.deletingLastPathComponent().appending(path: "wallpapers")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appending(path: UUID().uuidString).appendingPathExtension(source.pathExtension)
+        try FileManager.default.copyItem(at: source, to: file)
+        return file
+    }
+    static func image(for screen: NSScreen, prefs: Prefs) -> NSImage? {
         if prefs.wallpaper == "image", let path = prefs.imagePath {
             let date = (try? URL(fileURLWithPath: path).resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)?.timeIntervalSince1970 ?? 0
             let key = "image:\(path):\(date)"
             if let cached = imageCache[key] { return cached }
             if let image = NSImage(contentsOfFile: path) { cache(image, key: key); return image }
         }
+        if prefs.wallpaper == "image" { return nil }
         // Render once at display resolution (up to 4096 px), then cache. Dither
         // before 8-bit quantization rather than adding noise to an already banded image.
         let native = NSSize(width: max(1,screen.frame.width * screen.backingScaleFactor), height: max(1,screen.frame.height * screen.backingScaleFactor))
         let size = WallpaperRaster.pixelSize(native)
         let key = "dither-v1:\(prefs.wallpaper):\(Int(size.width))x\(Int(size.height))"
         if let cached = imageCache[key] { return cached }
-        guard let bitmap = WallpaperRaster.bitmap(size: size, midnight: prefs.wallpaper == "midnight") else { return NSImage(size: screen.frame.size) }
+        guard let bitmap = WallpaperRaster.bitmap(size: size, midnight: prefs.wallpaper == "midnight") else { return nil }
         bitmap.size = screen.frame.size
         let image = NSImage(size: screen.frame.size)
         image.addRepresentation(bitmap)
@@ -660,15 +675,16 @@ enum WallpaperRenderer {
         autoreleasepool { applyCollected(to: screen, prefs: prefs) }
     }
     private static func applyCollected(to screen: NSScreen, prefs: Prefs) {
+        guard let image = image(for: screen, prefs: prefs) else { return }
         let folder = FileManager.default.homeDirectoryForCurrentUser.appending(path:"Library/Application Support/dev.aniello.macsystemwallpaper/wallpapers")
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let id = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
         let file = folder.appending(path:"native-\(id)-\(prefs.wallpaper).png")
-        let image = image(for:screen,prefs:prefs)
         if let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
            let data = NSBitmapImageRep(cgImage: cg).representation(using:.png,properties:[:]) {
-            try? data.write(to:file,options:.atomic)
-            do { try NSWorkspace.shared.setDesktopImageURL(file,for:screen,options:NSWorkspace.shared.desktopImageOptions(for:screen) ?? [:]) }
+            do {
+                try data.write(to:file,options:.atomic)
+                try NSWorkspace.shared.setDesktopImageURL(file,for:screen,options:NSWorkspace.shared.desktopImageOptions(for:screen) ?? [:]) }
             catch { NSLog("Cannot set desktop image: %@",error.localizedDescription) }
         }
     }

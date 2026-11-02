@@ -47,6 +47,22 @@ import Metal
     }
 
     private static func wallpaperRaster() throws {
+        if let screen = NSScreen.screens.first {
+            var missing = Prefs(); missing.wallpaper = "image"; missing.imagePath = "/nonexistent-sorayura-fixture.png"
+            let before = NSWorkspace.shared.desktopImageURL(for: screen)
+            try check(WallpaperRenderer.image(for: screen, prefs: missing) == nil, "Missing custom image silently falls back to the default background")
+            WallpaperRenderer.apply(to: screen, prefs: missing)
+            try check(NSWorkspace.shared.desktopImageURL(for: screen) == before, "Missing image overwrote the macOS wallpaper")
+            let folder = FileManager.default.temporaryDirectory.appending(path: "sorayura-image-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: folder) }
+            let source = folder.appending(path: "input.png")
+            let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2, bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+            try bitmap.representation(using: .png, properties: [:])!.write(to: source)
+            let stored = try WallpaperRenderer.storeImage(source, directory: folder.appending(path: "owned"))
+            try FileManager.default.removeItem(at: source)
+            try check(NSImage(contentsOf: stored) != nil, "Wallpaper still depends on its temporary source file")
+        }
         try check(WallpaperRaster.pixelSize(CGSize(width: 3840, height: 2160)) == CGSize(width: 3840, height: 2160), "4K wallpaper is downscaled")
         try check(WallpaperRaster.pixelSize(CGSize(width: 5120, height: 2880)) == CGSize(width: 4096, height: 2304), "Wallpaper resolution cap changed")
         for midnight in [false, true] {
@@ -113,6 +129,7 @@ import Metal
             try check(presentation.prepare(model: model) === first, "Duplicate settings windows on repeated open")
             hosting = first.contentView
             try check(hosting != nil, "Settings content missing")
+            try check(!first.isOpaque && first.titlebarAppearsTransparent && first.styleMask.contains(.fullSizeContentView), "Settings lost the transparent glass window surface")
             presentation.navigation.section = "Widget"
             frame = first.frame.offsetBy(dx: 20, dy: 20)
             first.setFrame(frame, display: false)

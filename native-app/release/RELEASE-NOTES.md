@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.4 — build 36
+# Sorayura 0.5.1-beta.5 — build 37
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,14 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## New and fixed in beta 5
+
+- Layout and animation edits, Space changes and wake recovery no longer force the system wallpaper to be reapplied. Missing custom images cannot silently become a default gradient; newly selected images are copied to Sorayura's persistent storage.
+- Spotify Web in Chrome is available as an optional source through a bundled unpacked extension. Login and audio stay in Chrome. Run setup in Settings → Integrations, then load the extension in Chrome. This is a first beta; live authenticated Spotify Web playback still needs validation. See the included SPOTIFY-WEB.md.
+- AI Models and Projects can page through all locally collected entries for the selected period. Pages are independent per monitor, and their row count adapts to widget height.
+- Settings uses a transparent native glass window and sidebar, with the existing material fallback on older macOS versions.
+- The menu item is now Settings… (localized).
 
 ## Fixed in beta 4
 

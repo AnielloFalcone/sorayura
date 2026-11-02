@@ -39,3 +39,7 @@ They are not automatically sent to the developer.
 ## Update checks
 
 When you choose Check for updates, Sparkle contacts GitHub for the signed update feed and, after confirmation, the release download. GitHub receives the network request, including your IP address and client metadata. Automatic checks, unattended updates and Sparkle system profiling are disabled. Update requests do not include your widget layouts, local agent history or account credentials.
+
+## Spotify Web companion
+
+The optional unpacked Chrome extension runs only on open.spotify.com and forwards visible player metadata, available controls and transport commands through Chrome Native Messaging. Cookies, login tokens and passwords remain in Chrome and are not read by the integration. A private local metadata snapshot expires after 15 seconds and is removed when its connection closes. Artwork is fetched from the allowed Spotify CDN hosts. The extension is a separate browser component; disable/remove it in Chrome to stop it. There is no Sorayura service receiving playback data. See [Spotify Web setup and limits](SPOTIFY-WEB.md).

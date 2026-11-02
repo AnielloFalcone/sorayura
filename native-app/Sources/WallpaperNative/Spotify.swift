@@ -14,6 +14,8 @@ struct SpotifySnapshot: Sendable, Equatable {
     var shuffle = false
     var repeatEnabled = false
     var trackID = ""
+    var webSession: String?
+    var supportedCommands: [String]?
     mutating func predict(_ command:String) {
         switch command {
         case "playpause": playing.toggle()
@@ -57,21 +59,33 @@ actor SpotifyReader {
             end tell
             """)
             let url = descriptor.atIndex(5)?.stringValue ?? ""
-            if url != artworkURL {
-                artworkURL = url; artwork = nil; artworkAttempt = .distantPast
-            }
-            if includeArtwork, artwork == nil, Date().timeIntervalSince(artworkAttempt)>15 {
-                artworkAttempt=Date()
-                if let remote = URL(string: url), remote.scheme == "https", let host = remote.host, host == "i.scdn.co" || host.hasSuffix(".spotifycdn.com") {
-                    var request = URLRequest(url: remote); request.timeoutInterval = 4
-                    if let (data, response) = try? await URLSession.shared.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200, data.count < 5_000_000, url == artworkURL { artwork = data }
-                }
-            }
-            return SpotifySnapshot(title: descriptor.atIndex(1)?.stringValue ?? "Nessun brano", artist: descriptor.atIndex(2)?.stringValue ?? "", album: descriptor.atIndex(3)?.stringValue ?? "", playing: descriptor.atIndex(4)?.booleanValue ?? false, available: true, artwork: artwork, volume: min(100, max(0, Int(descriptor.atIndex(6)?.int32Value ?? 50))), shuffle: descriptor.atIndex(7)?.booleanValue ?? false, repeatEnabled: descriptor.atIndex(8)?.booleanValue ?? false, trackID: descriptor.atIndex(9)?.stringValue ?? "")
+            let cover = await cover(url, enabled: includeArtwork)
+            return SpotifySnapshot(title: descriptor.atIndex(1)?.stringValue ?? "Nessun brano", artist: descriptor.atIndex(2)?.stringValue ?? "", album: descriptor.atIndex(3)?.stringValue ?? "", playing: descriptor.atIndex(4)?.booleanValue ?? false, available: true, artwork: cover, volume: min(100, max(0, Int(descriptor.atIndex(6)?.int32Value ?? 50))), shuffle: descriptor.atIndex(7)?.booleanValue ?? false, repeatEnabled: descriptor.atIndex(8)?.booleanValue ?? false, trackID: descriptor.atIndex(9)?.stringValue ?? "")
         } catch {
             let denied = (error as NSError).code == -1743
             return SpotifySnapshot(title: "Spotify", error: denied ? "Consenti Spotify in Privacy e sicurezza → Automazione, poi premi Riprova." : "Nessun brano disponibile o Spotify non risponde.", denied: denied)
         }
+    }
+    private func cover(_ url: String, enabled: Bool) async -> Data? {
+        if url != artworkURL { artworkURL = url; artwork = nil; artworkAttempt = .distantPast }
+        if enabled, artwork == nil, Date().timeIntervalSince(artworkAttempt) > 15,
+           let remote = SpotifyWebBridge.artworkURL(url) {
+            artworkAttempt = Date()
+            var request = URLRequest(url: remote); request.timeoutInterval = 4
+            if let (data, response) = try? await URLSession.shared.data(for: request),
+               (response as? HTTPURLResponse)?.statusCode == 200, data.count < 5_000_000, url == artworkURL { artwork = data }
+        }
+        return artwork
+    }
+    func readWeb(includeArtwork: Bool = true) async -> SpotifySnapshot {
+        guard let value = SpotifyWebBridge.read() else {
+            return SpotifySnapshot(title: "Apri Spotify Web", error: "Collega l’estensione Chrome da Impostazioni → Integrazioni e apri Spotify Web.")
+        }
+        let art = await cover(value.artworkURL, enabled: includeArtwork)
+        return SpotifySnapshot(title: value.available ? value.title : "Apri Spotify Web", artist: value.artist,
+            album: value.album, playing: value.playing, available: value.available, artwork: art, error: value.error,
+            volume: value.volume, shuffle: value.shuffle, repeatEnabled: value.repeatEnabled, trackID: value.trackID,
+            webSession: value.session, supportedCommands: value.supportedCommands)
     }
     func command(_ name: String) throws {
         let source: String
@@ -91,6 +105,11 @@ struct SpotifyShortcut: Codable, Identifiable, Equatable {
     var id = UUID().uuidString
     var name: String
     var link: String
+    static func webURL(_ text: String) -> URL? {
+        guard let uri = uri(text) else { return nil }
+        let parts = uri.absoluteString.split(separator: ":")
+        return URL(string: "https://open.spotify.com/\(parts[1])/\(parts[2])")
+    }
     static func uri(_ text: String) -> URL? {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         var parts: [String]
@@ -161,8 +180,8 @@ struct SpotifyWidget: View {
                 } else {
                     artwork.frame(width:layout.artwork.width,height:layout.artwork.height).clipShape(RoundedRectangle(cornerRadius:layout.expanded ? 14 : 8)).position(x:layout.artwork.midX,y:layout.artwork.midY)
                     VStack(alignment:.leading,spacing:5) {
-                        if model.spotify.title == "Apri Spotify" {
-                            Button(L("Apri Spotify")) { model.openSpotify() }.buttonStyle(.plain).foregroundStyle(.tint)
+                        if ["Apri Spotify", "Apri Spotify Web"].contains(model.spotify.title) {
+                            Button(L(model.spotify.title)) { model.openSpotify() }.buttonStyle(.plain).foregroundStyle(.tint)
                         } else { Text(model.spotify.available ? model.spotify.title : L(model.spotify.title)).font(.system(size:layout.expanded ? 20 : 13,weight:.semibold)).lineLimit(layout.expanded && layout.info.height >= 110 ? 2 : 1) }
                         if layout.info.height >= 32 { Text(model.spotify.artist).font(.system(size:layout.expanded ? 13 : 11)).foregroundStyle(.secondary).lineLimit(1) }
                         if layout.expanded { Text(model.spotify.album).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1) }
@@ -195,7 +214,7 @@ struct SpotifyWidget: View {
             } else {
                 Image(systemName:icon).font(.system(size:action == "playpause" && expanded ? 23 : 15,weight:.medium)).frame(maxWidth:.infinity,maxHeight:.infinity).foregroundStyle(active ? Color.green : Color.white)
             }
-        }.buttonStyle(SpotifyControlStyle(desktopHovered:model.spotifyHover[interactionID] == action)).disabled(action != "open" && !action.hasPrefix("shortcut:") && !model.spotify.available).help(L(label)).accessibilityLabel(L(label))
+        }.buttonStyle(SpotifyControlStyle(desktopHovered:model.spotifyHover[interactionID] == action)).disabled(!model.spotifySupports(action)).help(L(label)).accessibilityLabel(L(label))
     }
 }
 

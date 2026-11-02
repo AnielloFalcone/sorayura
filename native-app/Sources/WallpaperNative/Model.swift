@@ -15,7 +15,10 @@ final class Model {
             if oldValue.agentUsageEnabled != prefs.agentUsageEnabled { configureAgentWatcher(); refreshAgentUsage(force: true) }
             if oldValue.claudeControlEnabled != prefs.claudeControlEnabled { claudeAccount = ClaudeAccountSnapshot(); lastClaudeAccount = .distantPast }
             if oldValue.codexAccountEnabled != prefs.codexAccountEnabled { codexAccount = CodexAccountSnapshot(); lastAccount = .distantPast }
-            if oldValue.spotifyEnabled != prefs.spotifyEnabled { configureSpotifyObserver(); spotifyDenied = false; lastSpotify = .distantPast; if prefs.spotifyEnabled != true { spotify = SpotifySnapshot() } }
+            if oldValue.spotifyEnabled != prefs.spotifyEnabled || oldValue.spotifySource != prefs.spotifySource {
+                spotifyRevision += 1; spotifyPlaybackIntent = nil; spotifyDenied = false; lastSpotify = .distantPast
+                spotify = SpotifySnapshot(); configureSpotifyObserver()
+            }
         }
     } }
     var savedPresets: [SavedPreset] = []
@@ -26,6 +29,17 @@ final class Model {
     let metrics = MetricReadings()
     var appPresence: [AppPresence] = []
     var agentUsage = AgentUsageSnapshot()
+    var rankingPages: [String: Int] = [:]
+    private func rankingKey(_ id: String, _ display: String) -> String { "\(display):\(id):\(prefs.agentPeriod ?? "all"):\(prefs.agentDensity ?? "compact")" }
+    func rankingPage(_ id: String, display: String, total: Int) -> AgentRankingPage {
+        let height = orderedScreens().first(where: { displayKey($0) == display }).map { widgetSize(id, screen: $0).height }
+        return AgentRankingPage(total: total, size: AgentRankingPage.pageSize(expanded: prefs.agentDensity == "expanded", height: height), requested: rankingPages[rankingKey(id, display)] ?? 0)
+    }
+    func moveRankingPage(_ id: String, display: String, delta: Int) {
+        let summary = agentUsage.periods[prefs.agentPeriod ?? "all"] ?? AgentPeriodSummary()
+        let page = rankingPage(id, display: display, total: id == "agentModels" ? summary.models.count : summary.projects.count)
+        rankingPages[rankingKey(id, display)] = min(page.count - 1, max(0, page.index + delta))
+    }
     var liveAgents: [AgentLiveState] = []
     var codexAccount = CodexAccountSnapshot()
     var claudeAccount = ClaudeAccountSnapshot()
@@ -67,7 +81,7 @@ final class Model {
     private func configureSpotifyObserver() {
         if let spotifyObserver { DistributedNotificationCenter.default().removeObserver(spotifyObserver); self.spotifyObserver=nil }
         guard prefs.spotifyEnabled == true else { return }
-        spotifyObserver=DistributedNotificationCenter.default().addObserver(forName:Notification.Name("com.spotify.client.PlaybackStateChanged"),object:nil,queue:.main) { [weak self] note in
+        spotifyObserver=DistributedNotificationCenter.default().addObserver(forName: prefs.spotifySource == "web" ? SpotifyWebBridge.changed : Notification.Name("com.spotify.client.PlaybackStateChanged"),object:nil,queue:.main) { [weak self] note in
             Task { @MainActor in
                 guard let self,self.prefs.spotifyEnabled == true else { return }
                 self.spotifyRevision += 1
@@ -165,9 +179,10 @@ final class Model {
         spotifyDirty=false
         let revision=spotifyRevision
         lastSpotify = Date()
-        let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").contains { !$0.isTerminated }
+        let web = prefs.spotifySource == "web"
+        let running = !web && NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").contains { !$0.isTerminated }
         spotifyTask = Task { [weak self, spotifyReader] in
-            var value = await spotifyReader.read(running: running, includeArtwork:false)
+            var value = web ? await spotifyReader.readWeb(includeArtwork: false) : await spotifyReader.read(running: running, includeArtwork:false)
             guard let self else { return }
             if self.prefs.spotifyEnabled == true, revision == self.spotifyRevision, self.spotifyCommandsPending == 0 {
                 if let intent=self.spotifyPlaybackIntent {
@@ -179,7 +194,7 @@ final class Model {
             }
             if value.available, value.artwork == nil, self.spotifyArtworkTask == nil, self.prefs.spotifyEnabled == true, revision == self.spotifyRevision {
                 self.spotifyArtworkTask=Task { [weak self,spotifyReader] in
-                    let complete=await spotifyReader.read(running:running)
+                    let complete = web ? await spotifyReader.readWeb() : await spotifyReader.read(running:running)
                     guard let self else { return }
                     if self.prefs.spotifyEnabled == true, self.spotify.trackID == complete.trackID, self.spotify.title == complete.title { self.spotify.artwork=complete.artwork }
                     self.spotifyArtworkTask=nil
@@ -190,8 +205,22 @@ final class Model {
             if self.spotifyDirty { self.refreshSpotify(force:true) }
         }
     }
+    func openSpotifyWeb(_ url: URL = URL(string: "https://open.spotify.com/")!) {
+        guard servicesEnabled else { return }
+        guard let chrome = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") else {
+            spotify.error = "Installa Google Chrome per usare Spotify Web."; return
+        }
+        NSWorkspace.shared.open([url], withApplicationAt: chrome, configuration: NSWorkspace.OpenConfiguration()) { [weak self] _, error in
+            if error != nil { Task { @MainActor in self?.spotify.error = "Impossibile aprire Spotify." } }
+        }
+    }
+    func spotifySupports(_ action: String) -> Bool {
+        if action == "open" || action.hasPrefix("shortcut:") { return true }
+        return spotify.available && (spotify.supportedCommands?.contains(action) ?? true)
+    }
     func openSpotify() {
         guard servicesEnabled else { return }
+        if prefs.spotifySource == "web" { openSpotifyWeb(); return }
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") else {
             spotify.error = "Spotify non è installato sul Mac."
             return
@@ -209,14 +238,17 @@ final class Model {
         guard prefs.spotifyEnabled == true else { return }
         if action == "open" { openSpotify(); return }
         if action.hasPrefix("shortcut:"), let index = Int(action.dropFirst(9)), let shortcuts = prefs.spotifyShortcuts, shortcuts.indices.contains(index), let url = SpotifyShortcut.uri(shortcuts[index].link) {
-            if !NSWorkspace.shared.open(url) { spotify.error = "Impossibile aprire Spotify." }
+            if prefs.spotifySource == "web", let webURL = SpotifyShortcut.webURL(shortcuts[index].link) { openSpotifyWeb(webURL) }
+            else if !NSWorkspace.shared.open(url) { spotify.error = "Impossibile aprire Spotify." }
             return
         }
         spotifyCommand(action)
     }
     func spotifyCommand(_ command: String) {
         guard servicesEnabled else { return }
-        guard prefs.spotifyEnabled == true, spotify.available else { return }
+        guard prefs.spotifyEnabled == true, spotifySupports(command) else { return }
+        let web = prefs.spotifySource == "web"
+        let webSession = spotify.webSession
         spotifyRevision += 1
         spotify.predict(command)
         let delivered = command == "playpause" ? (spotify.playing ? "play":"pause") : command
@@ -228,7 +260,10 @@ final class Model {
         let serial=spotifyPlaybackSerial
         spotifyCommandsPending += 1
         Task { [weak self, spotifyReader] in
-            do { try await spotifyReader.command(delivered) }
+            do {
+                if web { try SpotifyWebBridge.send(delivered, session: webSession) }
+                else { try await spotifyReader.command(delivered) }
+            }
             catch {
                 if command == "playpause", self?.spotifyPlaybackSerial == serial { self?.spotifyPlaybackIntent=nil }
                 self?.spotify.error = "Spotify non ha accettato il comando."
@@ -541,6 +576,7 @@ struct Prefs: Codable {
     var codexAccountEnabled: Bool? = nil
     var codexExecutable: String? = nil
     var spotifyEnabled: Bool? = nil
+    var spotifySource: String? = nil
     var spotifyDisplay: String? = nil
     var spotifyShortcuts: [SpotifyShortcut]? = nil
     var agentUsageEnabled: Bool? = nil
