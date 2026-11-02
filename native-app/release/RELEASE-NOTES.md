@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.3 — build 35
+# Sorayura 0.5.1-beta.4 — build 36
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,12 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## Fixed in beta 4
+
+Widget and animation dragging now uses the fixed desktop coordinate space. Edge-clamped widgets start from their visible position, and grid snapping stays inside the display. Desktop surfaces are explicitly assigned to their display and no longer accept automatic window constraints, SwiftUI sizing or safe-area insets. Reconnected display IDs refresh the associated content, and startup performs a delayed geometry recovery.
+
+Geometry and movement regression checks passed, including negative display origins and real window frames on the connected displays. The reported offset on a separate tester's monitor arrangement still requires confirmation there.
 
 ## New in beta 3
 
@@ -42,6 +48,6 @@ do not verify renderer pausing during sleep. First launch of this downloaded pac
 
 This prerelease is **ad hoc signed, not Developer ID signed and not notarized by Apple**. Download the DMG, drag Sorayura into Applications, eject the image and open the app. If macOS blocks it, use System Settings → Privacy & Security → Open Anyway for this app, following [Apple’s instructions](https://support.apple.com/en-ie/102445). Managed Macs may prohibit this exception. Do not disable Gatekeeper globally.
 
-`SHA256SUMS` identifies the uploaded DMG. This is the first build with an in-app updater. Users of beta 1 or beta 2 must install this build manually once. The Homebrew Cask is not available for this unsigned-by-Developer-ID channel.
+`SHA256SUMS` identifies the uploaded DMG. Users of beta 3 can update in the app. Users of beta 1 or beta 2 must install this build manually once. The Homebrew Cask is not available for this unsigned-by-Developer-ID channel.
 
 Claude account limits use the authenticated CLI control protocol with session persistence disabled. Spotify includes expanded controls and shortcuts. Account integrations are optional and require their respective clients and login.

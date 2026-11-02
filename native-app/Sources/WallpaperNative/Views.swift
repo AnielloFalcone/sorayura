@@ -106,7 +106,7 @@ struct ScreenView: View {
             .fill(.cyan.opacity(0.035))
             .overlay { RoundedRectangle(cornerRadius: 20).stroke(.cyan.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [7])) }
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 1).onChanged { value in
+            .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("widgetEditor")).onChanged { value in
                 let start = dragOrigins["animation"] ?? point
                 if dragOrigins["animation"] == nil { dragOrigins["animation"] = start }
                 let delta = CGPoint(x: value.translation.width, y: -value.translation.height)
@@ -131,7 +131,7 @@ struct ScreenView: View {
                     .frame(width: 42, height: 42)
                     .wallpaperGlass(cornerRadius: 12)
                     .contentShape(Rectangle())
-                    .gesture(DragGesture(minimumDistance: 1).onChanged { value in
+                    .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("widgetEditor")).onChanged { value in
                         let start = animationScaleOrigin ?? model.animationScale(screen)
                         if animationScaleOrigin == nil { animationScaleOrigin = start }
                         let dx = Double(value.translation.width / max(1, frame.width))
@@ -147,18 +147,17 @@ struct ScreenView: View {
     private func draggable<Content:View>(_ id:String,at point:Point,in size:CGSize,@ViewBuilder content:()->Content) -> some View {
         let width = dimension(id,"width")
         let height = dimension(id,"height")
-        let x = min(max(0,size.width*point.x/100),max(0,size.width-width))
-        let y = min(max(0,size.height*point.y/100),max(0,size.height-height))
+        let rect = WidgetSizing.frame(position: point, size: WidgetSize(width: width, height: height), bounds: size)
+        let x = rect.minX, y = rect.minY
         return content()
             .frame(width: width, height: height)
-            .gesture(model.editing ? DragGesture(minimumDistance:1).onChanged { value in
+            .gesture(model.editing ? DragGesture(minimumDistance: 1, coordinateSpace: .named("widgetEditor")).onChanged { value in
                 let start = dragOrigins[id] ?? point
                 if dragOrigins[id] == nil { dragOrigins[id] = start }
-                let newX = min(max(0,start.x+value.translation.width/max(1,size.width)*100),100)
-                let newY = min(max(0,start.y+value.translation.height/max(1,size.height)*100),100)
-                let px = model.prefs.layout == "grid" ? (Double(Int((newX*size.width/100/model.prefs.cellSize).rounded()))*model.prefs.cellSize/size.width*100) : newX
-                let py = model.prefs.layout == "grid" ? (Double(Int((newY*size.height/100/model.prefs.cellSize).rounded()))*model.prefs.cellSize/size.height*100) : newY
-                model.setPosition(id,screen,Point(x:px,y:py))
+                let next = WidgetSizing.draggedPosition(start: start, translation: value.translation,
+                    size: WidgetSize(width: width, height: height), bounds: size,
+                    cell: model.prefs.layout == "grid" ? model.prefs.cellSize : nil)
+                model.setPosition(id, screen, next)
             }.onEnded { _ in dragOrigins[id] = nil } : nil)
             .onLongPressGesture(minimumDuration:0.6) { model.editing = true }
             .overlay(alignment:.topTrailing) {

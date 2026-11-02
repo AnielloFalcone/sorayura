@@ -5,6 +5,7 @@ import Metal
 @MainActor enum ResourceChecks {
     static func run() throws {
         try settingsLifetime()
+        try desktopGeometry()
         try wallpaperRaster()
         try animationInteractions()
         try buffers()
@@ -18,6 +19,31 @@ import Metal
 
     private static func check(_ passed: Bool, _ message: String) throws {
         if !passed { throw SettingsError.invalid(message) }
+    }
+
+    private static func desktopGeometry() throws {
+        for screen in NSScreen.screens {
+            let surface = DesktopSurfaceWindow(contentRect: NSRect(origin: .zero, size: screen.frame.size),
+                styleMask: [.borderless], backing: .buffered, defer: false, screen: screen)
+            surface.isReleasedWhenClosed = false
+            surface.contentView = NSView()
+            defer { surface.close() }
+            for level in [NSWindow.Level.normal, NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)] {
+                surface.level = level
+                surface.setFrame(screen.frame, display: false)
+                try check(surface.frame == screen.frame && surface.contentView?.frame == NSRect(origin: .zero, size: screen.frame.size), "Desktop surface does not cover the selected display at its exact origin")
+            }
+            let panel = DesktopHitPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false, screen: screen)
+            panel.isReleasedWhenClosed = false
+            defer { panel.close() }
+            let corner = NSRect(x: screen.frame.minX, y: screen.frame.maxY - 120, width: 240, height: 120)
+            panel.setFrame(corner, display: false)
+            try check(panel.frame == corner, "Interaction panel was shifted from its display corner")
+            for origin in [CGPoint(x: -2560, y: -1440), CGPoint(x: -2560, y: 1117), CGPoint(x: 1728, y: 89)] {
+                let proposed = NSRect(origin: origin, size: CGSize(width: 2560, height: 1440))
+                try check(surface.constrainFrameRect(proposed, to: screen) == proposed && panel.constrainFrameRect(proposed, to: screen) == proposed, "Desktop geometry was constrained to another monitor")
+            }
+        }
     }
 
     private static func wallpaperRaster() throws {

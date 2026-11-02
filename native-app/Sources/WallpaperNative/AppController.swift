@@ -138,6 +138,8 @@ final class DesktopSurfaceWindow: NSWindow {
     }
     override var canBecomeKey: Bool { editingEnabled }
     override var canBecomeMain: Bool { false }
+    // Desktop surfaces must fill the entire display, including menu bar and Dock areas.
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
     override func sendEvent(_ event: NSEvent) {
         if editingEnabled && [.leftMouseDown, .rightMouseDown].contains(event.type) && !isKeyWindow {
             NSApp.activate(ignoringOtherApps: true)
@@ -145,6 +147,11 @@ final class DesktopSurfaceWindow: NSWindow {
         }
         super.sendEvent(event)
     }
+}
+
+@MainActor
+final class DesktopHitPanel: NSPanel {
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
 }
 
 @MainActor
@@ -213,6 +220,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             RenderDiagnostics.appState = { [weak self] in self?.diagnosticWindowState() ?? [:] }
         }
         refreshScreens()
+        scheduleRecovery()
         if let index = CommandLine.arguments.firstIndex(of: "--profile-components"),
            index + 1 < CommandLine.arguments.count {
             do {
@@ -275,6 +283,8 @@ final class AppController: NSObject, NSApplicationDelegate {
             return ["id": screenID(screen), "name": screen.localizedName,
                     "frame": NSStringFromRect(screen.frame), "scale": screen.backingScaleFactor,
                     "window_frame": window.map { NSStringFromRect($0.frame) } ?? "missing",
+                    "window_display_id": window?.screen.map { model.displayNumber($0) } ?? "missing",
+                    "content_frame": window?.contentView.map { NSStringFromRect($0.frame) } ?? "missing",
                     "window_visible": window?.isVisible ?? false] as [String: Any]
          }]
     }
@@ -284,6 +294,13 @@ final class AppController: NSObject, NSApplicationDelegate {
             $0.frame.minX == $1.frame.minX ? $0.frame.minY < $1.frame.minY : $0.frame.minX < $1.frame.minX
         }
     }
+    private func screenContent(_ screen: NSScreen) -> NSView {
+        let hosting = NSHostingView(rootView: LocalizedRoot(content: ScreenView(screen: screen).environment(model)))
+        // Geometry belongs to the display; SwiftUI must not resize or inset the desktop window.
+        hosting.sizingOptions = []
+        hosting.safeAreaRegions = []
+        return hosting
+    }
     func refreshScreens() {
         let screens = orderedScreens()
         let active = Set(screens.map(screenID))
@@ -292,30 +309,30 @@ final class AppController: NSObject, NSApplicationDelegate {
         let wallpaperSignature = "\(model.prefs.wallpaper)|\(model.prefs.imagePath ?? "")|\(model.prefs.syncWallpaper)|\(screens.map(screenID))"
         for screen in screens {
             let id = screenID(screen)
-            let signature = "\(screen.frame)|\(screen.backingScaleFactor)|\(screen.localizedName)"
+            let signature = "\(model.displayNumber(screen))|\(screen.frame)|\(screen.backingScaleFactor)|\(screen.localizedName)"
             if screenSignatures[id] != signature {
                 for (key, hit) in hitWindows where key.hasPrefix("\(id):") { hit.close(); hitWindows[key] = nil }
                 if let existing = windows[id] {
-                    existing.contentView = NSHostingView(rootView: LocalizedRoot(content: ScreenView(screen: screen).environment(model)))
+                    existing.contentView = screenContent(screen)
                 }
                 screenSignatures[id] = signature
             }
             let window: NSWindow
             if let existing = windows[id] { window = existing }
             else {
-                window = DesktopSurfaceWindow(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                window = DesktopSurfaceWindow(contentRect: NSRect(origin: .zero, size: screen.frame.size), styleMask: [.borderless], backing: .buffered, defer: false, screen: screen)
                 window.isReleasedWhenClosed = false
                 window.backgroundColor = .clear
                 window.isOpaque = false
                 window.hasShadow = false
                 window.collectionBehavior = [.canJoinAllSpaces,.stationary,.ignoresCycle]
-                window.contentView = NSHostingView(rootView: LocalizedRoot(content: ScreenView(screen: screen).environment(model)))
+                window.contentView = screenContent(screen)
                 windows[id] = window
             }
-            window.setFrame(screen.frame, display: true)
             (window as? DesktopSurfaceWindow)?.editingEnabled = model.editing
             window.ignoresMouseEvents = !model.editing
             window.level = model.editing ? .normal : NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
+            if window.frame != screen.frame { window.setFrame(screen.frame, display: true) }
             if !window.isVisible { window.orderFrontRegardless() }
             if wallpaperSignature != lastWallpaperSignature, model.prefs.syncWallpaper {
                 WallpaperRenderer.apply(to: screen, prefs: model.prefs)
@@ -335,7 +352,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             let window: NSWindow
             if let existing = hitWindows[id] { window = existing }
             else {
-                let panel = NSPanel(contentRect: .zero, styleMask: [.borderless,.nonactivatingPanel], backing: .buffered, defer: false)
+                let panel = DesktopHitPanel(contentRect: .zero, styleMask: [.borderless,.nonactivatingPanel], backing: .buffered, defer: false, screen: screen)
                 panel.isReleasedWhenClosed = false
                 panel.hidesOnDeactivate = false
                 panel.ignoresMouseEvents = false
@@ -423,15 +440,11 @@ final class AppController: NSObject, NSApplicationDelegate {
                     let start = dragStart ?? self.model.position(widget, screen)
                     let width = self.widgetSize(widget, axis: "width", screen: screen)
                     let height = self.widgetSize(widget, axis: "height", screen: screen)
-                    let currentX = screen.frame.width * start.x / 100
-                    let currentY = screen.frame.height * start.y / 100
-                    let x = min(max(0, currentX + delta.x), max(0, screen.frame.width - width))
-                    let y = min(max(0, currentY - delta.y), max(0, screen.frame.height - height))
-                    let cell = max(40, self.model.prefs.cellSize)
-                    let finalX = self.model.prefs.layout == "grid" ? (x / cell).rounded() * cell : x
-                    let finalY = self.model.prefs.layout == "grid" ? (y / cell).rounded() * cell : y
-                    self.model.setPosition(widget, screen, Point(x: finalX / screen.frame.width * 100,
-                                                                  y: finalY / screen.frame.height * 100))
+                    let next = WidgetSizing.draggedPosition(start: start,
+                        translation: CGSize(width: delta.x, height: -delta.y),
+                        size: WidgetSize(width: width, height: height), bounds: screen.frame.size,
+                        cell: self.model.prefs.layout == "grid" ? self.model.prefs.cellSize : nil)
+                    self.model.setPosition(widget, screen, next)
                 }
                 window.contentView = hitView
                 hitWindows[id] = window
@@ -449,11 +462,11 @@ final class AppController: NSObject, NSApplicationDelegate {
                 let point = model.position(widget, screen)
                 let width = widgetSize(widget, axis: "width", screen: screen)
                 let height = widgetSize(widget, axis: "height", screen: screen)
-                rect = CGRect(x: min(max(0, screen.frame.width * point.x / 100), max(0, screen.frame.width - width)),
-                    y: min(max(0, screen.frame.height * point.y / 100), max(0, screen.frame.height - height)), width: width, height: height)
+                rect = WidgetSizing.frame(position: point, size: WidgetSize(width: width, height: height), bounds: screen.frame.size)
             }
-            window.setFrame(NSRect(x: screen.frame.minX + rect.minX, y: screen.frame.maxY - rect.maxY,
-                                   width: rect.width, height: rect.height), display: true)
+            let frame = NSRect(x: screen.frame.minX + rect.minX, y: screen.frame.maxY - rect.maxY,
+                               width: rect.width, height: rect.height)
+            if window.frame != frame { window.setFrame(frame, display: true) }
             // Widget controls take precedence where the animation overlaps them.
             window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + (widget == "animation" ? 1 : 2))
             if let hitView = window.contentView as? LongPressView, widget == "animation" {
