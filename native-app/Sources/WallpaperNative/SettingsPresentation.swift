@@ -22,11 +22,14 @@ import Observation
         next.titleVisibility = .hidden
         next.isOpaque = false
         next.backgroundColor = .clear
+        next.appearance = NSAppearance(named: .darkAqua)
         next.minSize = NSSize(width: 860, height: 680)
         next.title = L("Sorayura — Impostazioni")
         next.isReleasedWhenClosed = false
         next.delegate = self
-        next.contentView = NSHostingView(rootView: LocalizedRoot(content: SettingsView(navigation: navigation).environment(model)))
+        let hosting = NSHostingView(rootView: LocalizedRoot(content: SettingsView(navigation: navigation).environment(model)))
+        hosting.safeAreaRegions = []
+        next.contentView = hosting
         if let savedFrame, NSScreen.screens.contains(where: { $0.visibleFrame.intersects(savedFrame) }) {
             next.setFrame(savedFrame, display: false)
         } else {

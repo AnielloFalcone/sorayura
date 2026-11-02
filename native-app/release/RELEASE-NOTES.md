@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.5 — build 37
+# Sorayura 0.5.1-beta.6 — build 38
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,10 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## Fixed in beta 6
+
+The native title bar now follows the dark Glass appearance and the content extends behind it, removing the separate light strip.
 
 ## New and fixed in beta 5
 
