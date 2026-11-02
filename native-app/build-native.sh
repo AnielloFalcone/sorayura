@@ -3,15 +3,19 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-34}"
+wallpaper_build="${WALLPAPER_BUILD:-35}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build.noindex}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
 [[ "$wallpaper_build" =~ '^[0-9]+$' ]] || { print -u2 'Invalid build number'; exit 1; }
-swift build --disable-sandbox -c release
+swift build --disable-sandbox -c release -Xlinker -rpath -Xlinker @executable_path/../Frameworks
 app="$wallpaper_output/Sorayura.app"
 mkdir -p "$app/Contents/MacOS"
+mkdir -p "$app/Contents/Frameworks"
+# ditto preserves Sparkle's framework symlinks and signed helper executables.
+ditto .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework "$app/Contents/Frameworks/Sparkle.framework"
 mkdir -p "$app/Contents/Resources/Localization"
+cp .build/artifacts/sparkle/Sparkle/LICENSE "$app/Contents/Resources/Sparkle-LICENSE.txt"
 cp Resources/Localization/*.json "$app/Contents/Resources/Localization/"
 mkdir -p "$app/Contents/Resources/Icons"
 cp Resources/Icons/*.png "$app/Contents/Resources/Icons/"
@@ -39,6 +43,14 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleVersion</key><string>1</string>
 <key>CFBundleShortVersionString</key><string>0.5.0</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
+<key>SUFeedURL</key><string>https://raw.githubusercontent.com/AnielloFalcone/sorayura/main/updates/appcast.xml</string>
+<key>SUPublicEDKey</key><string>/J5u1FRvvclLQGa7fyB8jVbRsEFRwQXUYd/xewIyBMI=</string>
+<key>SUEnableAutomaticChecks</key><false/>
+<key>SUAutomaticallyUpdate</key><false/>
+<key>SUAllowsAutomaticUpdates</key><false/>
+<key>SUEnableSystemProfiling</key><false/>
+<key>SUVerifyUpdateBeforeExtraction</key><true/>
+<key>SURequireSignedFeed</key><true/>
 <key>LSUIElement</key><true/>
 <key>NSAppleEventsUsageDescription</key><string>Mostra il brano corrente e controlla Spotify dal widget quando attivi l’integrazione.</string>
 <key>NSHighResolutionCapable</key><true/>
@@ -50,10 +62,22 @@ PLIST
 xattr -cr "$app"
 wallpaper_sign_options=(--force --sign "$wallpaper_sign")
 if [[ "${WALLPAPER_HARDENED:-0}" == 1 ]]; then
-  wallpaper_sign_options+=(--options runtime --entitlements release/entitlements.plist)
+  wallpaper_entitlements=release/entitlements.plist
+  if [[ "$wallpaper_sign" == - ]]; then
+    # An ad hoc host has no Team ID to match the signed Sparkle framework.
+    wallpaper_entitlements=release/entitlements-adhoc.plist
+  fi
+  wallpaper_sign_options+=(--options runtime --entitlements "$wallpaper_entitlements")
 fi
 if [[ "$wallpaper_sign" != - ]]; then
   wallpaper_sign_options+=(--timestamp)
+fi
+if [[ "$wallpaper_sign" != - ]]; then
+  sparkle="$app/Contents/Frameworks/Sparkle.framework/Versions/B"
+  for helper in "$sparkle"/XPCServices/*.xpc "$sparkle/Autoupdate" "$sparkle/Updater.app"; do
+    codesign --force --options runtime --timestamp --sign "$wallpaper_sign" "$helper"
+  done
+  codesign --force --options runtime --timestamp --sign "$wallpaper_sign" "$app/Contents/Frameworks/Sparkle.framework"
 fi
 codesign "${wallpaper_sign_options[@]}" "$app"
 codesign --verify --deep --strict "$app"

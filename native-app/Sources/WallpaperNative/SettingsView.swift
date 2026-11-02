@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var claudeHooksInstalled = ClaudeHooksInstaller.installed
     @State private var claudeBridgeInstalled = ClaudeBridgeInstaller.installed
     @State private var message: String?
+    @ObservedObject private var updates = AppUpdates.shared
     @StateObject private var loginItem = LoginItem()
     private let sections: [(title: String, icon: String, description: String)] = [
         ("Preset", "square.stack.3d.up", "Configurazioni pronte e personali"),
@@ -162,6 +163,14 @@ struct SettingsView: View {
     }
     private var generalSection: some View {
         VStack(alignment: .leading, spacing: 18) {
+            panel(L("Aggiornamenti")) {
+                Text("Sorayura \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") · \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "")")
+                    .foregroundStyle(.secondary)
+                Button(L("Controlla aggiornamenti…")) { updates.check() }
+                    .disabled(!updates.canCheck)
+                Text(L("Controlla le nuove versioni su GitHub. Download e installazione richiedono la tua conferma; le impostazioni vengono conservate."))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             panel("Lingua") {
                 Picker(L("Lingua"), selection: Binding(get: { LocalizationSettings.shared.choice }, set: { LocalizationSettings.shared.choose($0) })) {
                     Text(L("Segui la lingua del Mac")).tag("system")

@@ -35,3 +35,7 @@ explicitly delete the data folder after disabling login and Claude connections.
 Development diagnostics require explicit launch options, write local
 resource/renderer counters and monitor identifiers, and have a limited duration.
 They are not automatically sent to the developer.
+
+## Update checks
+
+When you choose Check for updates, Sparkle contacts GitHub for the signed update feed and, after confirmation, the release download. GitHub receives the network request, including your IP address and client metadata. Automatic checks, unattended updates and Sparkle system profiling are disabled. Update requests do not include your widget layouts, local agent history or account credentials.

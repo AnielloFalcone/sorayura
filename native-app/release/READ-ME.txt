@@ -17,7 +17,7 @@ Integrations are optional. Codex and Claude must be installed and have local dat
 Codex account limits require an authenticated CLI, selectable in settings.
 Spotify requires macOS Automation consent.
 
-In-app automatic updates are not included. To remove the app, disable Open at
+Update checks are available in General settings. To remove the app, disable Open at
 Login and app-installed Claude connections, quit the app and move it to the Trash.
 Layouts remain in ~/Library/Application Support/dev.aniello.macsystemwallpaper/.
 
@@ -36,3 +36,11 @@ Verify the DMG against SHA256SUMS from the same release if desired:
 
 Packages marked CANDIDATE-NON-DISTRIBUIRE remain local test builds.
 The downloaded public beta has not yet been tested on a separate clean Mac.
+
+Updates
+-------
+From build 35, open General settings and choose Check for updates. Sparkle verifies
+the signed GitHub feed and download, then installs after your confirmation.
+Builds 33 and 34 need one manual upgrade first. Automatic background checks and
+unattended installation are disabled. The Sparkle license is included inside
+the app Resources folder.

@@ -9,7 +9,7 @@ still require verification. Review READ-ME.txt, RELEASE-NOTES.md and PRIVACY.md.
 From the project root:
 
 ```sh
-python3 native-app/release/prepare.py candidate --version 0.5.1 --build 34
+python3 native-app/release/prepare.py candidate --version 0.5.1 --build 35
 ```
 
 This creates a new folder in `native-app/releases/`, builds with hardened runtime
@@ -27,7 +27,7 @@ on another Mac.
 ## Public beta without Apple membership
 
 ```sh
-python3 native-app/release/prepare.py adhoc-release --version 0.5.1 --build 34
+python3 native-app/release/prepare.py adhoc-release --version 0.5.1 --build 35
 ```
 
 This runs the same build and functional checks and creates an `-ADHOC.dmg` plus
@@ -52,7 +52,7 @@ Configure notarization credentials with the secure interactive prompt from
 passwords or API keys in chat, project files or release script arguments.
 
 ```sh
-python3 native-app/release/prepare.py release --version 0.5.1 --build 34 \
+python3 native-app/release/prepare.py release --version 0.5.1 --build 35 \
   --identity 'Developer ID Application: NAME (TEAMID)' \
   --notary-profile 'KEYCHAIN_PROFILE'
 ```
@@ -80,8 +80,8 @@ Do not upload the local candidate as the public beta.
 
 ```sh
 python3 native-app/release/write-cask.py \
-  native-app/releases/0.5.1-34-release/manifest.json \
-  --repository AnielloFalcone/sorayura --tag v0.5.1-beta.2 \
+  native-app/releases/0.5.1-35-release/manifest.json \
+  --repository AnielloFalcone/sorayura --tag v0.5.1-beta.3 \
   --output native-app/releases/sorayura.rb
 ```
 
@@ -96,3 +96,28 @@ in the app before removing it.
 Sources: [Developer ID](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/),
 [Apple notarization](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution),
 [Homebrew Cask Cookbook](https://docs.brew.sh/Cask-Cookbook).
+
+## Sparkle update feed
+
+Sparkle 2.10.0 is pinned in Package.resolved. Build 35 introduces the updater;
+earlier builds must be upgraded manually once. The public key is embedded in
+Info.plist; the private key is stored in the maintainer's login Keychain under
+account `sorayura`. Keep a secure backup of that key: losing it prevents updates
+for installed ad hoc builds. Never commit or upload it.
+
+Prepare the DMG, then sign the package and feed:
+
+```sh
+python3 native-app/release/write-appcast.py native-app/releases/0.5.1-35-adhoc-release/manifest.json --tag v0.5.1-beta.3 --output updates/appcast.xml
+```
+
+The script verifies the prepared hash, matching public key and both signatures.
+Upload the exact DMG and SHA256SUMS to the matching GitHub release **before**
+pushing updates/appcast.xml. Do not edit signed XML; regenerate it for each release.
+The feed contains the newest release only, and compares numeric CFBundleVersion:
+always increase the build number. The public feed is the beta channel for now.
+
+Test the update on a disposable copy before declaring installation/relaunch
+verified. Never remove quarantine or disable Gatekeeper as part of the updater.
+Ad hoc hardened builds use entitlements-adhoc.plist to load Sparkle without a
+Team ID; Developer ID builds retain library validation and re-sign nested helpers.

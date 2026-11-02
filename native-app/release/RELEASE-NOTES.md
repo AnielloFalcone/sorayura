@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.2 — build 34
+# Sorayura 0.5.1-beta.3 — build 35
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -11,6 +11,12 @@ The interface supports English, Italian and Spanish. In General → Language, fo
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
 
+## New in beta 3
+
+General settings now include “Check for updates…”. Updates and their feed are signed with Sorayura's Ed25519 key and hosted on GitHub. Checks are manual; installation requires confirmation. Preferences are saved before relaunch. Sparkle is included under its open-source license.
+
+The ad hoc build disables library validation so it can load the signed Sparkle framework without an Apple Team ID; hardened runtime remains enabled. This does not provide Apple notarization.
+
 ## Fixed in beta 2
 
 Fresh installations now keep the existing macOS wallpaper on each display. Widgets and animations are overlaid without replacing the system wallpaper. Select a Sorayura background explicitly in Wallpaper settings; synchronization with macOS starts disabled. Existing saved wallpaper preferences are preserved, so upgrading from beta 1 does not automatically restore a previous wallpaper.
@@ -19,7 +25,7 @@ Fresh installations now keep the existing macOS wallpaper on each display. Widge
 
 Apple Silicon package. Built for macOS 14+, tested on macOS 27.0.1; other versions
 and Macs still require verification. Liquid Glass is used on macOS 26+, with
-native materials on earlier versions. In-app automatic updates are not included.
+native materials on earlier versions. Updates can be checked manually from General settings. Sparkle downloads and installs an update after confirmation.
 
 Mission Control shows the synchronized static wallpaper; animations and widgets
 are desktop windows. Unvisited Spaces may retain their previous wallpaper.
@@ -36,6 +42,6 @@ do not verify renderer pausing during sleep. First launch of this downloaded pac
 
 This prerelease is **ad hoc signed, not Developer ID signed and not notarized by Apple**. Download the DMG, drag Sorayura into Applications, eject the image and open the app. If macOS blocks it, use System Settings → Privacy & Security → Open Anyway for this app, following [Apple’s instructions](https://support.apple.com/en-ie/102445). Managed Macs may prohibit this exception. Do not disable Gatekeeper globally.
 
-`SHA256SUMS` identifies the uploaded DMG. No in-app updater is included; future builds will be published here. The Homebrew Cask is not available for this unsigned-by-Developer-ID channel.
+`SHA256SUMS` identifies the uploaded DMG. This is the first build with an in-app updater. Users of beta 1 or beta 2 must install this build manually once. The Homebrew Cask is not available for this unsigned-by-Developer-ID channel.
 
 Claude account limits use the authenticated CLI control protocol with session persistence disabled. Spotify includes expanded controls and shortcuts. Account integrations are optional and require their respective clients and login.

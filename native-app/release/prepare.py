@@ -43,7 +43,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['candidate', 'adhoc-release', 'release'])
     parser.add_argument('--version', default='0.5.1')
-    parser.add_argument('--build', default='34')
+    parser.add_argument('--build', default='35')
     parser.add_argument('--identity', help='Exact Developer ID Application identity')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile name')
     args = parser.parse_args()
@@ -79,13 +79,17 @@ def main():
             icon_path = app / 'Contents/Resources' / (icon_file if icon_file.endswith('.icns') else icon_file + '.icns')
             if not icon_path.is_file():
                 raise RuntimeError('App icon fallback missing')
+            if not (app / 'Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle').is_file():
+                raise RuntimeError('Sparkle framework missing')
+            if not info.get('SURequireSignedFeed') or not info.get('SUVerifyUpdateBeforeExtraction') or info.get('SUEnableAutomaticChecks'):
+                raise RuntimeError('Unsafe update configuration')
             architecture = run(['lipo', '-archs', binary], log).strip()
             if architecture != 'arm64':
                 raise RuntimeError(f'Candidate matrix only verified for arm64, got {architecture}')
             dependencies = run(['otool', '-L', binary], log)
             for line in dependencies.splitlines()[1:]:
                 dependency = line.strip().split(' (')[0]
-                if not dependency.startswith(('/System/Library/', '/usr/lib/')):
+                if not dependency.startswith(('/System/Library/', '/usr/lib/')) and dependency != '@rpath/Sparkle.framework/Versions/B/Sparkle':
                     raise RuntimeError(f'Unexpected non-system dependency: {dependency}')
             for check in CHECKS:
                 run([binary, check], log, cwd=staging, timeout=180)
@@ -98,7 +102,7 @@ def main():
                 raise RuntimeError('Developer ID signature or secure timestamp missing')
             if not notarized and 'Signature=adhoc' not in signature:
                 raise RuntimeError('Expected ad hoc signature')
-            manifest.update(architecture=architecture, minimum_macos=info['LSMinimumSystemVersion'],
+            manifest.update(update_public_key=info['SUPublicEDKey'], architecture=architecture, minimum_macos=info['LSMinimumSystemVersion'],
                             tested_macos=run(['sw_vers', '-productVersion'], log).strip(),
                             binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest())
             if notarized:
@@ -110,7 +114,7 @@ def main():
                 run(['spctl', '--assess', '--type', 'execute', '--verbose=2', app], log)
             contents = staging / 'image'
             contents.mkdir()
-            shutil.copytree(app, contents / app.name)
+            shutil.copytree(app, contents / app.name, symlinks=True)
             (contents / 'Applications').symlink_to('/Applications')
             for name in ['READ-ME.txt', 'PRIVACY.md', 'RELEASE-NOTES.md']:
                 shutil.copy2(ROOT / 'release' / name, contents / name)
