@@ -63,8 +63,9 @@ skipped. These checks cannot reliably detect unmarked passwords or every secret.
 History is stored under `clipboard/history.json` in the app data directory, with a
 0700 directory and 0600 file permissions, without additional application encryption.
 There is no cloud sync, telemetry, URL fetch or network transmission of clipboard
-contents. The archive is bounded to 8 MB; entries to 16 KB, recent history to the
-configured limit and favorites to 50. No images or file contents are collected.
+contents. Text and RTF are limited to 16 KB each, recent history to the configured
+item count, and favorites to 50. Copied images and single local image files are
+stored in the same local history.
 
 Disabling collection retains existing history. Clear recent items or the whole
 archive (including favorites) explicitly in Clipboard settings. Clearing does not

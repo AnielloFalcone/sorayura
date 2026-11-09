@@ -16,7 +16,7 @@ struct ClipboardSettingsView: View {
                 Picker(L("Elementi recenti"), selection: Binding(get: { model.prefs.clipboardLimit ?? 100 }, set: { model.prefs.clipboardLimit = $0 })) {
                     ForEach([10, 50, 100, 200, 500], id: \.self) { Text("\($0)").tag($0) }
                 }
-                Text(L("I preferiti non scadono con la cronologia: massimo 50. Testi fino a 16 KB e archivio fino a 8 MB. Immagini e file non vengono raccolti in questa versione.")).font(.caption).foregroundStyle(.secondary)
+                Text(L("I preferiti non scadono con la cronologia: massimo 50. I testi possono occupare fino a 16 KB ciascuno.")).font(.caption).foregroundStyle(.secondary)
                 Toggle(L("Apri Clipboard con ⌘⇧V"), isOn: Binding(get: { model.prefs.clipboardShortcutEnabled ?? true }, set: { model.prefs.clipboardShortcutEnabled = $0 }))
                 Text(L("⌘C copia con la formattazione disponibile. Incolla senza formattazione richiede il permesso Accessibilità.")).font(.caption).foregroundStyle(.secondary)
                 Button(L("Apri Clipboard…")) {

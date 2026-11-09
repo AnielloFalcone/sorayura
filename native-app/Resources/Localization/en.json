@@ -388,7 +388,7 @@
   "Pausa raccolta": "Pause collection",
   "Riprendi raccolta": "Resume collection",
   "Elementi recenti": "Recent items",
-  "I preferiti non scadono con la cronologia: massimo 50. Testi fino a 16 KB e archivio fino a 8 MB. Immagini e file non vengono raccolti in questa versione.": "Favorites stay when recent history is trimmed: up to 50. Text up to 16 KB; archive up to 8 MB. This version does not collect images or files.",
+  "I preferiti non scadono con la cronologia: massimo 50. I testi possono occupare fino a 16 KB ciascuno.": "Favorites stay when recent history is trimmed: up to 50. Text entries can be up to 16 KB each.",
   "Apri Clipboard con ⌘⇧V": "Open Clipboard with ⌘⇧V",
   "Apri Clipboard…": "Open Clipboard…",
   "Privacy clipboard": "Clipboard privacy",

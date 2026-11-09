@@ -98,15 +98,15 @@ Starting with build 35, General settings includes **Check for updates…**. Spar
 
 ### Clipboard
 
-Settings → Clipboard enables an opt-in, local text/link history. Open its searchable
+Settings → Clipboard enables an opt-in, local history of text, links and images. Open its searchable
 panel from the menu bar or ⌘⇧V (registered only when collection is enabled). Arrow
 keys select and ⌘C copies with available RTF formatting. **Paste without formatting**
 uses Accessibility permission to paste plain text into the app you opened the panel from.
 
 Pause collection, exclude apps, pin up to 50 favorites and choose a recent-item
 limit. Confidential/transient clipboard markers and major password-manager apps
-are excluded, but unmarked secrets cannot be identified reliably. Images/files are
-not collected in this first version. History stays in a private local file, without
+are excluded, but unmarked secrets cannot be identified reliably. Copied images
+and single local image files appear as thumbnails. History stays in a private local file, without
 additional encryption or network transmission, and is not included in layout
 exports. Disabling collection retains it; clear recent items or all data explicitly.
 macOS may require clipboard-access consent. Scenes preserve these global settings.

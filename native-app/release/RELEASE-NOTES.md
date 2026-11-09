@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.9 — build 46
+# Sorayura 0.5.1-beta.10 — build 47
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,13 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## New in beta 10
+
+Clipboard history shows thumbnails for copied images and individual image
+files. Copying a thumbnail restores the original image to the pasteboard.
+The configured item count governs retention, with favorites kept separately.
+Video files are skipped; copied video links are kept as links.
 
 ## New in beta 9
 

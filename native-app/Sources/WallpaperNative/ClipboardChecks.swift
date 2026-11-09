@@ -77,6 +77,43 @@ import AppKit
         broken.clear(includingFavorites: true)
         let cleared = try ClipboardStorage.load(file)
         try check(cleared.isEmpty, "Explicit clear cannot recover a damaged archive")
+        let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7Z0AAAAASUVORK5CYII=")!
+        let imageFile = folder.appending(path: "example.png")
+        try png.write(to: imageFile)
+        board.clearContents()
+        board.setString(imageFile.absoluteString, forType: .fileURL)
+        board.setString(imageFile.path, forType: .string)
+        broken.sample()
+        guard let imageEntry = broken.entries.first else { throw SettingsError.invalid("Copied image file was not collected") }
+        try check(imageEntry.text == "example.png" && imageEntry.image == png && imageEntry.thumbnail != nil, "Image file lacks its thumbnail or exposes its path")
+        try check(!broken.copy(imageEntry, plainText: true) && broken.copy(imageEntry) && board.data(forType: .png) == png && board.string(forType: .string) == nil, "Image copy did not preserve the original data")
+        board.clearContents()
+        board.setData(png, forType: .png)
+        board.setString("Path fallback", forType: .string)
+        broken.sample()
+        try check(broken.entries.count == 1 && broken.entries.first?.id == imageEntry.id && broken.entries.first?.text == "", "Image data did not take priority over text or deduplicate")
+        let persistedImages = try ClipboardStorage.load(file)
+        try check(persistedImages == broken.entries, "Image did not survive archive reload")
+        guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1600, pixelsHigh: 1600,
+                                           bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false, isPlanar: false,
+                                           colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+              let pixels = bitmap.bitmapData else { throw SettingsError.invalid("Could not create test image") }
+        memset(pixels, 0, bitmap.bytesPerRow * bitmap.pixelsHigh)
+        guard let largeImage = bitmap.tiffRepresentation(using: .none, factor: 0) else {
+            throw SettingsError.invalid("Could not encode test image")
+        }
+        board.clearContents()
+        board.setData(largeImage, forType: .tiff)
+        broken.sample()
+        let largeHistory = try ClipboardStorage.load(file)
+        try check(largeImage.count > 6_000_000 && largeHistory.count == 2 && largeHistory.first?.image == largeImage,
+                  "Large image or archive was limited by byte size")
+        board.clearContents()
+        let video = folder.appending(path: "example.mov")
+        board.setString(video.absoluteString, forType: .fileURL)
+        board.setString(video.path, forType: .string)
+        broken.sample()
+        try check(broken.entries == largeHistory, "Video file or its path was added to image history")
         var prefs = Prefs(); prefs.clipboardEnabled = true; prefs.clipboardLimit = 50; prefs.clipboardExcludedApps = ["test.private"]
         let restored = try JSONDecoder().decode(Prefs.self, from: JSONEncoder().encode(prefs))
         try restored.validate()

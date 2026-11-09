@@ -388,7 +388,7 @@
   "Pausa raccolta": "Pausar captura",
   "Riprendi raccolta": "Reanudar captura",
   "Elementi recenti": "Elementos recientes",
-  "I preferiti non scadono con la cronologia: massimo 50. Testi fino a 16 KB e archivio fino a 8 MB. Immagini e file non vengono raccolti in questa versione.": "Los favoritos se conservan al limitar el historial: hasta 50. Textos de hasta 16 KB y archivo de hasta 8 MB. Esta versión no captura imágenes ni archivos.",
+  "I preferiti non scadono con la cronologia: massimo 50. I testi possono occupare fino a 16 KB ciascuno.": "Los favoritos se conservan al limitar el historial: hasta 50. Cada texto puede ocupar hasta 16 KB.",
   "Apri Clipboard con ⌘⇧V": "Abrir Portapapeles con ⌘⇧V",
   "Apri Clipboard…": "Abrir Portapapeles…",
   "Privacy clipboard": "Privacidad del portapapeles",

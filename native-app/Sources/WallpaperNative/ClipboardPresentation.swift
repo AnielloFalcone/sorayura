@@ -163,9 +163,14 @@ private struct ClipboardView: View {
             } else {
                 List(visible, selection: $selection) { entry in
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: entry.isLink ? "link" : "text.alignleft").foregroundStyle(.secondary).frame(width: 20)
+                        if let thumbnail = entry.thumbnail {
+                            Image(decorative: thumbnail, scale: 1).resizable().scaledToFit()
+                                .frame(width: 80, height: 56).clipShape(.rect(cornerRadius: 6))
+                        } else {
+                            Image(systemName: entry.image != nil ? "photo" : entry.isLink ? "link" : "text.alignleft").foregroundStyle(.secondary).frame(width: 20)
+                        }
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(String(entry.text.prefix(300))).lineLimit(3).font(.system(size: 12))
+                            Text(entry.image == nil ? String(entry.text.prefix(300)) : L("Immagine")).lineLimit(3).font(.system(size: 12))
                             HStack {
                                 Text(entry.sourceName.isEmpty ? L("App sconosciuta") : entry.sourceName)
                                 Spacer()
@@ -189,7 +194,7 @@ private struct ClipboardView: View {
                 Text(L("↑↓ seleziona · ⌘C copia")).font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Button(L("Incolla senza formattazione")) { if let entry = selectedEntry { paste(entry) } }
-                    .disabled(selectedEntry == nil)
+                    .disabled(selectedEntry == nil || selectedEntry?.image != nil)
                 Button(L("Copia")) { if let entry = selectedEntry { copy(entry) } }
                     .keyboardShortcut("c", modifiers: .command).disabled(selectedEntry == nil)
             }
