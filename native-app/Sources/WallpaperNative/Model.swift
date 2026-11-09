@@ -5,24 +5,35 @@ import Observation
 final class Model {
     static let shared = Model()
     nonisolated static let systemWidgetIDs = ["clock", "cpu", "memory", "network", "battery", "disk", "uptime", "device"]
-    nonisolated static let widgetIDs = ["clock", "cpu", "memory", "network", "battery", "disk", "uptime", "device", "thermal", "apps", "agents", "agentTrend", "agentModels", "agentProjects", "agentActivity", "agentSpending", "agentNow", "agentLive", "spotify"]
+    nonisolated static let widgetIDs = ["clock", "cpu", "memory", "network", "battery", "disk", "uptime", "device", "thermal", "apps", "agents", "agentTrend", "agentModels", "agentProjects", "agentActivity", "agentSpending", "agentNow", "agentLive", "spotify", "appleMusic"]
     nonisolated static let metricIDs = ["cpu", "memory", "network", "battery", "disk"]
     nonisolated static func localizedName(_ id: String) -> String { L(names[id] ?? id) }
-    nonisolated static let names = ["clock":"Orologio", "cpu":"CPU", "memory":"Memoria", "network":"Rete", "battery":"Batteria", "disk":"Disco", "uptime":"Attività", "device":"Nome Mac", "thermal":"Stato termico", "apps":"Applicazioni", "agents":"AI Agents", "agentTrend":"AI · Andamento", "agentModels":"AI · Modelli", "agentProjects":"AI · Progetti", "agentActivity":"AI · Attività", "agentSpending":"AI · Valore API", "agentNow":"AI · Recenti", "agentLive":"AI · Live", "spotify":"Spotify"]
+    nonisolated static let names = ["clock":"Orologio", "cpu":"CPU", "memory":"Memoria", "network":"Rete", "battery":"Batteria", "disk":"Disco", "uptime":"Attività", "device":"Nome Mac", "thermal":"Stato termico", "apps":"Applicazioni", "agents":"AI Agents", "agentTrend":"AI · Andamento", "agentModels":"AI · Modelli", "agentProjects":"AI · Progetti", "agentActivity":"AI · Attività", "agentSpending":"AI · Valore API", "agentNow":"AI · Recenti", "agentLive":"AI · Live", "spotify":"Spotify", "appleMusic":"Apple Music"]
     var prefs: Prefs { didSet {
+        if !applyingScene { activeSceneID = nil }
+        if oldValue.clipboardEnabled != prefs.clipboardEnabled || oldValue.clipboardPaused != prefs.clipboardPaused || oldValue.clipboardLimit != prefs.clipboardLimit || oldValue.clipboardExcludedApps != prefs.clipboardExcludedApps {
+            configureClipboard()
+        }
         if servicesEnabled {
             scheduleSave(); refreshDisplays?()
+            if oldValue.clipboardEnabled != prefs.clipboardEnabled || oldValue.clipboardShortcutEnabled != prefs.clipboardShortcutEnabled { clipboardConfigurationChanged?() }
             if oldValue.agentUsageEnabled != prefs.agentUsageEnabled { configureAgentWatcher(); refreshAgentUsage(force: true) }
             if oldValue.claudeControlEnabled != prefs.claudeControlEnabled { claudeAccount = ClaudeAccountSnapshot(); lastClaudeAccount = .distantPast }
             if oldValue.codexAccountEnabled != prefs.codexAccountEnabled { codexAccount = CodexAccountSnapshot(); lastAccount = .distantPast }
+            if oldValue.appleMusicEnabled != prefs.appleMusicEnabled { configureAppleMusic() }
             if oldValue.spotifyEnabled != prefs.spotifyEnabled || oldValue.spotifySource != prefs.spotifySource {
                 spotifyRevision += 1; spotifyPlaybackIntent = nil; spotifyDenied = false; lastSpotify = .distantPast
                 spotify = SpotifySnapshot(); configureSpotifyObserver()
             }
         }
     } }
+    let clipboard: ClipboardStore
+    @ObservationIgnored var clipboardConfigurationChanged: (() -> Void)?
     var savedPresets: [SavedPreset] = []
+    var activeSceneID: UUID?
+    @ObservationIgnored var applyingScene = false
     var previousSettings: Prefs?
+    @ObservationIgnored var previousSettingsAreScene = false
     var performanceVariant: PerformanceVariant = .full
     var storageMessage: String?
     @ObservationIgnored private var saveTimer: Timer?
@@ -69,6 +80,16 @@ final class Model {
         if prefs.claudeControlEnabled == true { return [claudeAccount.quota, local].compactMap { $0 }.max(by: { $0.date < $1.date }) }
         return [local, agentUsage.claudeDesktop?.quota].compactMap { $0 }.max(by: { $0.date < $1.date })
     }
+    var appleMusic = SpotifySnapshot(title: "Apple Music")
+    var appleMusicHover: [String: String] = [:]
+    @ObservationIgnored var appleMusicObserver: NSObjectProtocol?
+    @ObservationIgnored var appleMusicTask: Task<Void, Never>?
+    @ObservationIgnored var appleMusicRevision = 0
+    @ObservationIgnored var appleMusicDenied = false
+    @ObservationIgnored var appleMusicDirty = false
+    @ObservationIgnored var appleMusicIntent: SpotifyPlaybackIntent?
+    @ObservationIgnored var lastAppleMusic = Date.distantPast
+    let appleMusicReader = AppleMusicReader()
     var spotify = SpotifySnapshot()
     var spotifyHover: [String:String] = [:]
     @ObservationIgnored private var spotifyObserver: NSObjectProtocol?
@@ -80,7 +101,7 @@ final class Model {
     @ObservationIgnored private var spotifyDirty = false
     private func configureSpotifyObserver() {
         if let spotifyObserver { DistributedNotificationCenter.default().removeObserver(spotifyObserver); self.spotifyObserver=nil }
-        guard prefs.spotifyEnabled == true else { return }
+        guard prefs.spotifyEnabled == true, prefs.spotifySource != "nowPlaying" else { return }
         spotifyObserver=DistributedNotificationCenter.default().addObserver(forName: prefs.spotifySource == "web" ? SpotifyWebBridge.changed : Notification.Name("com.spotify.client.PlaybackStateChanged"),object:nil,queue:.main) { [weak self] note in
             Task { @MainActor in
                 guard let self,self.prefs.spotifyEnabled == true else { return }
@@ -179,10 +200,10 @@ final class Model {
         spotifyDirty=false
         let revision=spotifyRevision
         lastSpotify = Date()
-        let web = prefs.spotifySource == "web"
-        let running = !web && NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").contains { !$0.isTerminated }
+        let source = prefs.spotifySource
+        let running = source != "web" && source != "nowPlaying" && NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").contains { !$0.isTerminated }
         spotifyTask = Task { [weak self, spotifyReader] in
-            var value = web ? await spotifyReader.readWeb(includeArtwork: false) : await spotifyReader.read(running: running, includeArtwork:false)
+            var value = await spotifyReader.read(source: source, running: running, includeArtwork: false)
             guard let self else { return }
             if self.prefs.spotifyEnabled == true, revision == self.spotifyRevision, self.spotifyCommandsPending == 0 {
                 if let intent=self.spotifyPlaybackIntent {
@@ -194,9 +215,9 @@ final class Model {
             }
             if value.available, value.artwork == nil, self.spotifyArtworkTask == nil, self.prefs.spotifyEnabled == true, revision == self.spotifyRevision {
                 self.spotifyArtworkTask=Task { [weak self,spotifyReader] in
-                    let complete = web ? await spotifyReader.readWeb() : await spotifyReader.read(running:running)
+                    let complete = await spotifyReader.read(source: source, running: running, includeArtwork: true)
                     guard let self else { return }
-                    if self.prefs.spotifyEnabled == true, self.spotify.trackID == complete.trackID, self.spotify.title == complete.title { self.spotify.artwork=complete.artwork }
+                    if self.prefs.spotifyEnabled == true, self.prefs.spotifySource == source, self.spotify.trackID == complete.trackID, self.spotify.title == complete.title { self.spotify.artwork=complete.artwork }
                     self.spotifyArtworkTask=nil
                     if revision != self.spotifyRevision { self.refreshSpotify(force:true) }
                 }
@@ -215,11 +236,13 @@ final class Model {
         }
     }
     func spotifySupports(_ action: String) -> Bool {
-        if action == "open" || action.hasPrefix("shortcut:") { return true }
+        if action == "open" { return prefs.spotifySource != "nowPlaying" }
+        if action.hasPrefix("shortcut:") { return true }
         return spotify.available && (spotify.supportedCommands?.contains(action) ?? true)
     }
     func openSpotify() {
         guard servicesEnabled else { return }
+        if prefs.spotifySource == "nowPlaying" { return }
         if prefs.spotifySource == "web" { openSpotifyWeb(); return }
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") else {
             spotify.error = "Spotify non è installato sul Mac."
@@ -238,7 +261,7 @@ final class Model {
         guard prefs.spotifyEnabled == true else { return }
         if action == "open" { openSpotify(); return }
         if action.hasPrefix("shortcut:"), let index = Int(action.dropFirst(9)), let shortcuts = prefs.spotifyShortcuts, shortcuts.indices.contains(index), let url = SpotifyShortcut.uri(shortcuts[index].link) {
-            if prefs.spotifySource == "web", let webURL = SpotifyShortcut.webURL(shortcuts[index].link) { openSpotifyWeb(webURL) }
+            if ["web", "nowPlaying"].contains(prefs.spotifySource ?? ""), let webURL = SpotifyShortcut.webURL(shortcuts[index].link) { openSpotifyWeb(webURL) }
             else if !NSWorkspace.shared.open(url) { spotify.error = "Impossibile aprire Spotify." }
             return
         }
@@ -247,7 +270,7 @@ final class Model {
     func spotifyCommand(_ command: String) {
         guard servicesEnabled else { return }
         guard prefs.spotifyEnabled == true, spotifySupports(command) else { return }
-        let web = prefs.spotifySource == "web"
+        let source = prefs.spotifySource
         let webSession = spotify.webSession
         spotifyRevision += 1
         spotify.predict(command)
@@ -261,12 +284,15 @@ final class Model {
         spotifyCommandsPending += 1
         Task { [weak self, spotifyReader] in
             do {
-                if web { try SpotifyWebBridge.send(delivered, session: webSession) }
+                if source == "nowPlaying" { try await spotifyReader.commandNowPlaying(delivered) }
+                else if source == "web" { try SpotifyWebBridge.send(delivered, session: webSession) }
                 else { try await spotifyReader.command(delivered) }
             }
             catch {
                 if command == "playpause", self?.spotifyPlaybackSerial == serial { self?.spotifyPlaybackIntent=nil }
-                self?.spotify.error = "Spotify non ha accettato il comando."
+                if self?.prefs.spotifySource == source {
+                    self?.spotify.error = source == "nowPlaying" ? "Comando multimediale non disponibile." : "Spotify non ha accettato il comando."
+                }
             }
             self?.spotifyCommandsPending -= 1
             self?.refreshSpotify(force:true)
@@ -320,13 +346,14 @@ final class Model {
     @ObservationIgnored var editChanged: ((Bool) -> Void)?
     @ObservationIgnored private var timer: Timer?
     private let sampler = MetricsSampler()
-    private let servicesEnabled: Bool
+    let servicesEnabled: Bool
     // Checks use an isolated instance without timers, readers or persisted writes.
-    static func isolated(preferences: Prefs = Prefs()) -> Model {
-        Model(initialPreferences: preferences, servicesEnabled: false)
+    static func isolated(preferences: Prefs = Prefs(), clipboardPasteboard: NSPasteboard = .general) -> Model {
+        Model(initialPreferences: preferences, servicesEnabled: false, clipboardPasteboard: clipboardPasteboard)
     }
-    private init(initialPreferences: Prefs? = nil, servicesEnabled: Bool = true) {
+    private init(initialPreferences: Prefs? = nil, servicesEnabled: Bool = true, clipboardPasteboard: NSPasteboard = .general) {
         self.servicesEnabled = servicesEnabled
+        self.clipboard = ClipboardStore(url: servicesEnabled ? ClipboardStore.fileURL : nil, pasteboard: clipboardPasteboard)
         let url = Self.preferencesURL
         if let initialPreferences { prefs = initialPreferences }
         else if let data = try? Data(contentsOf: url), let loaded = try? JSONDecoder().decode(Prefs.self, from: data) { prefs = loaded }
@@ -343,8 +370,14 @@ final class Model {
         migrateDisplays()
         configureAgentWatcher()
         configureSpotifyObserver()
+        configureAppleMusic()
+        configureClipboard()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in Task { @MainActor in self?.tick() } }
         tick()
+    }
+    func configureClipboard() {
+        clipboard.configure(enabled: prefs.clipboardEnabled == true, paused: prefs.clipboardPaused == true,
+            limit: prefs.clipboardLimit ?? 100, exclusions: prefs.clipboardExcludedApps ?? [])
     }
     static var preferencesURL: URL {
         FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Application Support/dev.aniello.macsystemwallpaper/native-settings.json")
@@ -354,6 +387,7 @@ final class Model {
         saveTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in Task { @MainActor in self?.save() } }
     }
     func save() {
+        guard servicesEnabled else { return }
         let url = Self.preferencesURL
         saveTimer?.invalidate()
         do {
@@ -371,6 +405,8 @@ final class Model {
         if appPresence != presence { appPresence = presence }
         if prefs.agentUsageEnabled == true { refreshAgentUsage(); refreshLive(); refreshCodexAccount(); refreshClaudeAccount() }
         refreshSpotify()
+        refreshAppleMusic()
+        clipboard.sample()
     }
     func applySample(_ sample: Metrics) {
         metrics.update(sample)
@@ -435,35 +471,41 @@ final class Model {
         if next.wallpaper == "image", next.imagePath == nil || !FileManager.default.fileExists(atPath: next.imagePath!) {
             throw SettingsError.invalid("L'immagine dello sfondo non è disponibile. Esporta includendo l'immagine dal Mac di origine.")
         }
+        previousSettingsAreScene = false
         previousSettings = prefs
         prefs = next
         save()
     }
     func apply(_ preset: BuiltInPreset) {
+        previousSettingsAreScene = false
         previousSettings = prefs
         prefs = preset.settings(from: prefs, displayKeys: orderedScreens().map(displayKey), displaySizes: Dictionary(uniqueKeysWithValues: orderedScreens().map { (displayKey($0), $0.frame.size) }))
         save()
     }
     func undoSettings() {
         guard let previous = previousSettings else { return }
-        prefs = previous
+        prefs = previousSettingsAreScene ? SceneSettings.applying(previous, to: prefs) : previous
         previousSettings = nil
+        previousSettingsAreScene = false
         save()
     }
     func savePreset(name: String) throws {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { throw SettingsError.invalid("Inserisci un nome per il preset.") }
+        guard !name.isEmpty else { throw SettingsError.invalid("Inserisci un nome per la scena.") }
         var next = savedPresets
         next.append(SavedPreset(name: String(name.prefix(80)), archive: try archive()))
         try persistPresets(next)
         savedPresets = next
+        activeSceneID = next.last?.id
     }
     func removePreset(_ id: UUID) throws {
         let next = savedPresets.filter { $0.id != id }
         try persistPresets(next)
         savedPresets = next
+        if activeSceneID == id { activeSceneID = nil }
     }
-    private func persistPresets(_ values: [SavedPreset]) throws {
+    func persistPresets(_ values: [SavedPreset]) throws {
+        guard servicesEnabled else { return }
         try FileManager.default.createDirectory(at: Self.presetsURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try JSONEncoder().encode(values).write(to: Self.presetsURL, options: .atomic)
     }
@@ -506,10 +548,39 @@ final class Model {
         if axis == "width" { return prefs.widths[id] ?? (id.hasPrefix("agent") ? 3 : 2) }
         return prefs.heights[id] ?? (id == "agents" ? 2 : 1)
     }
+    func musicWidgetHeight(_ id: String) -> Double {
+        let expanded = (id == "appleMusic" ? prefs.appleMusicDisplay : prefs.spotifyDisplay) == "expanded"
+        let shortcuts = id == "spotify" ? prefs.spotifyShortcuts?.count ?? 0 : 0
+        return SpotifyLayout.minimumHeight(expanded: expanded, shortcuts: shortcuts) + 32
+    }
+
+    func setMusicDisplay(_ id: String, _ display: String) {
+        var next = prefs
+        if id == "appleMusic" { next.appleMusicDisplay = display }
+        else { next.spotifyDisplay = display }
+        next.heights.removeValue(forKey: id)
+        for key in (next.widgetSizes ?? [:]).keys {
+            next.widgetSizes?[key]?[id]?.automaticHeight = true
+        }
+        prefs = next
+    }
+
     func widgetSize(_ id: String, screen: NSScreen) -> WidgetSize {
         let custom = prefs.widgetSizes?[displayKey(screen)]?[id]
-        let proposed = custom ?? WidgetSize(width: Double(widgetUnits(id, axis: "width")) * prefs.cellSize,
-                                            height: Double(widgetUnits(id, axis: "height")) * prefs.cellSize)
+        let defaultSize = WidgetSize(width: Double(widgetUnits(id, axis: "width")) * prefs.cellSize,
+                                     height: Double(widgetUnits(id, axis: "height")) * prefs.cellSize)
+        var proposed = custom ?? defaultSize
+        if ["appleMusic", "spotify"].contains(id),
+           custom?.automaticHeight == true || (custom == nil && prefs.heights[id] == nil) {
+            let expanded = (id == "appleMusic" ? prefs.appleMusicDisplay : prefs.spotifyDisplay) == "expanded"
+            proposed.height = musicWidgetHeight(id)
+            proposed.width = max(proposed.width, expanded ? 272 : 152)
+            if prefs.layout == "grid" {
+                let cell = prefs.cellSize
+                proposed.height = ceil(proposed.height / cell) * cell
+                proposed.width = ceil(proposed.width / cell) * cell
+            }
+        }
         return WidgetSizing.constrained(proposed, available: WidgetSize(width: screen.frame.width, height: screen.frame.height),
                                         cell: prefs.layout == "grid" ? prefs.cellSize : nil)
     }
@@ -529,7 +600,7 @@ final class Model {
         if axis == "width" { next.widths[id] = units } else { next.heights[id] = units }
         for key in (next.widgetSizes ?? [:]).keys {
             guard var size = next.widgetSizes?[key]?[id] else { continue }
-            if axis == "width" { size.width = Double(units) * next.cellSize } else { size.height = Double(units) * next.cellSize }
+            if axis == "width" { size.width = Double(units) * next.cellSize } else { size.height = Double(units) * next.cellSize; size.automaticHeight = nil }
             next.widgetSizes?[key]?[id] = size
         }
         prefs = next
@@ -570,11 +641,19 @@ struct Prefs: Codable {
         "network": Point(x: 79,y: 40), "battery": Point(x: 79,y: 53),
         "disk": Point(x: 79,y: 66), "uptime": Point(x: 79,y: 79)
     ]
+    var clipboardEnabled: Bool? = nil
+    var clipboardPaused: Bool? = nil
+    var clipboardLimit: Int? = nil
+    var clipboardShortcutEnabled: Bool? = nil
+    var clipboardExcludedApps: [String]? = nil
+    var sceneAutomationEnabled: Bool? = nil
     var agentPeriod: String? = nil
     var agentDensity: String? = nil
     var claudeControlEnabled: Bool? = nil
     var codexAccountEnabled: Bool? = nil
     var codexExecutable: String? = nil
+    var appleMusicEnabled: Bool? = nil
+    var appleMusicDisplay: String? = nil
     var spotifyEnabled: Bool? = nil
     var spotifySource: String? = nil
     var spotifyDisplay: String? = nil

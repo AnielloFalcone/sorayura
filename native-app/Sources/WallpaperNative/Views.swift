@@ -46,6 +46,15 @@ struct ScreenView: View {
                     }
                 }
                 if model.editing {
+                    ForEach(model.performanceVariant.hidesWidgets ? [] : model.content(screen).widgets, id: \.self) { id in
+                        let size = model.widgetSize(id, screen: screen)
+                        let bounds = geometry.size
+                        let frame = WidgetSizing.frame(position: model.position(id, screen), size: size, bounds: bounds)
+                        let origin = Point(x: frame.minX / max(1, bounds.width) * 100, y: frame.minY / max(1, bounds.height) * 100)
+                        resizeHandle(id, axis: "both", point: origin, frame: size)
+                            .position(x: frame.maxX - 14, y: frame.maxY - 14)
+                            .zIndex(resizeOrigins[id] == nil ? 1 : 2)
+                    }
                     VStack {
                         HStack(spacing:12) {
                             Text(LF("Modifica layout · \(screen.localizedName)")).bold()
@@ -173,9 +182,6 @@ struct ScreenView: View {
             .overlay(alignment: .bottom) {
                 if model.editing { resizeHandle(id, axis: "height", point: Point(x: x / size.width * 100, y: y / size.height * 100), frame: WidgetSize(width: width, height: height)) }
             }
-            .overlay(alignment: .bottomTrailing) {
-                if model.editing { resizeHandle(id, axis: "both", point: Point(x: x / size.width * 100, y: y / size.height * 100), frame: WidgetSize(width: width, height: height)) }
-            }
             .position(x:x+width/2,y:y+height/2)
 
     }
@@ -183,7 +189,9 @@ struct ScreenView: View {
         Image(systemName: axis == "width" ? "arrow.left.and.right" : axis == "height" ? "arrow.up.and.down" : "arrow.up.left.and.arrow.down.right")
             .font(.system(size: 11, weight: .semibold))
             .frame(width: 28, height: 28)
-            .wallpaperGlass(cornerRadius: 8)
+            .foregroundStyle(.white)
+            .background(.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 8))
+            .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(.cyan.opacity(0.8)).allowsHitTesting(false) }
             .contentShape(Rectangle())
             .help(L("Trascina per ridimensionare il widget"))
             .highPriorityGesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("widgetEditor"))
@@ -215,9 +223,9 @@ struct WidgetView: View {
         let chart = id == "cpu" ? model.prefs.cpuDisplay.chart : model.prefs.memoryDisplay.chart
         let color = (Model.metricIDs.contains(id) || id == "thermal") ? Color(nsColor:model.metricColor(id,base:ColorValue(model.prefs.widgetTheme == "cyber" ? "#c89bff" : "#a9d9ff")).color) : .white
         Group {
-        if id == "spotify" {
+        if ["spotify", "appleMusic"].contains(id) {
             VStack(spacing:8) {
-                SpotifyWidget(interactionID:screen.map { model.displayKey($0) } ?? "preview").environment(model)
+                SpotifyWidget(appleMusic: id == "appleMusic", interactionID:screen.map { model.displayKey($0) } ?? "preview").environment(model)
                 if model.editing {
                     HStack {
                         ForEach(["width", "height"], id: \.self) { axis in
@@ -235,7 +243,7 @@ struct WidgetView: View {
                 ClockWidget()
             } else if id == "device" {
                 Text("●  \(metrics.hostname.uppercased())").font(.system(size:11,weight:.medium)).tracking(2).foregroundStyle(.white.opacity(0.6))
-            } else if id == "spotify" {
+            } else if ["spotify", "appleMusic"].contains(id) {
                 SpotifyWidget().environment(model)
             } else if id.hasPrefix("agent") {
                 AgentWidget(id: id, interactionID: screen.map { model.displayKey($0) } ?? "preview").environment(model)
@@ -302,10 +310,10 @@ struct WidgetView: View {
         .foregroundStyle(.white)
         .contextMenu {
             Button(L("Modifica layout…")) { model.editing = true }
-            if id == "spotify" {
+            if ["spotify", "appleMusic"].contains(id) {
                 Menu(L("Dettaglio")) {
-                    Button(L("Compatto")) { model.prefs.spotifyDisplay = "compact" }
-                    Button(L("Esteso")) { model.prefs.spotifyDisplay = "expanded" }
+                    Button(L("Compatto")) { model.setMusicDisplay(id, "compact") }
+                    Button(L("Esteso")) { model.setMusicDisplay(id, "expanded") }
                 }
             }
             if ["cpu", "memory"].contains(id) {

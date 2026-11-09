@@ -45,6 +45,8 @@ struct SavedPreset: Codable, Identifiable {
     var id = UUID()
     var name: String
     var archive: SettingsArchive
+    var applicationBundleID: String? = nil
+    var applicationName: String? = nil
 }
 
 enum SettingsError: LocalizedError {
@@ -153,14 +155,18 @@ extension Prefs {
         func require(_ condition: Bool, _ message: String) throws {
             if !condition { throw SettingsError.invalid(message) }
         }
+        try require((10...500).contains(clipboardLimit ?? 100), "Il limite clipboard deve essere fra 10 e 500.")
+        let excluded = clipboardExcludedApps ?? []
+        try require(excluded.count <= 100 && Set(excluded).count == excluded.count && excluded.allSatisfy { !$0.isEmpty && $0.count <= 255 }, "Elenco app escluse dalla clipboard non valido.")
         try require(["today", "week", "month", "all"].contains(agentPeriod ?? "all"), "Periodo AI non valido.")
         try require(["compact", "expanded"].contains(agentDensity ?? "compact"), "Dettaglio AI non valido.")
+        try require(["compact", "expanded"].contains(appleMusicDisplay ?? "compact"), "Dettaglio Apple Music non valido.")
         try require(["compact", "expanded"].contains(spotifyDisplay ?? "compact"), "Dettaglio Spotify non valido.")
         let favorites = spotifyShortcuts ?? []
         try require(favorites.count <= 6 && Set(favorites.map(\.id)).count == favorites.count && favorites.allSatisfy {
             !$0.id.isEmpty && $0.id.count <= 80 && !$0.name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && $0.name.count <= 40 && SpotifyShortcut.uri($0.link) != nil
         }, "Preferiti Spotify non validi.")
-        try require(spotifySource == nil || ["desktop", "web"].contains(spotifySource!), "Sorgente Spotify non valida.")
+        try require(spotifySource == nil || ["desktop", "web", "nowPlaying"].contains(spotifySource!), "Sorgente Spotify non valida.")
         try require(["system", "gradient", "midnight", "image"].contains(wallpaper), "Sfondo non valido.")
         try require(["off", "aurora", "pulse", "traces", "ribbon", "jarvis"].contains(animationStyle), "Animazione non valida.")
         try require(["free", "grid"].contains(layout), "Layout non valido.")

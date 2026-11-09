@@ -7,7 +7,7 @@ it does not stream audio itself.
 
 ## One-time setup
 
-1. In Sorayura Settings → Integrations, enable Spotify and choose **Spotify Web · Chrome**.
+1. In Sorayura Settings → Music, enable Spotify and choose **Spotify Web · Chrome**.
 2. Choose **Set up Chrome extension…**. Sorayura registers its local Native Messaging
    host and opens a folder containing the extension.
 3. In Chrome, open `chrome://extensions`, turn on **Developer mode**, choose
@@ -59,3 +59,11 @@ A Spotify OAuth integration remains a separate possible route for account-based
 control. It is not implemented here. Before adding it, recheck Spotify's Premium,
 Development Mode user limits and public quota requirements:
 [Spotify quota modes](https://developer.spotify.com/documentation/web-api/concepts/quota-modes).
+
+## Chrome Web Store preparation
+
+The upload package, listing copy, privacy policy, reviewer instructions and final
+Store-ID binding steps are documented in
+[the publication handoff](chrome-web-store/REVIEW.md). The extension is not yet
+published; the unpacked setup above remains the beta path until the Store assigns
+an ID and a matching companion release is available.

@@ -3,7 +3,7 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-38}"
+wallpaper_build="${WALLPAPER_BUILD:-44}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build.noindex}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
@@ -18,6 +18,12 @@ mkdir -p "$app/Contents/Resources/Localization"
 cp .build/artifacts/sparkle/Sparkle/LICENSE "$app/Contents/Resources/Sparkle-LICENSE.txt"
 cp Resources/Localization/*.json "$app/Contents/Resources/Localization/"
 ditto Resources/SpotifyWebExtension "$app/Contents/Resources/SpotifyWebExtension"
+cp Resources/now-playing.pl "$app/Contents/Resources/"
+xcrun clang -dynamiclib -fobjc-arc -mmacosx-version-min=14.0 -framework Foundation \
+  Tools/NowPlaying.m -o "$app/Contents/Frameworks/SorayuraNowPlaying.dylib"
+wallpaper_helper_sign_options=(--force --sign "$wallpaper_sign")
+if [[ "$wallpaper_sign" != - ]]; then wallpaper_helper_sign_options+=(--timestamp); fi
+codesign "${wallpaper_helper_sign_options[@]}" "$app/Contents/Frameworks/SorayuraNowPlaying.dylib"
 cp Resources/spotify-web-host "$app/Contents/Resources/spotify-web-host"
 chmod +x "$app/Contents/Resources/spotify-web-host"
 mkdir -p "$app/Contents/Resources/Icons"
@@ -55,7 +61,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>SUVerifyUpdateBeforeExtraction</key><true/>
 <key>SURequireSignedFeed</key><true/>
 <key>LSUIElement</key><true/>
-<key>NSAppleEventsUsageDescription</key><string>Mostra il brano corrente e controlla Spotify dal widget quando attivi l’integrazione.</string>
+<key>NSAppleEventsUsageDescription</key><string>Shows the current track and controls Spotify or Music when you enable the corresponding music integration.</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST

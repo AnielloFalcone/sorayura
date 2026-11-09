@@ -30,6 +30,8 @@ private final class ChangeProbe: @unchecked Sendable {
         let settings = observe { _ = model.prefs.layout; _ = model.savedPresets; _ = model.storageMessage }
         let agents = observe { _ = model.agentUsage; _ = model.liveAgents; _ = model.codexAccount; _ = model.updatingCounters }
         let music = observe { _ = model.spotify }
+        let clipboard = observe { _ = model.clipboard.entries; _ = model.clipboard.error }
+        let appleMusic = observe { _ = model.appleMusic }
         let apps = observe { _ = model.appPresence }
         let memoryGauge = observe { _ = model.metrics.memory; _ = model.metrics.memoryUsed; _ = model.severity("memory") }
         let battery = observe { _ = model.metrics.battery; _ = model.metrics.charging }
@@ -42,7 +44,7 @@ private final class ChangeProbe: @unchecked Sendable {
         model.applySample(sample)
         try check(cpu.count == 1 && cpuHistory.count == 1 && memoryHistory.count == 1,
                   "CPU and sampled histories did not notify their consumers")
-        try check([settings, agents, music, apps, memoryGauge, battery, thermal, device].allSatisfy { $0.count == 0 },
+        try check([settings, agents, music, appleMusic, clipboard, apps, memoryGauge, battery, thermal, device].allSatisfy { $0.count == 0 },
                   "A CPU tick notified an unrelated consumer")
 
         sample.memory = 75; sample.memoryUsed = 27_000_000_000
@@ -62,7 +64,12 @@ private final class ChangeProbe: @unchecked Sendable {
         model.appPresence = [AppPresence(id: "fixture", name: "Fixture", running: true)]
         try check(agents.count == 1 && music.count == 1 && apps.count == 1,
                   "Relevant integration changes no longer notify")
+        let spotifyIndependent = observe { _ = model.spotify }
+        model.appleMusic = SpotifySnapshot(title: "Music fixture", available: true)
+        try check(appleMusic.count == 1 && spotifyIndependent.count == 0, "Apple Music state leaks into Spotify")
         let independentCPU = observe { _ = model.metrics.cpu }
+        model.clipboard.error = "Fixture"
+        try check(clipboard.count == 1, "Clipboard UI does not observe its own state")
         model.spotify.playing = true
         model.codexAccount.error = "Fixture"
         try check(independentCPU.count == 0, "Integration update notified CPU")

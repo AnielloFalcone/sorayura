@@ -55,9 +55,11 @@ enum SpotifyWebBridge {
         let fm = FileManager.default
         let folder = directory.appending(path: "Chrome extension")
         try fm.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        for name in ["manifest.json", "page.js", "content.js", "worker.js"] {
+        for name in ["manifest.json", "page.js", "content.js", "worker.js", "icons/icon16.png", "icons/icon32.png", "icons/icon48.png", "icons/icon128.png"] {
             let data = try Data(contentsOf: resources.appending(path: "SpotifyWebExtension/\(name)"))
-            try data.write(to: folder.appending(path: name), options: .atomic)
+            let target = folder.appending(path: name)
+            try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: target, options: .atomic)
         }
         let host = resources.appending(path: "spotify-web-host")
         guard fm.isExecutableFile(atPath: host.path) else { throw SettingsError.invalid("Risorse mancanti.") }

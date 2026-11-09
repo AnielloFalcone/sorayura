@@ -44,8 +44,11 @@ extension Model {
         case "apps":
             guard prefs.appStatusEnabled == true else { return AnimationReading(value: L("Attiva da Integrazioni")) }
             return AnimationReading(value: appPresence.filter(\.running).map(\.name).joined(separator: " · ").nilIfEmpty ?? L("Nessuna"))
+        case "appleMusic":
+            guard prefs.appleMusicEnabled == true else { return AnimationReading(value: L("Attiva da Musica")) }
+            return AnimationReading(value: appleMusic.available ? appleMusic.title + (appleMusic.artist.isEmpty ? "" : " · " + appleMusic.artist) : L(appleMusic.title))
         case "spotify":
-            guard prefs.spotifyEnabled == true else { return AnimationReading(value: L("Attiva da Integrazioni")) }
+            guard prefs.spotifyEnabled == true else { return AnimationReading(value: L("Attiva da Musica")) }
             return AnimationReading(value: spotify.available ? spotify.title + (spotify.artist.isEmpty ? "" : " · " + spotify.artist) : L(spotify.title))
         case "claudeSession", "claudeWeek", "codexSession", "codexWeek":
             let quota: AgentQuota?

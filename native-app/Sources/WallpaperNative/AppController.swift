@@ -5,6 +5,7 @@ import CoreGraphics
 @main
 struct WallpaperNative {
     @MainActor static func main() {
+        if CommandLine.arguments.contains("--preview-clipboard") { ClipboardPreview.run(); return }
         if CommandLine.arguments.contains("--spotify-native-host") { SpotifyNativeHost.run(); return }
         if let index = CommandLine.arguments.firstIndex(of: "--preview-ai-widget"), index + 1 < CommandLine.arguments.count {
             if #available(macOS 26, *) { NativeWidgetPreview.run(directory: CommandLine.arguments[index + 1]) }
@@ -88,6 +89,10 @@ struct WallpaperNative {
             do { try LocalizationChecks.run(); return }
             catch { fputs("Localization check failed: \(error)\n", stderr); exit(1) }
         }
+        if CommandLine.arguments.contains("--check-clipboard") {
+            do { try ClipboardChecks.run(); return }
+            catch { fputs("Clipboard checks failed: \(error)\n", stderr); exit(1) }
+        }
         if CommandLine.arguments.contains("--check-m1") {
             do { try M1Checks.run(); return }
             catch { fputs("M1 check failed: \(error)\n", stderr); exit(1) }
@@ -120,6 +125,9 @@ struct WallpaperNative {
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: "dev.aniello.macsystemwallpaper.native")
             .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier && $0.activationPolicy != .prohibited }
         if !others.isEmpty {
+            if CommandLine.arguments.contains("--clipboard") {
+                DistributedNotificationCenter.default().postNotificationName(.init("dev.sorayura.openClipboard"), object: nil, userInfo: nil, deliverImmediately: true)
+            }
             if CommandLine.arguments.contains("--settings") {
                 DistributedNotificationCenter.default().postNotificationName(.init("dev.aniello.macsystemwallpaper.openSettings"), object: nil, userInfo: nil, deliverImmediately: true)
             }
@@ -156,10 +164,12 @@ final class DesktopHitPanel: NSPanel {
 }
 
 @MainActor
-final class AppController: NSObject, NSApplicationDelegate {
+final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let model = Model.shared
     private var statusItem: NSStatusItem?
     private let settingsPresentation = SettingsPresentation()
+    private let clipboardPresentation = ClipboardPresentation()
+    private let clipboardHotKey = ClipboardHotKey()
     private var componentProfile: ComponentProfile?
     private var windows: [String:NSWindow] = [:]
     private var editingPreviousApplication: NSRunningApplication?
@@ -174,15 +184,15 @@ final class AppController: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = BrandIcon.menuImage()
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: L("Impostazioni…"), action: #selector(openSettings), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: L("Modifica layout…"), action: #selector(beginEditing), keyEquivalent: "e"))
-        menu.addItem(NSMenuItem(title: L("Identifica monitor"), action: #selector(identify), keyEquivalent: ""))
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: L("Esci"), action: #selector(quit), keyEquivalent: "q"))
-        for menuItem in menu.items { menuItem.target = self }
+        menu.delegate = self
+        populateStatusMenu(menu)
         item.menu = menu
         NotificationCenter.default.addObserver(self, selector: #selector(languageChanged), name: .sorayuraLanguageChanged, object: nil)
         statusItem = item
+        clipboardHotKey.action = { [weak self] in self?.openClipboard() }
+        model.clipboardConfigurationChanged = { [weak self] in self?.configureClipboardShortcut() }
+        configureClipboardShortcut()
+        DistributedNotificationCenter.default().addObserver(self, selector: #selector(openClipboard), name: .init("dev.sorayura.openClipboard"), object: nil)
         model.refreshDisplays = { [weak self] in self?.refreshScreens() }
         model.editChanged = { [weak self] editing in
             guard let self else { return }
@@ -208,6 +218,7 @@ final class AppController: NSObject, NSApplicationDelegate {
         }
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         let workspace = NSWorkspace.shared.notificationCenter
+        workspace.addObserver(self, selector: #selector(sceneApplicationActivated), name: NSWorkspace.didActivateApplicationNotification, object: nil)
         workspace.addObserver(self, selector: #selector(woke), name: NSWorkspace.didWakeNotification, object: nil)
         workspace.addObserver(self, selector: #selector(spaceChanged), name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
         DistributedNotificationCenter.default().addObserver(self, selector: #selector(openSettings), name: .init("dev.aniello.macsystemwallpaper.openSettings"), object: nil)
@@ -229,10 +240,12 @@ final class AppController: NSObject, NSApplicationDelegate {
                     directory: URL(fileURLWithPath: CommandLine.arguments[index + 1], isDirectory: true))
             } catch { fputs("Component profile failed: \(error)\n", stderr) }
         }
+        model.activateScene(for: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
         if CommandLine.arguments.contains("--settings") { openSettings() }
+        if CommandLine.arguments.contains("--clipboard") { openClipboard() }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
-    func applicationWillTerminate(_ notification: Notification) { model.save() }
+    func applicationWillTerminate(_ notification: Notification) { clipboardHotKey.stop(); model.save() }
     @objc private func screensChanged() {
         RenderDiagnostics.event("display_configuration_changed")
         componentProfile?.cancel(reason: "Displays changed during diagnostic")
@@ -267,12 +280,62 @@ final class AppController: NSObject, NSApplicationDelegate {
     @objc private func beginEditing() { model.editing = true }
     @objc private func identify() { model.identifyUntil = Date().addingTimeInterval(6) }
     @objc private func languageChanged() {
-        if let menu = statusItem?.menu {
-            let titles = [L("Impostazioni…"), L("Modifica layout…"), L("Identifica monitor"), "", L("Esci")]
-            for (item, title) in zip(menu.items, titles) where !item.isSeparatorItem { item.title = title }
-        }
+        if let menu = statusItem?.menu { populateStatusMenu(menu) }
         settingsPresentation.updateLanguage()
         refreshScreens()
+    }
+    func menuNeedsUpdate(_ menu: NSMenu) { if menu === statusItem?.menu { populateStatusMenu(menu) } }
+    private func populateStatusMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        menu.addItem(NSMenuItem(title: L("Impostazioni…"), action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(NSMenuItem(title: L("Clipboard…"), action: #selector(openClipboard), keyEquivalent: ""))
+        let scenes = NSMenuItem(title: L("Scene"), action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: L("Scene"))
+        for scene in model.savedPresets {
+            let item = NSMenuItem(title: scene.name, action: #selector(activateSavedScene(_:)), keyEquivalent: "")
+            item.target = self; item.representedObject = scene.id.uuidString
+            item.state = model.activeSceneID == scene.id ? .on : .off
+            submenu.addItem(item)
+        }
+        if !model.savedPresets.isEmpty { submenu.addItem(.separator()) }
+        let automatic = NSMenuItem(title: L("Scene automatiche"), action: #selector(toggleSceneAutomation), keyEquivalent: "")
+        automatic.target = self; automatic.state = model.prefs.sceneAutomationEnabled == true ? .on : .off
+        submenu.addItem(automatic)
+        let manage = NSMenuItem(title: L("Gestisci scene…"), action: #selector(openScenes), keyEquivalent: "")
+        manage.target = self; submenu.addItem(manage)
+        scenes.submenu = submenu; menu.addItem(scenes)
+        menu.addItem(NSMenuItem(title: L("Modifica layout…"), action: #selector(beginEditing), keyEquivalent: "e"))
+        menu.addItem(NSMenuItem(title: L("Identifica monitor"), action: #selector(identify), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: L("Esci"), action: #selector(quit), keyEquivalent: "q"))
+        for item in menu.items { item.target = self }
+    }
+    @objc private func activateSavedScene(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, let scene = model.savedPresets.first(where: { $0.id.uuidString == id }) else { return }
+        do { try model.activateScene(scene) }
+        catch { model.storageMessage = error.localizedDescription; openScenes() }
+    }
+    @objc private func openScenes() {
+        settingsPresentation.navigation.section = "Scene"
+        openSettings()
+    }
+    @objc private func toggleSceneAutomation() {
+        model.prefs.sceneAutomationEnabled = !(model.prefs.sceneAutomationEnabled ?? false)
+        model.activateScene(for: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+    }
+    @objc private func sceneApplicationActivated(_ notification: Notification) {
+        let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+        model.activateScene(for: application?.bundleIdentifier)
+    }
+    private func configureClipboardShortcut() {
+        let enabled = model.prefs.clipboardEnabled == true && model.prefs.clipboardShortcutEnabled != false
+        model.clipboard.shortcutError = clipboardHotKey.configure(enabled: enabled) ? nil : "Scorciatoia ⌘⇧V non disponibile. Puoi aprire la Clipboard dal menu di Sorayura."
+    }
+    @objc private func openClipboard() {
+        clipboardPresentation.show(model: model) { [weak self] in
+            self?.settingsPresentation.navigation.section = "Clipboard"
+            self?.openSettings()
+        }
     }
     @objc private func quit() { NSApp.terminate(nil) }
     private func screenID(_ screen: NSScreen) -> String { model.displayKey(screen) }
@@ -365,6 +428,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                 hitView.configuration = { [weak self] in
                     guard let self else { return WidgetDisplay() }
                     if widget == "animation" { return WidgetDisplay(chart: self.model.prefs.animationStyle) }
+                    if widget == "appleMusic" { return WidgetDisplay(density:self.model.prefs.appleMusicDisplay ?? "compact") }
                     if widget == "spotify" { return WidgetDisplay(density:self.model.prefs.spotifyDisplay ?? "compact") }
                     if widget.hasPrefix("agent") { return WidgetDisplay(chart: self.model.prefs.agentPeriod ?? "all", density: self.model.prefs.agentDensity ?? "compact") }
                     return widget == "memory" ? self.model.prefs.memoryDisplay : self.model.prefs.cpuDisplay
@@ -375,7 +439,7 @@ final class AppController: NSObject, NSApplicationDelegate {
                         if ["aurora", "pulse", "traces", "ribbon", "jarvis"].contains(setting) { self.model.prefs.animationStyle = setting }
                         return
                     }
-                    if widget == "spotify" { self.model.prefs.spotifyDisplay = setting; return }
+                    if ["appleMusic", "spotify"].contains(widget) { self.model.setMusicDisplay(widget, setting); return }
                     if widget.hasPrefix("agent") {
                         if ["compact", "expanded"].contains(setting) { self.model.prefs.agentDensity = setting } else { self.model.prefs.agentPeriod = setting }; return
                     }
@@ -408,24 +472,31 @@ final class AppController: NSObject, NSApplicationDelegate {
                         self.model.moveRankingPage(widget, display: screenID, delta: delta)
                     }
                 }
-                if widget == "spotify" {
+                if ["spotify", "appleMusic"].contains(widget) {
                     window.acceptsMouseMovedEvents=true
                     hitView.onHover = { [weak self, weak hitView] point in
                         guard let self,let hitView else { return }
                         let key=self.model.displayKey(screen)
-                        let layout=SpotifyLayout(size:CGSize(width:max(1,hitView.bounds.width-32),height:max(1,hitView.bounds.height-32)),expanded:self.model.prefs.spotifyDisplay == "expanded",shortcuts:min(6,self.model.prefs.spotifyShortcuts?.count ?? 0))
+                        let layout=SpotifyLayout(size:CGSize(width:max(1,hitView.bounds.width-32),height:max(1,hitView.bounds.height-32)),expanded:(widget == "appleMusic" ? self.model.prefs.appleMusicDisplay : self.model.prefs.spotifyDisplay) == "expanded",shortcuts:widget == "appleMusic" ? 0 : min(6,self.model.prefs.spotifyShortcuts?.count ?? 0),nowPlaying:widget == "spotify" && self.model.prefs.spotifySource == "nowPlaying")
                         let action=point.flatMap { p in layout.controls.first { item in
-                            (item.0 == "open" || item.0.hasPrefix("shortcut:") || self.model.spotify.available) && item.1.contains(CGPoint(x:p.x-16,y:hitView.bounds.height-p.y-16))
+                            (widget == "appleMusic" ? self.model.appleMusicSupports(item.0) : self.model.spotifySupports(item.0)) && item.1.contains(CGPoint(x:p.x-16,y:hitView.bounds.height-p.y-16))
                         }?.0 }
-                        if self.model.spotifyHover[key] != action { self.model.spotifyHover[key]=action }
+                        if widget == "appleMusic" { if self.model.appleMusicHover[key] != action { self.model.appleMusicHover[key] = action } }
+                        else if self.model.spotifyHover[key] != action { self.model.spotifyHover[key]=action }
                     }
-                    hitView.onMusicCommand = { [weak self] command in self?.model.spotifyAction(command) }
+                    hitView.musicCommandAvailable = { [weak self] command in
+                        guard let self else { return false }
+                        return widget == "appleMusic" ? self.model.appleMusicSupports(command) : self.model.spotifySupports(command)
+                    }
+                    hitView.onMusicCommand = { [weak self] command in if widget == "appleMusic" { self?.model.appleMusicAction(command) } else { self?.model.spotifyAction(command) } }
                     hitView.onClick = { [weak self, weak hitView] point in
                         guard let self, let hitView else { return }
                         let size = CGSize(width:max(1,hitView.bounds.width-32),height:max(1,hitView.bounds.height-32))
-                        let layout = SpotifyLayout(size:size,expanded:self.model.prefs.spotifyDisplay == "expanded",shortcuts:min(6,self.model.prefs.spotifyShortcuts?.count ?? 0))
+                        let layout = SpotifyLayout(size:size,expanded:(widget == "appleMusic" ? self.model.prefs.appleMusicDisplay : self.model.prefs.spotifyDisplay) == "expanded",shortcuts:widget == "appleMusic" ? 0 : min(6,self.model.prefs.spotifyShortcuts?.count ?? 0),nowPlaying:widget == "spotify" && self.model.prefs.spotifySource == "nowPlaying")
                         let local = CGPoint(x:point.x-16,y:hitView.bounds.height-point.y-16)
-                        if let action=layout.action(at:local,available:self.model.spotify.available), self.model.spotifySupports(action) { self.model.spotifyAction(action) }
+                        if let action=layout.action(at:local,available:(widget == "appleMusic" ? self.model.appleMusic.available : self.model.spotify.available)), (widget == "appleMusic" ? self.model.appleMusicSupports(action) : self.model.spotifySupports(action)) {
+                            if widget == "appleMusic" { self.model.appleMusicAction(action) } else { self.model.spotifyAction(action) }
+                        }
                     }
                 }
                 var dragStart: Point?
@@ -500,6 +571,7 @@ final class LongPressView: NSView {
     var hitRegions: [CGRect]? { didSet { needsDisplay = true } }
     var onRemove: (() -> Void)?
     var onClick: ((CGPoint) -> Void)?
+    var musicCommandAvailable: ((String) -> Bool)?
     var onMusicCommand: ((String) -> Void)?
     var onHover: ((CGPoint?) -> Void)? { didSet { updateTrackingAreas() } }
     private var hoverArea:NSTrackingArea?
@@ -575,7 +647,8 @@ final class LongPressView: NSView {
         menu.addItem(.separator())
         if onMusicCommand != nil {
             for (title, command) in [("Brano precedente", "previous track"), ("Riproduci / pausa", "playpause"), ("Brano successivo", "next track"), ("Apri Spotify", "open"), ("Riproduzione casuale", "shuffle"), ("Ripetizione", "repeat"), ("Abbassa volume", "volumeDown"), ("Alza volume", "volumeUp")] {
-                let item = NSMenuItem(title: L(title), action: #selector(musicAction(_:)), keyEquivalent: "")
+                guard musicCommandAvailable?(command) == true else { continue }
+                let item = NSMenuItem(title: L(command == "open" && widgetID == "appleMusic" ? "Apri Musica" : title), action: #selector(musicAction(_:)), keyEquivalent: "")
                 item.representedObject = command; item.target = self; menu.addItem(item)
             }
             menu.addItem(.separator())
@@ -593,7 +666,7 @@ final class LongPressView: NSView {
             }
             parent.submenu = sub; menu.addItem(parent); menu.addItem(.separator())
         }
-        if widgetID == "spotify" {
+        if ["spotify", "appleMusic"].contains(widgetID) {
             let parent = NSMenuItem(title:L("Dettaglio"),action:nil,keyEquivalent:"")
             let sub = NSMenu(title:L("Dettaglio"))
             for (title,value) in [("Compatto","compact"),("Esteso","expanded")] {

@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.6 — build 38
+# Sorayura 0.5.1-beta.7 — build 44
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,15 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## New in beta 7
+
+- **Now Playing** follows the active macOS media session without a browser extension. It can show Spotify Web metadata and artwork, and offers play, pause and track navigation. It can also follow a different browser tab or app when macOS selects it. MediaRemote is private and may change in future macOS versions. Live metadata and artwork were verified on macOS 27.0.1. Playback controls from the widget still need a live check.
+- **Music** has its own settings section. Apple Music controls the local Music app, and both music widgets size their compact and expanded views to their content and the selected grid.
+- **Scenes** save and restore desktop layouts, with optional switching when a linked app becomes frontmost.
+- **Clipboard** adds an opt-in local text history, favorites, and paste without formatting. The panel opens with Command-Shift-V.
+- The bundled Spotify Web extension recognizes the current Chrome player layout. It remains an optional, Spotify-specific source.
+- Widget resize handles are easier to find in edit mode.
 
 ## Fixed in beta 6
 

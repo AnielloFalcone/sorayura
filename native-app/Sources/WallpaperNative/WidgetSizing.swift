@@ -3,6 +3,7 @@ import Foundation
 struct WidgetSize: Codable, Equatable {
     var width: Double
     var height: Double
+    var automaticHeight: Bool? = nil
 }
 
 /// All coordinates are logical screen points, independent of Retina scale.

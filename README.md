@@ -96,13 +96,56 @@ Repository: [AnielloFalcone/sorayura](https://github.com/AnielloFalcone/sorayura
 
 Starting with build 35, General settings includes **Check for updates…**. Sparkle checks a signed feed hosted in this repository and installs a verified GitHub release after confirmation. Builds 33 and 34 need one manual upgrade. Checks and installs are user-initiated; existing settings are retained. Ad hoc builds remain unnotarized and disable library validation to load Sparkle without an Apple Team ID.
 
+### Clipboard
+
+Settings → Clipboard enables an opt-in, local text/link history. Open its searchable
+panel from the menu bar or ⌘⇧V (registered only when collection is enabled). Arrow
+keys select and ⌘C copies with available RTF formatting. **Paste without formatting**
+uses Accessibility permission to paste plain text into the app you opened the panel from.
+
+Pause collection, exclude apps, pin up to 50 favorites and choose a recent-item
+limit. Confidential/transient clipboard markers and major password-manager apps
+are excluded, but unmarked secrets cannot be identified reliably. Images/files are
+not collected in this first version. History stays in a private local file, without
+additional encryption or network transmission, and is not included in layout
+exports. Disabling collection retains it; clear recent items or all data explicitly.
+macOS may require clipboard-access consent. Scenes preserve these global settings.
+
+### Scenes
+
+Save the current desktop under Settings → Scenes and activate it from Sorayura's
+menu bar. Existing personal presets remain available as scenes. Scenes can be
+renamed, updated from the current desktop, removed, or linked to one app.
+
+Optional automatic switching activates the linked scene when its app becomes
+frontmost. It keeps that scene when you switch to an unrelated app, pauses during
+layout editing, and is off by default. Each app belongs to at most one scene.
+Scene changes and scene undo preserve global integration opt-ins, account setup,
+warning thresholds and wallpaper synchronization. Built-in layouts remain under
+Starting templates. No app is launched by a scene.
+
+### Music
+
+Settings → Music contains the independent Spotify and Apple Music integrations.
+Apple Music controls the local macOS Music app, with track metadata, cached artwork,
+play/pause, previous/next, shuffle, repeat and volume. Enable it explicitly and grant
+macOS Automation permission when requested, then add its widget under Displays.
+Both music widgets support compact and expanded views and animation data boxes.
+Apple Music does not use MusicKit or stream audio inside Sorayura.
+
 ### Spotify Web
 
 Spotify can use the desktop app or an existing Spotify Web tab in Google Chrome.
-Choose the source in Settings → Integrations and use **Set up Chrome extension…**
+Choose the source in Settings → Music and use **Set up Chrome extension…**
 for the Web option. The first version requires loading the bundled extension
 manually. Login stays in Chrome; Sorayura controls the visible player. See
 [setup, privacy and limitations](native-app/release/SPOTIFY-WEB.md).
+
+Choose **Now Playing** in Settings → Music to use the active macOS media session
+without a browser extension. It follows the system-selected player, so another
+tab or app can replace Spotify in the widget. It shows track details and artwork
+when provided, and offers play, pause, and track navigation. It uses the private
+macOS MediaRemote framework, which may change across macOS releases.
 
 AI model and project widgets paginate all locally collected entries for the chosen
 period, with independent pages on each display and fewer rows in small widgets.

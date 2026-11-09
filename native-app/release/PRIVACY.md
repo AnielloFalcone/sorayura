@@ -43,3 +43,33 @@ When you choose Check for updates, Sparkle contacts GitHub for the signed update
 ## Spotify Web companion
 
 The optional unpacked Chrome extension runs only on open.spotify.com and forwards visible player metadata, available controls and transport commands through Chrome Native Messaging. Cookies, login tokens and passwords remain in Chrome and are not read by the integration. A private local metadata snapshot expires after 15 seconds and is removed when its connection closes. Artwork is fetched from the allowed Spotify CDN hosts. The extension is a separate browser component; disable/remove it in Chrome to stop it. There is no Sorayura service receiving playback data. See [Spotify Web setup and limits](SPOTIFY-WEB.md).
+
+## Now Playing
+
+If selected as the Spotify widget source, Sorayura reads the active macOS media
+session, which can belong to another app or browser tab. Track details and
+artwork are kept in memory. Sorayura sends playback commands to that session
+when requested and does not send its metadata to a server.
+
+## Clipboard history
+
+Clipboard collection is off by default. When explicitly enabled, Sorayura checks
+the pasteboard change counter on its existing one-second sampling loop and stores
+new text/HTTP(S) links, source-app metadata, and available RTF up to 16 KB locally. It does not recover
+content copied before enable or during a pause. Confidential, transient and
+auto-generated markers, known password-manager sources and user-excluded apps are
+skipped. These checks cannot reliably detect unmarked passwords or every secret.
+
+History is stored under `clipboard/history.json` in the app data directory, with a
+0700 directory and 0600 file permissions, without additional application encryption.
+There is no cloud sync, telemetry, URL fetch or network transmission of clipboard
+contents. The archive is bounded to 8 MB; entries to 16 KB, recent history to the
+configured limit and favorites to 50. No images or file contents are collected.
+
+Disabling collection retains existing history. Clear recent items or the whole
+archive (including favorites) explicitly in Clipboard settings. Clearing does not
+erase the Mac's current pasteboard, and layout exports/presets do not include the
+history. Source attribution uses available pasteboard metadata and the foreground
+app and can be imperfect. macOS manages pasteboard consent. Cmd+C copies the selected entry with available
+formatting. **Paste without formatting** writes plain text and, with Accessibility
+permission, sends Cmd+V to the app that was active when the panel opened.

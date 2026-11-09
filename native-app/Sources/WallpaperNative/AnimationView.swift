@@ -143,7 +143,6 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
     private var readouts: [String: CATextLayer] = [:]
     private var names: [String: CATextLayer] = [:]
     private var bars: [String: CALayer] = [:]
-    private let halo = CAGradientLayer()
     private var signature = ""
     private var lastReadoutSize = CGSize.zero
     private var renderingPaused = false
@@ -156,10 +155,6 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        halo.type = .radial
-        halo.startPoint = CGPoint(x: 0.5, y: 0.5)
-        halo.endPoint = CGPoint(x: 1, y: 1)
-        layer?.addSublayer(halo)
         if let resources = FilamentResources.shared {
             let view = TransparentMTKView(frame: .zero, device: resources.device)
             view.delegate = renderer
@@ -241,6 +236,11 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         defer { view.stopRendering(); window.contentView = nil; window.close() }
+        guard !metal.isOpaque, metal.layer?.isOpaque == false,
+              metal.clearColor.alpha == 0, view.layer?.backgroundColor == nil,
+              view.layer?.sublayers?.contains(where: { $0 is CAGradientLayer }) != true else {
+            throw SettingsError.invalid("Animation canvas must stay transparent without a rectangular halo")
+        }
         guard metal.isPaused else { throw SettingsError.invalid("Detached renderer is active") }
         window.contentView = view
         view.setRenderingPaused(false)
@@ -268,13 +268,6 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         metalView?.isHidden = dataOnly
         updateFrameScheduling()
         renderer.setMetrics(metrics.filter(\.animated), style: style)
-        halo.isHidden = !metrics.contains(where: \.animated)
-        if let color = metrics.first(where: \.animated)?.color {
-            halo.colors = [color.withAlphaComponent(0.13).cgColor,
-                           color.withAlphaComponent(0.035).cgColor,
-                           color.withAlphaComponent(0).cgColor]
-            halo.locations = [0, 0.45, 1]
-        }
         arrange()
         let next = self.boxes.map { box in box.side + ":" + box.entries.map { "\($0.id):\($0.color.hexString):\($0.animated)" }.joined(separator: "|") }.joined(separator: ";") + "\(bounds.size):\(style):\(usesGlass)"
         if signature != next { signature = next; makeReadoutBox() }
@@ -316,7 +309,6 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         let height = visualSize.height
         let visualFrame = CGRect(x: point.x - width/2, y: point.y - height/2, width: width, height: height)
         metalView?.frame = visualFrame
-        halo.frame = visualFrame
         for (index, box) in boxes.enumerated() where index < readoutLayers.count {
             let geometry = AnimationBoxGeometry.layout(side: box.side, bounds: bounds.size, visual: visualSize, point: position, count: box.entries.count)
             readoutLayers[index].frame = geometry.frame

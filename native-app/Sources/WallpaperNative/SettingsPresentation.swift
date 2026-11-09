@@ -3,7 +3,7 @@ import SwiftUI
 import Observation
 
 @MainActor @Observable final class SettingsNavigation {
-    var section = "Preset"
+    var section = "Scene"
 }
 
 /// Keeps only navigation and geometry after close, never the SwiftUI view tree.

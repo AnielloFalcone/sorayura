@@ -11,6 +11,62 @@ enum M1Checks {
             catch { return }
             throw SettingsError.invalid("Invalid archive accepted")
         }
+        var sceneBase = Prefs()
+        sceneBase.spotifyEnabled = true; sceneBase.appleMusicEnabled = true; sceneBase.agentUsageEnabled = true
+        sceneBase.codexAccountEnabled = true; sceneBase.syncWallpaper = false; sceneBase.sceneAutomationEnabled = true
+        sceneBase.thresholds["cpu"] = Threshold(warning: 55, critical: 85)
+        var sceneLook = Prefs(); sceneLook.widgetTheme = "glass"; sceneLook.animationStyle = "aurora"; sceneLook.cellSize = 100
+        sceneLook.spotifyEnabled = false; sceneLook.appleMusicEnabled = false; sceneLook.syncWallpaper = true
+        sceneLook.displays = ["fixture": DisplayContent(widgets: ["clock"], animation: false)]
+        let mergedScene = SceneSettings.applying(sceneLook, to: sceneBase)
+        try check(mergedScene.widgetTheme == "glass" && mergedScene.animationStyle == "aurora" && mergedScene.cellSize == 100, "Scene drops its presentation")
+        try check(mergedScene.spotifyEnabled == true && mergedScene.appleMusicEnabled == true && mergedScene.agentUsageEnabled == true && mergedScene.codexAccountEnabled == true && !mergedScene.syncWallpaper && mergedScene.thresholds["cpu"]?.warning == 55 && mergedScene.sceneAutomationEnabled == true, "Scene changes integration opt-ins, warnings or wallpaper sync")
+        let sceneModel = Model.isolated(preferences: sceneBase)
+        try sceneModel.savePreset(name: "Work")
+        let workID = sceneModel.savedPresets[0].id
+        try sceneModel.savePreset(name: "Music")
+        let musicID = sceneModel.savedPresets[1].id
+        try sceneModel.setSceneApplication(workID, bundleID: "test.app", name: "Test")
+        try sceneModel.setSceneApplication(musicID, bundleID: "test.app", name: "Test")
+        try check(sceneModel.savedPresets[0].applicationBundleID == nil && sceneModel.savedPresets[1].applicationBundleID == "test.app", "Two scenes compete for the same app")
+        try check(SceneSettings.automaticScene(in: sceneModel.savedPresets, applicationID: "test.app", enabled: false, editing: false) == nil && SceneSettings.automaticScene(in: sceneModel.savedPresets, applicationID: "test.app", enabled: true, editing: true) == nil && SceneSettings.automaticScene(in: sceneModel.savedPresets, applicationID: "other.app", enabled: true, editing: false) == nil, "Scene automation ignores its opt-in or edit guard")
+        sceneModel.savedPresets[1].archive.settings = sceneLook
+        sceneModel.activeSceneID = nil
+        sceneModel.activateScene(for: "test.app")
+        try check(sceneModel.activeSceneID == musicID && sceneModel.prefs.animationStyle == "aurora" && sceneModel.prefs.spotifyEnabled == true, "Foreground scene fails or resets integration settings")
+        sceneModel.prefs.spotifySource = "web"
+        sceneModel.undoSettings()
+        try check(sceneModel.activeSceneID == nil && sceneModel.prefs.animationStyle == sceneBase.animationStyle && sceneModel.prefs.spotifySource == "web", "Scene undo does not restore the previous desktop")
+        try sceneModel.renameScene(workID, name: "  Focus  ")
+        try check(sceneModel.savedPresets[0].name == "Focus", "Scene rename loses identity or whitespace handling")
+        sceneModel.prefs.cellSize = 90
+        try sceneModel.updateScene(workID)
+        try check(sceneModel.savedPresets[0].archive.settings.cellSize == 90 && sceneModel.activeSceneID == workID, "Updating a scene loses current layout")
+        var legacyScene = try JSONSerialization.jsonObject(with: JSONEncoder().encode(sceneModel.savedPresets[0])) as! [String: Any]
+        legacyScene.removeValue(forKey: "applicationBundleID"); legacyScene.removeValue(forKey: "applicationName")
+        let migratedScene = try JSONDecoder().decode(SavedPreset.self, from: JSONSerialization.data(withJSONObject: legacyScene))
+        try check(migratedScene.id == workID && migratedScene.applicationBundleID == nil, "Legacy personal presets cannot become scenes")
+        try sceneModel.removePreset(workID)
+        try check(sceneModel.activeSceneID == nil && sceneModel.savedPresets.count == 1, "Removing a scene leaves it active")
+        if let screen = NSScreen.screens.first, screen.frame.height >= 480, screen.frame.width >= 360 {
+            var musicPrefs = Prefs()
+            musicPrefs.layout = "grid"
+            musicPrefs.cellSize = 120
+            let music = Model.isolated(preferences: musicPrefs)
+            try check(music.widgetSize("appleMusic", screen: screen).height == 120, "Compact Apple Music wastes a grid row")
+            music.setMusicDisplay("spotify", "expanded")
+            let expanded = music.widgetSize("spotify", screen: screen)
+            music.prefs.spotifyShortcuts = (0..<4).map { SpotifyShortcut(name: "Test \($0)", link: "spotify:track:0123456789ABCDEFGHIJKL") }
+            music.prefs.cellSize = 100
+            try check(music.widgetSize("spotify", screen: screen).height == 400 && expanded.height == 360,
+                      "Expanded Spotify ignores favorite rows or grid size")
+            music.prefs.layout = "free"
+            music.resizeWidget("spotify", screen: screen, origin: Point(x: 0, y: 0), size: WidgetSize(width: 320, height: 425))
+            try check(music.widgetSize("spotify", screen: screen).height == 425, "Automatic size overrides manual resize")
+            music.setMusicDisplay("spotify", "compact")
+            try check(music.widgetSize("spotify", screen: screen) == WidgetSize(width: 320, height: 120),
+                      "Compact mode does not restore automatic height")
+        }
         let freeSize = WidgetSizing.constrained(WidgetSize(width: 347.5, height: 219.25), available: WidgetSize(width: 900, height: 700), cell: nil)
         try check(freeSize == WidgetSize(width: 347.5, height: 219.25), "Free resizing lost fractional points")
         let gridSize = WidgetSizing.constrained(freeSize, available: WidgetSize(width: 370, height: 300), cell: 130)

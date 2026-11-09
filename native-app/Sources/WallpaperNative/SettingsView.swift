@@ -10,6 +10,8 @@ struct SettingsView: View {
         nonmutating set { navigation.section = newValue }
     }
     @State private var presetName = ""
+    @State private var renamingScene: UUID?
+    @State private var sceneName = ""
     @State private var spotifyShortcutName = ""
     @State private var spotifyShortcutLink = ""
     @State private var animationBoxSide = "right"
@@ -19,13 +21,15 @@ struct SettingsView: View {
     @ObservedObject private var updates = AppUpdates.shared
     @StateObject private var loginItem = LoginItem()
     private let sections: [(title: String, icon: String, description: String)] = [
-        ("Preset", "square.stack.3d.up", "Configurazioni pronte e personali"),
+        ("Scene", "square.stack.3d.up", "Il desktop giusto per ogni attività"),
         ("Generali", "gearshape", "Avvio e backup delle impostazioni"),
         ("Schermi", "display.2", "Contenuti per monitor"),
         ("Widget", "square.grid.2x2", "Grafici e dettagli"),
         ("Layout", "rectangle.3.group", "Dimensioni e posizione"),
         ("Sfondo", "photo", "Immagine del desktop"),
         ("Animazione", "waveform.path", "Stile e livelli"),
+        ("Clipboard", "doc.on.clipboard", "Cronologia, ricerca e preferiti"),
+        ("Musica", "music.note", "Spotify e Apple Music"),
         ("Integrazioni", "app.connected.to.app.below.fill", "Applicazioni e stato termico"),
         ("Avvisi", "exclamationmark.triangle", "Soglie delle risorse")
     ]
@@ -73,13 +77,15 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(alignment:.leading,spacing:18) {
                         switch section {
-                        case "Preset": presetsSection
+                        case "Scene": presetsSection
                         case "Generali": generalSection
                         case "Schermi": screensSection
                         case "Widget": widgetsSection
                         case "Layout": layoutSection
                         case "Sfondo": wallpaperSection
                         case "Animazione": animationSection
+                        case "Clipboard": ClipboardSettingsView().environment(model)
+                        case "Musica": musicSection
                         case "Integrazioni": integrationsSection
                         default: alertsSection
                         }
@@ -101,6 +107,20 @@ struct SettingsView: View {
         .alert("Sorayura", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("OK") { message = nil }
         } message: { Text(L(message ?? "")) }
+        .sheet(isPresented: Binding(get: { renamingScene != nil }, set: { if !$0 { renamingScene = nil } })) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(L("Rinomina scena")).font(.headline)
+                TextField(L("Nome della scena"), text: $sceneName)
+                HStack {
+                    Button(L("Annulla")) { renamingScene = nil }.keyboardShortcut(.cancelAction)
+                    Spacer()
+                    Button(L("Salva")) {
+                        guard let id = renamingScene else { return }
+                        perform { try model.renameScene(id, name: sceneName); renamingScene = nil }
+                    }.keyboardShortcut(.defaultAction).disabled(sceneName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }.padding(24).frame(width: 360)
+        }
         .onChange(of: model.storageMessage) { _, value in if let value { message = value } }
     }
     private func panel<Content:View>(_ title:String,@ViewBuilder content:()->Content)->some View {
@@ -121,8 +141,27 @@ struct SettingsView: View {
     }
     private var presetsSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text(L("Applica un preset a tutti i monitor collegati. Soglie di avviso e sincronizzazione dello sfondo vengono mantenute."))
+            Text(L("Passa da un desktop all’altro dal menu di Sorayura. I preset personali esistenti sono già disponibili come scene."))
                 .font(.subheadline).foregroundStyle(.secondary)
+            panel(L("Le tue scene")) {
+                HStack {
+                    TextField(L("Nome della scena"), text: $presetName)
+                    Button(L("Salva attuale")) {
+                        perform { try model.savePreset(name: presetName); presetName = "" }
+                    }.disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                Text(L("Salva widget, posizioni, colori, sfondo e animazione. Account, permessi, soglie e sincronizzazione dello sfondo restano globali.")).font(.caption).foregroundStyle(.secondary)
+                if model.savedPresets.isEmpty { Text(L("Crea la prima scena dal tuo desktop attuale.")).foregroundStyle(.secondary) }
+                ForEach(model.savedPresets) { scene in sceneRow(scene) }
+            }
+            panel(L("Scene automatiche")) {
+                Toggle(L("Cambia scena quando attivi un’app associata"), isOn: Binding(get: { model.prefs.sceneAutomationEnabled ?? false }, set: {
+                    model.prefs.sceneAutomationEnabled = $0
+                    if $0 { model.activateScene(for: NSWorkspace.shared.frontmostApplication?.bundleIdentifier) }
+                }))
+                Text(L("Associa un’app dal menu della scena. La scena si attiva quando porti quell’app in primo piano e resta attiva finché ne scegli un’altra. Un’app può essere associata a una sola scena. Le automazioni sono sospese durante la modifica del layout.")).font(.caption).foregroundStyle(.secondary)
+            }
+            DisclosureGroup(L("Modelli di partenza")) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                 ForEach(BuiltInPreset.all) { preset in
                     VStack(alignment: .leading, spacing: 12) {
@@ -135,23 +174,6 @@ struct SettingsView: View {
                     }.padding(18).frame(maxWidth: .infinity, alignment: .leading).wallpaperGlass(cornerRadius: 16)
                 }
             }
-            panel(L("I tuoi preset")) {
-                HStack {
-                    TextField(L("Nome della configurazione"), text: $presetName)
-                    Button(L("Salva attuale")) {
-                        perform { try model.savePreset(name: presetName); presetName = "" }
-                    }.disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-                if model.savedPresets.isEmpty { Text(L("Salva widget, colori e disposizione come preset personale.")).foregroundStyle(.secondary) }
-                ForEach(model.savedPresets) { preset in
-                    HStack {
-                        Text(preset.name).lineLimit(1)
-                        Spacer()
-                        Button(L("Applica")) { perform { try model.apply(preset.archive) } }
-                        Button { perform { try model.removePreset(preset.id) } } label: { Image(systemName: "trash") }
-                            .help(L("Rimuovi preset"))
-                    }
-                }
             }
             panel(L("Aspetto dei widget")) {
                 Picker(L("Tema"), selection: Binding(get: { model.prefs.widgetTheme ?? "minimal" }, set: { model.prefs.widgetTheme = $0 })) {
@@ -162,6 +184,37 @@ struct SettingsView: View {
                 Button(L("Annulla ultima applicazione")) { model.undoSettings() }
             }
         }
+    }
+    private func sceneRow(_ scene: SavedPreset) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: model.activeSceneID == scene.id ? "checkmark.circle.fill" : "square.stack.3d.up")
+                .foregroundStyle(model.activeSceneID == scene.id ? Color.accentColor : Color.secondary)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(scene.name).font(.headline).lineLimit(1)
+                if let app = scene.applicationName ?? scene.applicationBundleID {
+                    Text(LF("Quando attivi \(app)")).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            Button(L("Attiva")) { perform { try model.activateScene(scene) } }
+            Menu {
+                Button(L("Aggiorna dal desktop attuale")) { perform { try model.updateScene(scene.id) } }
+                Button(L("Rinomina…")) { sceneName = scene.name; renamingScene = scene.id }
+                Button(L("Associa app…")) { chooseSceneApplication(scene) }
+                if scene.applicationBundleID != nil {
+                    Button(L("Rimuovi associazione app")) { perform { try model.setSceneApplication(scene.id, bundleID: nil) } }
+                }
+                Divider()
+                Button(L("Rimuovi scena"), role: .destructive) { perform { try model.removePreset(scene.id) } }
+            } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).fixedSize().help(L("Opzioni scena"))
+        }.padding(12).background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+    }
+    private func chooseSceneApplication(_ scene: SavedPreset) {
+        let picker = NSOpenPanel()
+        picker.allowedContentTypes = [.application]; picker.allowsMultipleSelection = false; picker.canChooseDirectories = false
+        picker.directoryURL = URL(fileURLWithPath: "/Applications")
+        guard picker.runModal() == .OK, let url = picker.url, let app = Bundle(url: url), let id = app.bundleIdentifier else { return }
+        perform { try model.setSceneApplication(scene.id, bundleID: id, name: FileManager.default.displayName(atPath: url.path)) }
     }
     private var generalSection: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -203,7 +256,7 @@ struct SettingsView: View {
                         picker.allowedContentTypes = [.json]
                         picker.allowsMultipleSelection = false
                         if picker.runModal() == .OK, let url = picker.url {
-                            perform { try model.importSettings(from: url); message = L("Impostazioni importate. Puoi annullare dalla sezione Preset.") }
+                            perform { try model.importSettings(from: url); message = L("Impostazioni importate. Puoi annullare dalla sezione Scene.") }
                         }
                     }
                 }
@@ -282,21 +335,38 @@ struct SettingsView: View {
                     AgentWidget(id: "agentLive").environment(model)
                 }
             }
+            panel("Applicazioni") {
+                Toggle(L("Mostra lo stato di Spotify, Codex e Claude"), isOn: Binding(get: { model.prefs.appStatusEnabled ?? false }, set: { model.prefs.appStatusEnabled = $0; model.tick() }))
+                Text(L("Mostra se le app desktop sono aperte. Non legge conversazioni, task, musica o sessioni di Claude Code.")).font(.caption).foregroundStyle(.secondary)
+                Text(L("Aggiungi il widget Applicazioni dalla sezione Schermi.")).font(.caption).foregroundStyle(.secondary)
+            }
+            panel(L("Energia e temperatura")) {
+                Toggle(L("Adatta le animazioni allo stato del Mac"), isOn: Binding(get: { model.prefs.adaptiveAnimation ?? true }, set: { model.prefs.adaptiveAnimation = $0 }))
+                Text(LF("Stato termico: \(L(ThermalPresentation.title(model.metrics.thermal)))"))
+                Text(L("30 fps normalmente, 20 in risparmio energetico, 15 in warning e 10 in critical. Il widget Stato termico mostra la classificazione di macOS, non una temperatura in gradi.")).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+    private var musicSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
             panel("Spotify") {
                 Toggle(L("Attiva brano e controlli Spotify"), isOn: Binding(get: { model.prefs.spotifyEnabled ?? false }, set: { model.prefs.spotifyEnabled = $0; model.refreshSpotify(retry: true) }))
                 Picker(L("Sorgente Spotify"), selection: Binding(get: { model.prefs.spotifySource ?? "desktop" }, set: { model.prefs.spotifySource = $0; model.refreshSpotify(retry: true) })) {
                     Text(L("App Spotify")).tag("desktop")
                     Text("Spotify Web · Chrome").tag("web")
+                    Text(L("In riproduzione")).tag("nowPlaying")
                 }.pickerStyle(.segmented)
                 if model.prefs.spotifySource == "web" {
                     Button(L("Prepara estensione Chrome…")) {
                         perform { let folder = try SpotifyWebBridge.install(); NSWorkspace.shared.open(folder) }
                     }
                     Text(L("Apri chrome://extensions, attiva Modalità sviluppatore e scegli Carica estensione non pacchettizzata. Seleziona la cartella aperta, poi ricarica Spotify Web. Il login resta in Chrome; Sorayura riceve solo il brano e i controlli disponibili.")).font(.caption).foregroundStyle(.secondary)
+                } else if model.prefs.spotifySource == "nowPlaying" {
+                    Text(L("Segue la sessione multimediale attiva di macOS senza estensione. Mostra i metadati e invia i comandi di riproduzione e salto brano.")).font(.caption).foregroundStyle(.secondary)
                 } else {
                     Text(L("macOS può chiederti il permesso di controllare Spotify. La copertina viene scaricata dal servizio Spotify. I controlli sono disponibili sul widget e nel suo menu secondario.")).font(.caption).foregroundStyle(.secondary)
                 }
-                Picker(L("Dettaglio"),selection:Binding(get:{model.prefs.spotifyDisplay ?? "compact"},set:{model.prefs.spotifyDisplay=$0})) {
+                Picker(L("Dettaglio"),selection:Binding(get:{model.prefs.spotifyDisplay ?? "compact"},set:{model.setMusicDisplay("spotify", $0)})) {
                     Text(L("Compatto")).tag("compact");Text(L("Esteso")).tag("expanded")
                 }.pickerStyle(.segmented)
                 Text(L("La modalità estesa mostra copertina, shuffle, ripetizione, volume e preferiti. Nei widget piccoli passa automaticamente alla vista compatta. Consigliata una dimensione di almeno 360 × 360 punti.")).font(.caption).foregroundStyle(.secondary)
@@ -319,18 +389,19 @@ struct SettingsView: View {
                 }
                 Text(L("Fino a 6 scorciatoie. Incolla il link condiviso di una playlist, un album o un brano. Il pulsante apre il contenuto in Spotify; non avvia automaticamente la riproduzione.")).font(.caption).foregroundStyle(.secondary)
                 Button(L("Riprova collegamento")) { model.refreshSpotify(retry:true) }.disabled(model.prefs.spotifyEnabled != true)
-                if model.prefs.spotifyEnabled == true { SpotifyWidget().environment(model).frame(height:model.prefs.spotifyDisplay == "expanded" ? 360:160) }
+                if model.prefs.spotifyEnabled == true { SpotifyWidget().environment(model).frame(height:model.musicWidgetHeight("spotify") - 32) }
 
             }
-            panel("Applicazioni") {
-                Toggle(L("Mostra lo stato di Spotify, Codex e Claude"), isOn: Binding(get: { model.prefs.appStatusEnabled ?? false }, set: { model.prefs.appStatusEnabled = $0; model.tick() }))
-                Text(L("Mostra se le app desktop sono aperte. Non legge conversazioni, task, musica o sessioni di Claude Code.")).font(.caption).foregroundStyle(.secondary)
-                Text(L("Aggiungi il widget Applicazioni dalla sezione Schermi.")).font(.caption).foregroundStyle(.secondary)
-            }
-            panel(L("Energia e temperatura")) {
-                Toggle(L("Adatta le animazioni allo stato del Mac"), isOn: Binding(get: { model.prefs.adaptiveAnimation ?? true }, set: { model.prefs.adaptiveAnimation = $0 }))
-                Text(LF("Stato termico: \(L(ThermalPresentation.title(model.metrics.thermal)))"))
-                Text(L("30 fps normalmente, 20 in risparmio energetico, 15 in warning e 10 in critical. Il widget Stato termico mostra la classificazione di macOS, non una temperatura in gradi.")).font(.caption).foregroundStyle(.secondary)
+            panel("Apple Music") {
+                Toggle(L("Attiva brano e controlli Apple Music"), isOn: Binding(get: { model.prefs.appleMusicEnabled ?? false }, set: { model.prefs.appleMusicEnabled = $0 }))
+                Text(L("Controlla l’app Musica del Mac. Il login resta in Musica; al primo utilizzo macOS chiede il permesso Automazione. Sorayura non riproduce audio autonomamente.")).font(.caption).foregroundStyle(.secondary)
+                Picker(L("Dettaglio"), selection: Binding(get: { model.prefs.appleMusicDisplay ?? "compact" }, set: { model.setMusicDisplay("appleMusic", $0) })) {
+                    Text(L("Compatto")).tag("compact"); Text(L("Esteso")).tag("expanded")
+                }.pickerStyle(.segmented)
+                Button(L("Riprova collegamento")) { model.refreshAppleMusic(retry: true) }.disabled(model.prefs.appleMusicEnabled != true)
+                if model.prefs.appleMusicEnabled == true {
+                    SpotifyWidget(appleMusic: true).environment(model).frame(height: model.musicWidgetHeight("appleMusic") - 32)
+                }
             }
         }
     }

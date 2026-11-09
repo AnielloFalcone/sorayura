@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import AppKit
 
 @MainActor enum M2Checks {
     static func run() throws {
@@ -24,12 +25,19 @@ import CryptoKit
         try check(web.valid, "Valid Spotify Web snapshot rejected")
         web.artworkURL = "https://i.scdn.co.evil.test/image"; try check(!web.valid, "Untrusted artwork host accepted")
         web.artworkURL = ""; web.supportedCommands = ["shell"]; try check(!web.valid, "Unknown browser command accepted")
+        let systemReading = try JSONDecoder().decode(SystemNowPlaying.Reading.self, from: Data(#"{"title":"Track","artist":"Artist","playing":true,"artwork":"YQ=="}"#.utf8)).snapshot
+        try check(systemReading.available && systemReading.playing && systemReading.artwork == Data([97]), "System Now Playing metadata did not decode")
+        let systemLayout = SpotifyLayout(size: CGSize(width: 400, height: 400), expanded: true, shortcuts: 0, nowPlaying: true)
+        try check(systemLayout.controls.map(\.0) == ["previous track", "playpause", "next track"] && systemLayout.volumeBar == nil,
+                  "System Now Playing exposes unsupported controls")
         let resources = Bundle.main.resourceURL!
         let extensionManifest = try JSONSerialization.jsonObject(with: Data(contentsOf: resources.appending(path: "SpotifyWebExtension/manifest.json"))) as! [String: Any]
         let extensionKey = Data(base64Encoded: extensionManifest["key"] as! String)!
         let alphabet = Array("abcdefghijklmnop")
         let extensionID = SHA256.hash(data: extensionKey).prefix(16).flatMap { [alphabet[Int($0 >> 4)], alphabet[Int($0 & 15)]] }
         try check(String(extensionID) == SpotifyWebBridge.extensionID && FileManager.default.isExecutableFile(atPath: resources.appending(path: "spotify-web-host").path), "Packaged Chrome extension identity/host does not match the native bridge")
+        let extensionIcons = extensionManifest["icons"] as? [String: String] ?? [:]
+        try check(extensionIcons.count == 4 && extensionIcons.values.allSatisfy { FileManager.default.fileExists(atPath: resources.appending(path: "SpotifyWebExtension/" + $0).path) }, "Chrome extension icon assets are missing from the companion")
         let framed = SpotifyNativeHost.frame(Data("{}".utf8))
         let framing = Pipe(); framing.fileHandleForWriting.write(framed); try framing.fileHandleForWriting.close()
         try check(try SpotifyNativeHost.readMessage(framing.fileHandleForReading) == Data("{}".utf8), "Native messaging framing corrupted")
@@ -130,6 +138,23 @@ import CryptoKit
         try check(desktop?.quota.session?.used == 25 && desktop?.quota.week?.used == 62 && desktop?.opus?.used == 40 && desktop?.quota.session?.reset == nil, "Desktop Claude limits or unknown reset incorrect")
         try check(ClaudeDesktopLimits.decode(desktopFixture, now: now.addingTimeInterval(301 * 60))?.quota.session == nil, "Expired desktop session remains visible")
         try check(ClaudeDesktopLimits.decode(Data("{\"version\":99,\"samples\":[]}".utf8)) == nil, "Unknown desktop schema accepted")
+        let musicDescriptor = NSAppleEventDescriptor.list()
+        for (index, value) in [NSAppleEventDescriptor(string: "Fixture"), .init(string: "Artist"), .init(string: "Album"), .init(boolean: true), .init(int32: 130), .init(boolean: false), .init(boolean: true), .init(string: "ID")].enumerated() {
+            musicDescriptor.insert(value, at: index + 1)
+        }
+        let music = AppleMusicReader.snapshot(musicDescriptor)
+        try check(music.title == "Fixture" && music.artist == "Artist" && music.playing && music.volume == 100 && music.repeatEnabled && music.trackID == "ID", "Apple Music descriptor decoding changed")
+        try check(!AppleMusicReader.snapshot(.list()).available, "Empty Apple Music library creates a track")
+        try check(AppleMusicReader.commandSource("do shell script") == nil && AppleMusicReader.commandSource("play") == "play", "Apple Music command allowlist accepts arbitrary scripts")
+        var musicPrefs = Prefs(); musicPrefs.appleMusicEnabled = true; musicPrefs.appleMusicDisplay = "expanded"
+        let musicRoundtrip = try JSONDecoder().decode(Prefs.self, from: JSONEncoder().encode(musicPrefs))
+        try musicRoundtrip.validate()
+        try check(musicRoundtrip.appleMusicEnabled == true && musicRoundtrip.appleMusicDisplay == "expanded" && Prefs().appleMusicEnabled != true && Model.widgetIDs.contains("appleMusic"), "Music preferences or widget registration changed")
+        for command in ["play", "pause", "next track", "previous track", "shuffle", "repeat", "volumeUp", "volumeDown"] {
+            var parseError: NSDictionary?
+            let script = NSAppleScript(source: "tell application id \"com.apple.Music\"\n" + AppleMusicReader.commandSource(command)! + "\nend tell")!
+            try check(script.compileAndReturnError(&parseError), "Apple Music command does not compile: " + command)
+        }
         var predicted=SpotifySnapshot(playing:true,available:true,volume:100)
         predicted.predict("playpause");predicted.predict("shuffle");predicted.predict("repeat");predicted.predict("volumeUp")
         try check(!predicted.playing && predicted.shuffle && predicted.repeatEnabled && predicted.volume == 100,"Spotify feedback or volume clamp incorrect")

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const root = path.join(__dirname, '../Resources/SpotifyWebExtension');
-function player() {
+function player({ modern = false } = {}) {
   const clicks = [];
   const play = { disabled: false, label: 'Pause', getAttribute(k) { return k === 'aria-label' ? this.label : null; }, querySelector() { return null; }, click() { clicks.push('playpause'); this.label = this.label === 'Pause' ? 'Play' : 'Pause'; } };
   const next = { disabled: false, getAttribute() { return null; }, click() { clicks.push('next'); } };
@@ -14,17 +14,27 @@ function player() {
     querySelector(s) {
       if (s.includes('control-button-playpause')) return play;
       if (s.includes('control-button-skip-forward')) return next;
-      if (s.includes('nowplaying-track-link')) return { textContent: 'Example track', getAttribute() { return '/track/0123456789ABCDEFGHIJKL'; } };
+      if (s.includes(modern ? 'context-item-link' : 'nowplaying-track-link')) return { textContent: 'Example track', getAttribute() { return modern ? '/intl-it/album/example' : '/track/0123456789ABCDEFGHIJKL'; } };
+      if (modern && s.includes('now-playing-widget-v2-byline')) return { textContent: 'Example artist' };
       if (s.includes('volume-bar')) return slider;
-      if (s.startsWith('footer img')) return { src: 'https://i.scdn.co/image/example' };
+      if (s.includes(modern ? 'cover-art-image' : 'footer img')) return { src: 'https://i.scdn.co/image/example' };
       return null;
     },
-    querySelectorAll() { return [{ textContent: 'Example artist' }]; }
+    querySelectorAll() { return modern ? [] : [{ textContent: 'Example artist' }]; }
   };
   const context = { document, HTMLInputElement: Input, Event: class { constructor(type) { this.type = type; } } };
   vm.runInNewContext(fs.readFileSync(path.join(root, 'page.js'), 'utf8'), context);
   return { page: context.SorayuraSpotifyPage, clicks, play, next, slider };
 }
+test('recognizes the current Spotify player even when its title links to the album', () => {
+  const { page, clicks } = player({ modern: true });
+  const data = page.read();
+  assert.equal(data.available, true);
+  assert.equal(data.trackID, 'Example track · Example artist');
+  assert.equal(data.artworkURL, 'https://i.scdn.co/image/example');
+  assert.equal(page.command('next track'), true);
+  assert.deepEqual(clicks, ['next']);
+});
 test('reads only the player metadata and available controls', () => {
   const { page } = player(), data = page.read();
   assert.equal(data.title, 'Example track'); assert.equal(data.artist, 'Example artist');
@@ -80,4 +90,17 @@ test('worker rejects other origins, routes controls to the Spotify tab, and disc
   assert.equal(sent.some(([id,m]) => id===9 && m.action==='pause'),true);
   tabs=[]; await vm.runInContext('poll()',context);
   assert.equal(disconnected,true);
+});
+test('store icons are packaged at the declared dimensions with transparent padding', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json')));
+  assert.ok(manifest.description.length <= 132);
+  assert.deepEqual(Object.keys(manifest.icons), ['16', '32', '48', '128']);
+  assert.deepEqual(manifest.action.default_icon, manifest.icons);
+  for (const [size, name] of Object.entries(manifest.icons)) {
+    const png = fs.readFileSync(path.join(root, name));
+    assert.equal(png.subarray(1,4).toString(), 'PNG');
+    assert.equal(png.readUInt32BE(16), Number(size));
+    assert.equal(png.readUInt32BE(20), Number(size));
+    assert.equal(png[25], 6); // RGBA, rather than an opaque image on a false margin.
+  }
 });
