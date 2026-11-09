@@ -47,6 +47,6 @@ the app Resources folder.
 
 Spotify Web (Chrome)
 --------------------
-Select Spotify Web in Settings > Integrations, choose Set up Chrome extension,
-and follow the Load unpacked instructions. Login and audio stay in Chrome.
-See SPOTIFY-WEB.md for setup, privacy and first-beta limitations.
+Select Spotify Web in Settings > Music and choose Open Chrome Web Store.
+Install the extension when its Store listing is available, then reload Spotify Web.
+Login and audio stay in Chrome. See SPOTIFY-WEB.md for setup and privacy.

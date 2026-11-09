@@ -357,10 +357,10 @@ struct SettingsView: View {
                     Text(L("In riproduzione")).tag("nowPlaying")
                 }.pickerStyle(.segmented)
                 if model.prefs.spotifySource == "web" {
-                    Button(L("Prepara estensione Chrome…")) {
-                        perform { let folder = try SpotifyWebBridge.install(); NSWorkspace.shared.open(folder) }
+                    Button(L("Apri Chrome Web Store…")) {
+                        perform { try SpotifyWebBridge.register(); model.openSpotifyWeb(SpotifyWebBridge.storeURL) }
                     }
-                    Text(L("Apri chrome://extensions, attiva Modalità sviluppatore e scegli Carica estensione non pacchettizzata. Seleziona la cartella aperta, poi ricarica Spotify Web. Il login resta in Chrome; Sorayura riceve solo il brano e i controlli disponibili.")).font(.caption).foregroundStyle(.secondary)
+                    Text(L("Installa l’estensione dal Chrome Web Store, poi ricarica Spotify Web. Il login resta in Chrome; Sorayura riceve solo il brano e i controlli disponibili.")).font(.caption).foregroundStyle(.secondary)
                 } else if model.prefs.spotifySource == "nowPlaying" {
                     Text(L("Segue la sessione multimediale attiva di macOS senza estensione. Mostra i metadati e invia i comandi di riproduzione e salto brano.")).font(.caption).foregroundStyle(.secondary)
                 } else {

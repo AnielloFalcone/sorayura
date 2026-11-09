@@ -136,10 +136,9 @@ Apple Music does not use MusicKit or stream audio inside Sorayura.
 ### Spotify Web
 
 Spotify can use the desktop app or an existing Spotify Web tab in Google Chrome.
-Choose the source in Settings → Music and use **Set up Chrome extension…**
-for the Web option. The first version requires loading the bundled extension
-manually. Login stays in Chrome; Sorayura controls the visible player. See
-[setup, privacy and limitations](native-app/release/SPOTIFY-WEB.md).
+Choose the source in Settings → Music and use **Open Chrome Web Store…** on
+a Store-compatible build. Login stays in Chrome; Sorayura controls the visible
+player. See [setup, privacy and limitations](native-app/release/SPOTIFY-WEB.md).
 
 Choose **Now Playing** in Settings → Music to use the active macOS media session
 without a browser extension. It follows the system-selected player, so another

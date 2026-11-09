@@ -68,7 +68,32 @@ test('extension is scoped to Spotify and has no external website messaging', () 
   assert.deepEqual(manifest.content_scripts[0].matches, manifest.host_permissions);
   assert.equal(manifest.externally_connectable, undefined);
   const digest = require('node:crypto').createHash('sha256').update(Buffer.from(manifest.key, 'base64')).digest('hex').slice(0,32);
-  assert.equal([...digest].map(x => String.fromCharCode(97+parseInt(x,16))).join(''), 'inhafmkeidjjklmcdjddjlbohbbafepi');
+  assert.equal([...digest].map(x => String.fromCharCode(97+parseInt(x,16))).join(''), 'lfejofhcidmggplkmaccdbokjonncdek');
+});
+test('content script stops observing when Chrome invalidates its runtime', async () => {
+  let mutation, publish, disconnected = false, sends = 0;
+  const context = {
+    chrome: { runtime: { id: 'test', onMessage: { addListener() {} }, sendMessage() {
+      if (++sends > 1) throw new Error('Extension context invalidated.');
+      return Promise.resolve();
+    } } },
+    document: { body: {} },
+    MutationObserver: class {
+      constructor(callback) { mutation = callback; }
+      observe() {}
+      disconnect() { disconnected = true; }
+    },
+    SorayuraSpotifyPage: { read() { return {}; } },
+    setTimeout(callback) { publish = callback; return 1; },
+    clearTimeout() {}
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'content.js'), 'utf8'), context);
+  mutation();
+  await publish();
+  assert.equal(disconnected, true);
+  mutation();
+  await publish();
+  assert.equal(sends, 2);
 });
 test('worker rejects other origins, routes controls to the Spotify tab, and disconnects after closure', async () => {
   const posted = [], sent = []; let listener, commandListener, connections = 0, disconnected = false;

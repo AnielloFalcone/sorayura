@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Sorayura Spotify Web",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "Connect the Spotify Web player to your local Sorayura widgets.",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvfC8WeSRoWKJvYVYKgienL8kxNYKMKxFCxUpel1w90D6BLbQ1aRP/SdnW2HFUJcoTFzotkzaFWYwLybgKY78GnPbKrGkCMOF/e1yAB81pQRja3NFPjEEhIpklz8+XaogUmhkXJHSRd+lGc/aQiBTyVmoACNpIOEYkbIoaA0tCNjWETsqFkwLHfhHA29jKHWwfD9+EZApu3fgjU/ZRezqZwRcdH0yxtjgMYhdb8AEdA5e3PyoychtUlM7I0pbEclAgmK7lxJith8vfxSjSPyS8eEFlkDtZRWR7I7jaZ5crx5f9UdO1h8fhPg3rawk3vQjhuqbzissTgyNuNoKfU+HuQIDAQAB",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqjd+pMGAKcRAaUASjVzznkuQK1t323XlDDb4D5WYw2ymdZXD0NKBIQVttAOpI6JGwS6BynEBr7+oVb4vjbhSTzowiI97msE3fGKaWji1ipFDMsKlYptfp1BCMCDcugl9eAQPwDwhfeTiIN7iiI12AF9/IDcynQJZNYBD1ChOfvhiXAV16cZUQ8S00y4vH3oozhzDEAjEA1xHG56rTj7BlDjE2r4HlnBcNKiCgdh/iFr9eq+GHcnAskFQgT5mdZTmK3SPmTngfdSywiBSkawgo0nZT0g7EuYpAjdz+brtfEidZJAtzRr9wz/sIZgHQCtVnFjWMbczFukpEyxe1i/WkQIDAQAB",
   "permissions": [
     "nativeMessaging"
   ],

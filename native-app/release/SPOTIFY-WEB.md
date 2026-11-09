@@ -8,16 +8,15 @@ it does not stream audio itself.
 ## One-time setup
 
 1. In Sorayura Settings → Music, enable Spotify and choose **Spotify Web · Chrome**.
-2. Choose **Set up Chrome extension…**. Sorayura registers its local Native Messaging
-   host and opens a folder containing the extension.
-3. In Chrome, open `chrome://extensions`, turn on **Developer mode**, choose
-   **Load unpacked**, and select that folder.
-4. Reload the tab at `https://open.spotify.com/` and start playback normally.
+2. Choose **Open Chrome Web Store…**. Sorayura registers its local Native Messaging
+   host and opens the Store listing in Chrome.
+3. Install the extension, then reload the Spotify Web tab.
+4. If you previously loaded an unpacked copy, disable it before using the Store version.
 
-The first beta is an unpacked extension; it has not been published to the Chrome
-Web Store. Install and keep Sorayura in Applications before setup. If the app is
-moved, run setup again. If a future release changes the extension, run setup again
-and use **Reload** on its Chrome extension card.
+Install and keep Sorayura in Applications before setup. If the app is moved,
+run setup again. While the Store listing is in review, developers can load the
+keyed `native-app/Resources/SpotifyWebExtension` directory using **Load unpacked**
+and use the same setup button to register the host.
 
 ## Behavior and limits
 
@@ -64,6 +63,4 @@ Development Mode user limits and public quota requirements:
 
 The upload package, listing copy, privacy policy, reviewer instructions and final
 Store-ID binding steps are documented in
-[the publication handoff](chrome-web-store/REVIEW.md). The extension is not yet
-published; the unpacked setup above remains the beta path until the Store assigns
-an ID and a matching companion release is available.
+[the publication handoff](chrome-web-store/REVIEW.md). The Store identity is assigned. The draft listing requires a compatible companion before public release.

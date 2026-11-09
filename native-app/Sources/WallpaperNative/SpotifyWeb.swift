@@ -25,7 +25,8 @@ struct SpotifyWebSnapshot: Codable, Sendable {
 }
 
 enum SpotifyWebBridge {
-    static let extensionID = "inhafmkeidjjklmcdjddjlbohbbafepi"
+    static let extensionID = "lfejofhcidmggplkmaccdbokjonncdek"
+    static let storeURL = URL(string: "https://chromewebstore.google.com/detail/\(extensionID)")!
     static let hostName = "dev.sorayura.spotify_web"
     static let changed = Notification.Name("dev.sorayura.spotifyWebChanged")
     static let command = Notification.Name("dev.sorayura.spotifyWebCommand")
@@ -50,17 +51,9 @@ enum SpotifyWebBridge {
         }
         DistributedNotificationCenter.default().postNotificationName(command, object: session, userInfo: ["action": action], deliverImmediately: true)
     }
-    @MainActor static func install() throws -> URL {
+    @MainActor static func register() throws {
         guard let resources = Bundle.main.resourceURL else { throw SettingsError.invalid("Risorse mancanti.") }
         let fm = FileManager.default
-        let folder = directory.appending(path: "Chrome extension")
-        try fm.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        for name in ["manifest.json", "page.js", "content.js", "worker.js", "icons/icon16.png", "icons/icon32.png", "icons/icon48.png", "icons/icon128.png"] {
-            let data = try Data(contentsOf: resources.appending(path: "SpotifyWebExtension/\(name)"))
-            let target = folder.appending(path: name)
-            try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try data.write(to: target, options: .atomic)
-        }
         let host = resources.appending(path: "spotify-web-host")
         guard fm.isExecutableFile(atPath: host.path) else { throw SettingsError.invalid("Risorse mancanti.") }
         let registration = fm.homeDirectoryForCurrentUser.appending(path: "Library/Application Support/Google/Chrome/NativeMessagingHosts")
@@ -69,7 +62,6 @@ enum SpotifyWebBridge {
                                      "type": "stdio", "allowed_origins": ["chrome-extension://\(extensionID)/"]]
         try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys])
             .write(to: registration.appending(path: hostName + ".json"), options: .atomic)
-        return folder
     }
 }
 

@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.8 — build 45
+# Sorayura 0.5.1-beta.9 — build 46
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,13 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## New in beta 9
+
+Spotify Web setup now registers the official Chrome Web Store extension ID
+and opens its Store listing. Playback and reconnection were tested with the
+keyed local extension. The public listing becomes available after Store review
+and publication.
 
 ## Fixed in beta 8
 
