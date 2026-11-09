@@ -4,15 +4,15 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
   <channel>
     <title>Sorayura updates</title>
     <item>
-      <title>Sorayura 0.5.1-beta.7 (build 44)</title>
-      <sparkle:version>44</sparkle:version>
-      <sparkle:shortVersionString>0.5.1-beta.7</sparkle:shortVersionString>
+      <title>Sorayura 0.5.1-beta.8 (build 45)</title>
+      <sparkle:version>45</sparkle:version>
+      <sparkle:shortVersionString>0.5.1-beta.8</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <description>Update Sorayura while keeping your settings. This beta is not notarized by Apple.</description>
-      <enclosure url="https://github.com/AnielloFalcone/sorayura/releases/download/v0.5.1-beta.7/Sorayura-0.5.1-arm64-ADHOC.dmg" length="8310871" type="application/octet-stream" sparkle:edSignature="YxRRnv4Aa25vXcr1V/GqK38alOkgpyzov6IFMpBSDvfQxFiGPBcl5aysuBV5ZUjFpfPB/Rga+mxCE0XTSnbQAg=="></enclosure>
+      <enclosure url="https://github.com/AnielloFalcone/sorayura/releases/download/v0.5.1-beta.8/Sorayura-0.5.1-arm64-ADHOC.dmg" length="8311469" type="application/octet-stream" sparkle:edSignature="8jJv35oupXv6ohEveL+x44dAMVLodewUIpppJ2m/QafgnPnk52oSjNigciJ2ebpfjs+lgOMX2XjDiHLWMKjaAA=="></enclosure>
     </item>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: dbfHUN6+u9i5C6myZ6TN2lLan4tukfydNwUAQsx/GvnBtHAvbJf1dt8XLTgzJL9aQJ6LZwcEhqn9gPlMoMUADg==
+edSignature: I3TIwvOKcABhLoIL4W0A/Q+QhQ4kiIbzFumqYqXWmlUylFR6J0XRXoemjcqnxJpkoUwfszW1KFmeEIYpcs0VCg==
 length: 1132
 -->
