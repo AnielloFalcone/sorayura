@@ -12,7 +12,15 @@ void sorayura_now_playing(void) {
             NSDictionary *commands = @{@"play": @0, @"pause": @1, @"next track": @4, @"previous track": @5};
             NSNumber *command = commands[@(action)];
             bool (*send)(unsigned int, NSDictionary *) = dlsym(framework, "MRMediaRemoteSendCommand");
-            exit(command && send && send(command.unsignedIntValue, nil) ? 0 : 1);
+            void (*getPID)(dispatch_queue_t, void (^)(int)) = dlsym(framework, "MRMediaRemoteGetNowPlayingApplicationPID");
+            if (!command || !send || !getPID || !send(command.unsignedIntValue, nil)) exit(1);
+            // Let MediaRemote service the queued command before Perl exits.
+            dispatch_semaphore_t reply = dispatch_semaphore_create(0);
+            getPID(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^(int pid) {
+                (void)pid;
+                dispatch_semaphore_signal(reply);
+            });
+            exit(dispatch_semaphore_wait(reply, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC)) == 0 ? 0 : 1);
         }
 
         void (*getInfo)(dispatch_queue_t, void (^)(NSDictionary *)) = dlsym(framework, "MRMediaRemoteGetNowPlayingInfo");
