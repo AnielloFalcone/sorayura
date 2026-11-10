@@ -51,6 +51,13 @@ session, which can belong to another app or browser tab. Track details and
 artwork are kept in memory. Sorayura sends playback commands to that session
 when requested and does not send its metadata to a server.
 
+## Audio Mixer
+
+Per-app volume on macOS 15 and later uses Core Audio taps and requires system
+audio access. Sorayura processes the selected apps' audio in memory to adjust
+their volume. It does not save or transmit audio. The explicit permission
+request starts a short unmuted system audio tap and discards the samples.
+
 ## Clipboard history
 
 Clipboard collection is off by default. When explicitly enabled, Sorayura checks

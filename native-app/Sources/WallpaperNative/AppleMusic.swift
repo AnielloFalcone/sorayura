@@ -48,6 +48,9 @@ actor AppleMusicReader {
         default: return nil
         }
     }
+    func setVolume(_ value: Int) throws {
+        _ = try script("set sound volume to \(min(100, max(0, value)))")
+    }
     func command(_ name: String) throws {
         guard let source = Self.commandSource(name) else { throw SettingsError.invalid("Comando musicale non valido.") }
         _ = try script(source)
@@ -89,6 +92,13 @@ extension Model {
         }
     }
     func appleMusicSupports(_ action: String) -> Bool { action == "open" || (appleMusic.available && (action == "playpause" || AppleMusicReader.commandSource(action) != nil)) }
+    func setAppleMusicVolume(_ value: Int) async throws {
+        guard servicesEnabled, prefs.appleMusicEnabled == true, appleMusicSupports("volumeUp"),
+              NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").contains(where: { !$0.isTerminated }) else { return }
+        appleMusicRevision += 1
+        defer { refreshAppleMusic(force: true) }
+        try await appleMusicReader.setVolume(value)
+    }
     func appleMusicAction(_ action: String) {
         guard servicesEnabled, prefs.appleMusicEnabled == true, appleMusicSupports(action) else { return }
         if action == "open" {

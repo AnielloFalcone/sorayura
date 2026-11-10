@@ -194,6 +194,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         configureClipboardShortcut()
         DistributedNotificationCenter.default().addObserver(self, selector: #selector(openClipboard), name: .init("dev.sorayura.openClipboard"), object: nil)
         model.refreshDisplays = { [weak self] in self?.refreshScreens() }
+        model.processMixer.selectionChanged = { [weak self] in self?.refreshScreens() }
         model.editChanged = { [weak self] editing in
             guard let self else { return }
             if editing {
@@ -245,7 +246,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if CommandLine.arguments.contains("--clipboard") { openClipboard() }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
-    func applicationWillTerminate(_ notification: Notification) { clipboardHotKey.stop(); model.save() }
+    func applicationWillTerminate(_ notification: Notification) { clipboardHotKey.stop(); model.processMixer.stop(); model.save() }
     @objc private func screensChanged() {
         RenderDiagnostics.event("display_configuration_changed")
         componentProfile?.cancel(reason: "Displays changed during diagnostic")
@@ -465,6 +466,27 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     else { content.widgets.removeAll { $0 == widget } }
                     self.model.setContent(screen, content)
                 }
+                if widget == "audioMixer" {
+                    hitView.onBoxes = { [weak self] in
+                        guard let self else { return }
+                        self.settingsPresentation.navigation.section = "Musica"
+                        self.openSettings()
+                    }
+                    hitView.onClick = { [weak self, weak hitView] point in
+                        guard let self, let hitView, !self.model.editing else { return }
+                        let size = CGSize(width: hitView.bounds.width - 32, height: hitView.bounds.height - 32)
+                        let local = CGPoint(x: point.x - 16, y: hitView.bounds.height - point.y - 16)
+                        MixerWidget.click(local, size: size, mixer: self.model.processMixer) { hitView.onBoxes?() }
+                    }
+                    hitView.onControlPress = { [weak self, weak hitView] point in
+                        guard let self, let hitView, !self.model.editing else { return nil }
+                        let height = hitView.bounds.height
+                        let size = CGSize(width: hitView.bounds.width - 32, height: height - 32)
+                        let local = CGPoint(x: point.x - 16, y: height - point.y - 16)
+                        guard let update = MixerWidget.beginSlider(local, size: size, mixer: self.model.processMixer) else { return nil }
+                        return { point in update(CGPoint(x: point.x - 16, y: height - point.y - 16)) }
+                    }
+                }
                 if ["agentModels", "agentProjects"].contains(widget) {
                     hitView.onClick = { [weak self, weak hitView] point in
                         guard let self, let hitView, let delta = AgentRankingPage.action(
@@ -571,6 +593,8 @@ final class LongPressView: NSView {
     var hitRegions: [CGRect]? { didSet { needsDisplay = true } }
     var onRemove: (() -> Void)?
     var onClick: ((CGPoint) -> Void)?
+    var onControlPress: ((CGPoint) -> ((CGPoint) -> Void)?)?
+    private var controlDrag: ((CGPoint) -> Void)?
     var musicCommandAvailable: ((String) -> Bool)?
     var onMusicCommand: ((String) -> Void)?
     var onHover: ((CGPoint?) -> Void)? { didSet { updateTrackingAreas() } }
@@ -605,6 +629,12 @@ final class LongPressView: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) {
         finishDrag()
+        let local = convert(event.locationInWindow, from: nil)
+        if let control = onControlPress?(local) {
+            controlDrag = control
+            control(local)
+            return
+        }
         pressOrigin = NSEvent.mouseLocation
         let next = Timer(timeInterval: 0.55, repeats: false) { [weak self] _ in
             Task { @MainActor in
@@ -629,6 +659,7 @@ final class LongPressView: NSView {
         finishDrag()
     }
     private func finishDrag() {
+        controlDrag = nil
         timer?.invalidate()
         timer = nil
         pressOrigin = nil
@@ -652,6 +683,11 @@ final class LongPressView: NSView {
                 item.representedObject = command; item.target = self; menu.addItem(item)
             }
             menu.addItem(.separator())
+        }
+        if widgetID == "audioMixer" {
+            let item = NSMenuItem(title: L("Scegli app…"), action: #selector(configureBoxes), keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
         }
         if widgetID == "animation" {
             let dataItem = NSMenuItem(title: L("Box dati…"), action: #selector(configureBoxes), keyEquivalent: "")

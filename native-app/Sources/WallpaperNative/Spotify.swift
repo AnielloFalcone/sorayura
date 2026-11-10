@@ -120,6 +120,9 @@ actor SpotifyReader {
             volume: value.volume, shuffle: value.shuffle, repeatEnabled: value.repeatEnabled, trackID: value.trackID,
             webSession: value.session, supportedCommands: value.supportedCommands)
     }
+    func setVolume(_ value: Int) throws {
+        _ = try script("tell application id \"com.spotify.client\" to set sound volume to \(min(100, max(0, value)))")
+    }
     func command(_ name: String) throws {
         let source: String
         switch name {

@@ -349,6 +349,7 @@ struct SettingsView: View {
     }
     private var musicSection: some View {
         VStack(alignment: .leading, spacing: 18) {
+            panel(L("Mixer audio")) { AudioMixerView(model: model) }
             panel("Spotify") {
                 Toggle(L("Attiva brano e controlli Spotify"), isOn: Binding(get: { model.prefs.spotifyEnabled ?? false }, set: { model.prefs.spotifyEnabled = $0; model.refreshSpotify(retry: true) }))
                 Picker(L("Sorgente Spotify"), selection: Binding(get: { model.prefs.spotifySource ?? "desktop" }, set: { model.prefs.spotifySource = $0; model.refreshSpotify(retry: true) })) {

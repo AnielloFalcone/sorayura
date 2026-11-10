@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 private struct WallpaperGlassDisabledKey: EnvironmentKey {
     static let defaultValue = false
@@ -33,6 +34,9 @@ extension View {
 
 /// Apply glass to the complete content, rather than an empty background shape.
 struct DesktopWidgetSurface: ViewModifier {
+    static let cornerRadius: CGFloat = 18
+    static var cyberFill: NSColor { NSColor(srgbRed: 0.05, green: 0.09, blue: 0.16, alpha: 0.85) }
+
     var theme: String
     var transparent: Bool
     @Environment(\.wallpaperGlassDisabled) private var disabled
@@ -40,13 +44,13 @@ struct DesktopWidgetSurface: ViewModifier {
         if transparent { content }
         else if theme == "glass" && !disabled {
             if #available(macOS 26, *) {
-                content.glassEffect(.clear, in: RoundedRectangle(cornerRadius: 18))
+                content.glassEffect(.clear, in: RoundedRectangle(cornerRadius: Self.cornerRadius))
             } else {
-                content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+                content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Self.cornerRadius))
             }
         } else {
-            content.background(Color(red: 0.05, green: 0.09, blue: 0.16).opacity(theme == "cyber" ? 0.85 : 0.62),
-                               in: RoundedRectangle(cornerRadius: 18))
+            content.background(theme == "cyber" ? Color(nsColor: Self.cyberFill) : Color(red: 0.05, green: 0.09, blue: 0.16).opacity(0.62),
+                               in: RoundedRectangle(cornerRadius: Self.cornerRadius))
         }
     }
 }

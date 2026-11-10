@@ -27,7 +27,8 @@ struct AnimationView: View {
                         frameRate: ThermalPresentation.frames(model.metrics.thermal, lowPower: model.metrics.lowPower,
                                                                adaptive: model.prefs.adaptiveAnimation ?? true),
                         paused: model.performanceVariant.pausesAnimation,
-                        glass: model.prefs.widgetTheme == "glass" && !model.performanceVariant.disablesGlass)
+                        glass: model.prefs.widgetTheme == "glass" && !model.performanceVariant.disablesGlass,
+                        cyber: model.prefs.widgetTheme == "cyber")
     }
 
     static func interactionRect(style: String, bounds: CGSize, scale: Double, position: Point, layers: Int, boxes: [String: Int]? = nil) -> CGRect {
@@ -75,12 +76,13 @@ private struct FilamentSurface: NSViewRepresentable {
     let frameRate: Int
     let paused: Bool
     let glass: Bool
+    let cyber: Bool
 
     func makeNSView(context: Context) -> FilamentAnimationView { FilamentAnimationView(frame: .zero) }
     func updateNSView(_ view: FilamentAnimationView, context: Context) {
         view.setFrameRate(frameRate)
         view.setRenderingPaused(paused)
-        view.configure(metrics: metrics, position: position, scale: scale, style: style, boxes: boxes, glass: glass)
+        view.configure(metrics: metrics, position: position, scale: scale, style: style, boxes: boxes, glass: glass, cyber: cyber)
     }
     static func dismantleNSView(_ view: FilamentAnimationView, coordinator: ()) {
         view.stopRendering()
@@ -137,6 +139,7 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
     private var readoutLayers: [CALayer] = []
     private var glassRoot: NSView?
     private var usesGlass = false
+    private var usesCyber = false
     private var nativeValues: [String: NSTextField] = [:]
     private var nativeNames: [String: NSTextField] = [:]
     private var nativeBars: [String: NSView] = [:]
@@ -257,8 +260,9 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         guard view.animationFrameActive else { throw SettingsError.invalid("Reattached renderer did not resume") }
     }
 
-    fileprivate func configure(metrics: [FilamentMetric], position: Point, scale: Double, style: String, boxes: [FilamentBox]? = nil, glass: Bool = false) {
+    fileprivate func configure(metrics: [FilamentMetric], position: Point, scale: Double, style: String, boxes: [FilamentBox]? = nil, glass: Bool = false, cyber: Bool = false) {
         self.usesGlass = glass
+        self.usesCyber = cyber
         self.metrics = metrics
         self.boxes = boxes ?? (metrics.isEmpty ? [] : [FilamentBox(side: "right", entries: metrics)])
         self.position = position
@@ -269,7 +273,7 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         updateFrameScheduling()
         renderer.setMetrics(metrics.filter(\.animated), style: style)
         arrange()
-        let next = self.boxes.map { box in box.side + ":" + box.entries.map { "\($0.id):\($0.color.hexString):\($0.animated)" }.joined(separator: "|") }.joined(separator: ";") + "\(bounds.size):\(style):\(usesGlass)"
+        let next = self.boxes.map { box in box.side + ":" + box.entries.map { "\($0.id):\($0.color.hexString):\($0.animated)" }.joined(separator: "|") }.joined(separator: ";") + "\(bounds.size):\(style):\(usesGlass):\(usesCyber)"
         if signature != next { signature = next; makeReadoutBox() }
         updateReadouts()
     }
@@ -281,6 +285,11 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
         view.configure(metrics: [metric], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: boxes)
         guard view.readoutLayers.count == 4, view.names.count == 4, view.bars.count == 4 else { throw SettingsError.invalid("Box sides share or lose row identities") }
         guard view.readoutLayers.allSatisfy({ view.bounds.contains($0.frame) }) else { throw SettingsError.invalid("Box layout exceeds the view") }
+        view.configure(metrics: [metric], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: boxes, cyber: true)
+        guard view.readoutLayers.allSatisfy({
+            $0.backgroundColor == DesktopWidgetSurface.cyberFill.cgColor &&
+            $0.cornerRadius == DesktopWidgetSurface.cornerRadius && $0.borderWidth == 0
+        }) else { throw SettingsError.invalid("Cyber readouts do not match the widget surface") }
         if #available(macOS 26, *) {
             view.configure(metrics: [metric], position: Point(x: 50, y: 50), scale: 1, style: "jarvis", boxes: boxes, glass: true)
             guard let container = view.glassRoot as? NSGlassEffectContainerView,
@@ -338,9 +347,11 @@ final class FilamentAnimationView: NSView, AnimationFrameClient {
             let box = CALayer()
             box.anchorPoint = .zero
             box.frame = geometry.frame
-            box.backgroundColor = NSColor(hex: "#101a2a").withAlphaComponent(0.92).cgColor
+            box.backgroundColor = (usesCyber ? DesktopWidgetSurface.cyberFill : NSColor(hex: "#101a2a").withAlphaComponent(0.92)).cgColor
             box.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
-            box.borderWidth = 1; box.cornerRadius = 13; box.masksToBounds = true
+            box.borderWidth = usesCyber ? 0 : 1
+            box.cornerRadius = usesCyber ? DesktopWidgetSurface.cornerRadius : 13
+            box.masksToBounds = true
             var nativeContent: NSView?
             if let glassContent, #available(macOS 26, *) {
                 let glass = NSGlassEffectView(frame: geometry.frame)

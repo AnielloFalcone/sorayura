@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.10 — build 47
+# Sorayura 0.5.1-beta.11 — build 53
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,18 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## New in beta 11
+
+- Audio Mixer adds system volume and per-app controls, with a desktop widget
+  that shows selected apps. Volume sliders and mute controls are available for
+  compatible audio routes. Per-app control requires macOS 15 or later and
+  system audio access. The mixer works with the current output device.
+- Cyber animation data boxes now share the fill and rounded corners of the
+  other Cyber widgets.
+
+The Spotify audio route was checked on the test Mac. Live attenuation across
+different apps and output devices has not been verified.
 
 ## New in beta 10
 

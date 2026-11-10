@@ -223,7 +223,9 @@ struct WidgetView: View {
         let chart = id == "cpu" ? model.prefs.cpuDisplay.chart : model.prefs.memoryDisplay.chart
         let color = (Model.metricIDs.contains(id) || id == "thermal") ? Color(nsColor:model.metricColor(id,base:ColorValue(model.prefs.widgetTheme == "cyber" ? "#c89bff" : "#a9d9ff")).color) : .white
         Group {
-        if ["spotify", "appleMusic"].contains(id) {
+        if id == "audioMixer" {
+            MixerWidget(mixer: model.processMixer).padding(16)
+        } else if ["spotify", "appleMusic"].contains(id) {
             VStack(spacing:8) {
                 SpotifyWidget(appleMusic: id == "appleMusic", interactionID:screen.map { model.displayKey($0) } ?? "preview").environment(model)
                 if model.editing {

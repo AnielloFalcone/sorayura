@@ -5,10 +5,10 @@ import Observation
 final class Model {
     static let shared = Model()
     nonisolated static let systemWidgetIDs = ["clock", "cpu", "memory", "network", "battery", "disk", "uptime", "device"]
-    nonisolated static let widgetIDs = ["clock", "cpu", "memory", "network", "battery", "disk", "uptime", "device", "thermal", "apps", "agents", "agentTrend", "agentModels", "agentProjects", "agentActivity", "agentSpending", "agentNow", "agentLive", "spotify", "appleMusic"]
+    nonisolated static let widgetIDs = ["clock", "cpu", "memory", "network", "battery", "disk", "uptime", "device", "thermal", "apps", "agents", "agentTrend", "agentModels", "agentProjects", "agentActivity", "agentSpending", "agentNow", "agentLive", "spotify", "appleMusic", "audioMixer"]
     nonisolated static let metricIDs = ["cpu", "memory", "network", "battery", "disk"]
     nonisolated static func localizedName(_ id: String) -> String { L(names[id] ?? id) }
-    nonisolated static let names = ["clock":"Orologio", "cpu":"CPU", "memory":"Memoria", "network":"Rete", "battery":"Batteria", "disk":"Disco", "uptime":"Attività", "device":"Nome Mac", "thermal":"Stato termico", "apps":"Applicazioni", "agents":"AI Agents", "agentTrend":"AI · Andamento", "agentModels":"AI · Modelli", "agentProjects":"AI · Progetti", "agentActivity":"AI · Attività", "agentSpending":"AI · Valore API", "agentNow":"AI · Recenti", "agentLive":"AI · Live", "spotify":"Spotify", "appleMusic":"Apple Music"]
+    nonisolated static let names = ["clock":"Orologio", "cpu":"CPU", "memory":"Memoria", "network":"Rete", "battery":"Batteria", "disk":"Disco", "uptime":"Attività", "device":"Nome Mac", "thermal":"Stato termico", "apps":"Applicazioni", "agents":"AI Agents", "agentTrend":"AI · Andamento", "agentModels":"AI · Modelli", "agentProjects":"AI · Progetti", "agentActivity":"AI · Attività", "agentSpending":"AI · Valore API", "agentNow":"AI · Recenti", "agentLive":"AI · Live", "spotify":"Spotify", "appleMusic":"Apple Music", "audioMixer":"Mixer audio"]
     var prefs: Prefs { didSet {
         if !applyingScene { activeSceneID = nil }
         if oldValue.clipboardEnabled != prefs.clipboardEnabled || oldValue.clipboardPaused != prefs.clipboardPaused || oldValue.clipboardLimit != prefs.clipboardLimit || oldValue.clipboardExcludedApps != prefs.clipboardExcludedApps {
@@ -27,6 +27,7 @@ final class Model {
             }
         }
     } }
+    let processMixer = ProcessMixer()
     let clipboard: ClipboardStore
     @ObservationIgnored var clipboardConfigurationChanged: (() -> Void)?
     var savedPresets: [SavedPreset] = []
@@ -267,6 +268,15 @@ final class Model {
         }
         spotifyCommand(action)
     }
+    func setSpotifyVolume(_ value: Int) async throws {
+        guard servicesEnabled, prefs.spotifyEnabled == true, spotifySupports("volumeUp"),
+              prefs.spotifySource != "web", prefs.spotifySource != "nowPlaying",
+              NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").contains(where: { !$0.isTerminated }) else { return }
+        spotifyRevision += 1
+        spotifyCommandsPending += 1
+        defer { spotifyCommandsPending -= 1; refreshSpotify(force: true) }
+        try await spotifyReader.setVolume(value)
+    }
     func spotifyCommand(_ command: String) {
         guard servicesEnabled else { return }
         guard prefs.spotifyEnabled == true, spotifySupports(command) else { return }
@@ -407,6 +417,7 @@ final class Model {
         refreshSpotify()
         refreshAppleMusic()
         clipboard.sample()
+        if !processMixer.selected.isEmpty { processMixer.refresh() }
     }
     func applySample(_ sample: Metrics) {
         metrics.update(sample)
@@ -545,7 +556,7 @@ final class Model {
         refreshClaudeAccount(force: true)
     }
     func widgetUnits(_ id: String, axis: String) -> Int {
-        if axis == "width" { return prefs.widths[id] ?? (id.hasPrefix("agent") ? 3 : 2) }
+        if axis == "width" { return prefs.widths[id] ?? (id.hasPrefix("agent") || id == "audioMixer" ? 3 : 2) }
         return prefs.heights[id] ?? (id == "agents" ? 2 : 1)
     }
     func musicWidgetHeight(_ id: String) -> Double {
@@ -580,6 +591,10 @@ final class Model {
                 proposed.height = ceil(proposed.height / cell) * cell
                 proposed.width = ceil(proposed.width / cell) * cell
             }
+        }
+        if id == "audioMixer", custom == nil, prefs.heights[id] == nil {
+            let height = MixerWidget.preferredHeight(count: processMixer.selected.count)
+            proposed.height = prefs.layout == "grid" ? ceil(height / prefs.cellSize) * prefs.cellSize : height
         }
         return WidgetSizing.constrained(proposed, available: WidgetSize(width: screen.frame.width, height: screen.frame.height),
                                         cell: prefs.layout == "grid" ? prefs.cellSize : nil)

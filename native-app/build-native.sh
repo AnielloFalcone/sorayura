@@ -3,7 +3,7 @@ set -euo pipefail
 cd "${0:A:h}"
 export SWIFTPM_DISABLE_SANDBOX=1
 wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
-wallpaper_build="${WALLPAPER_BUILD:-47}"
+wallpaper_build="${WALLPAPER_BUILD:-53}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build.noindex}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
@@ -61,6 +61,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>SUVerifyUpdateBeforeExtraction</key><true/>
 <key>SURequireSignedFeed</key><true/>
 <key>LSUIElement</key><true/>
+<key>NSAudioCaptureUsageDescription</key><string>Sorayura uses system audio access to adjust the volume of the processes you select. Audio is processed locally and is not recorded.</string>
 <key>NSAppleEventsUsageDescription</key><string>Shows the current track and controls Spotify or Music when you enable the corresponding music integration.</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>

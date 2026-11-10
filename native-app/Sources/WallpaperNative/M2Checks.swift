@@ -30,6 +30,16 @@ import AppKit
         let systemLayout = SpotifyLayout(size: CGSize(width: 400, height: 400), expanded: true, shortcuts: 0, nowPlaying: true)
         try check(systemLayout.controls.map(\.0) == ["previous track", "playpause", "next track"] && systemLayout.volumeBar == nil,
                   "System Now Playing exposes unsupported controls")
+        let mixer = ProcessMixer()
+        let mixerSize = CGSize(width: 300, height: MixerWidget.preferredHeight(count: 2) - 32)
+        try check(MixerWidget.preferredHeight(count: 0) < MixerWidget.preferredHeight(count: 2), "Empty mixer is not compact")
+        var openedMixerSettings = false
+        MixerWidget.click(CGPoint(x: 290, y: 10), size: mixerSize, mixer: mixer) { openedMixerSettings = true }
+        try check(openedMixerSettings, "Mixer process picker is not reachable from its header")
+        mixer.select(AudioProcess(id: 100, pid: 100, name: "Test"), true)
+        try check(MixerWidget.beginSlider(CGPoint(x: 100, y: 80), size: mixerSize, mixer: mixer) != nil &&
+                  MixerWidget.beginSlider(CGPoint(x: 290, y: 80), size: mixerSize, mixer: mixer) == nil,
+                  "Mixer slider and mute hit areas overlap")
         let resources = Bundle.main.resourceURL!
         let extensionManifest = try JSONSerialization.jsonObject(with: Data(contentsOf: resources.appending(path: "SpotifyWebExtension/manifest.json"))) as! [String: Any]
         let extensionKey = Data(base64Encoded: extensionManifest["key"] as! String)!
