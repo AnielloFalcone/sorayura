@@ -6,8 +6,13 @@ wallpaper_version="${WALLPAPER_VERSION:-0.5.1}"
 wallpaper_build="${WALLPAPER_BUILD:-53}"
 wallpaper_output="${WALLPAPER_OUTPUT_ROOT:-$PWD/build.noindex}"
 wallpaper_sign="${WALLPAPER_SIGN_ID:--}"
+wallpaper_self_signed="${WALLPAPER_SELF_SIGNED:-0}"
 [[ "$wallpaper_version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || { print -u2 'Invalid version'; exit 1; }
 [[ "$wallpaper_build" =~ '^[0-9]+$' ]] || { print -u2 'Invalid build number'; exit 1; }
+if [[ "$wallpaper_self_signed" == 1 && ! "$wallpaper_sign" =~ '^[0-9A-Fa-f]{40}$' ]]; then
+  print -u2 'Self-signed builds require a certificate SHA-1 fingerprint'
+  exit 1
+fi
 swift build --disable-sandbox -c release -Xlinker -rpath -Xlinker @executable_path/../Frameworks
 app="$wallpaper_output/Sorayura.app"
 mkdir -p "$app/Contents/MacOS"
@@ -21,8 +26,10 @@ ditto Resources/SpotifyWebExtension "$app/Contents/Resources/SpotifyWebExtension
 cp Resources/now-playing.pl "$app/Contents/Resources/"
 xcrun clang -dynamiclib -fobjc-arc -mmacosx-version-min=14.0 -framework Foundation \
   Tools/NowPlaying.m -o "$app/Contents/Frameworks/SorayuraNowPlaying.dylib"
-wallpaper_helper_sign_options=(--force --sign "$wallpaper_sign")
-if [[ "$wallpaper_sign" != - ]]; then wallpaper_helper_sign_options+=(--timestamp); fi
+wallpaper_helper_sign_options=(--force --sign -)
+if [[ "$wallpaper_sign" != - && "$wallpaper_self_signed" != 1 ]]; then
+  wallpaper_helper_sign_options=(--force --sign "$wallpaper_sign" --timestamp)
+fi
 codesign "${wallpaper_helper_sign_options[@]}" "$app/Contents/Frameworks/SorayuraNowPlaying.dylib"
 cp Resources/spotify-web-host "$app/Contents/Resources/spotify-web-host"
 chmod +x "$app/Contents/Resources/spotify-web-host"
@@ -61,6 +68,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>SUVerifyUpdateBeforeExtraction</key><true/>
 <key>SURequireSignedFeed</key><true/>
 <key>LSUIElement</key><true/>
+<key>NSCalendarsFullAccessUsageDescription</key><string>Sorayura reads upcoming events from the calendars you select to display them in its desktop widget.</string>
 <key>NSAudioCaptureUsageDescription</key><string>Sorayura uses system audio access to adjust the volume of the processes you select. Audio is processed locally and is not recorded.</string>
 <key>NSAppleEventsUsageDescription</key><string>Shows the current track and controls Spotify or Music when you enable the corresponding music integration.</string>
 <key>NSHighResolutionCapable</key><true/>
@@ -73,16 +81,18 @@ xattr -cr "$app"
 wallpaper_sign_options=(--force --sign "$wallpaper_sign")
 if [[ "${WALLPAPER_HARDENED:-0}" == 1 ]]; then
   wallpaper_entitlements=release/entitlements.plist
-  if [[ "$wallpaper_sign" == - ]]; then
-    # An ad hoc host has no Team ID to match the signed Sparkle framework.
+  if [[ "$wallpaper_sign" == - || "$wallpaper_self_signed" == 1 ]]; then
+    # This host has no Team ID to match the signed Sparkle framework.
     wallpaper_entitlements=release/entitlements-adhoc.plist
   fi
   wallpaper_sign_options+=(--options runtime --entitlements "$wallpaper_entitlements")
 fi
-if [[ "$wallpaper_sign" != - ]]; then
+if [[ "$wallpaper_self_signed" == 1 ]]; then
+  wallpaper_sign_options+=(--timestamp=none --requirements "=designated => identifier \"dev.aniello.macsystemwallpaper.native\" and certificate leaf = H\"$wallpaper_sign\"")
+elif [[ "$wallpaper_sign" != - ]]; then
   wallpaper_sign_options+=(--timestamp)
 fi
-if [[ "$wallpaper_sign" != - ]]; then
+if [[ "$wallpaper_sign" != - && "$wallpaper_self_signed" != 1 ]]; then
   sparkle="$app/Contents/Frameworks/Sparkle.framework/Versions/B"
   for helper in "$sparkle"/XPCServices/*.xpc "$sparkle/Autoupdate" "$sparkle/Updater.app"; do
     codesign --force --options runtime --timestamp --sign "$wallpaper_sign" "$helper"

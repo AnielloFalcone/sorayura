@@ -49,6 +49,13 @@ class AppcastTests(unittest.TestCase):
         with self.assertRaises(SystemExit): self.generate()
         self.assertFalse(self.output.exists())
 
+    def test_self_signed_feed_explains_certificate_changes(self):
+        self.data['mode'] = 'self-signed-release'
+        self.generate()
+        item = ET.parse(self.output).find('channel/item')
+        self.assertIn('not notarized', item.findtext('description'))
+        self.assertIn('signing certificate change', item.findtext('description'))
+
     def test_refuses_modified_package(self):
         self.artifact.write_bytes(b'MODIFIED')
         with self.assertRaises(SystemExit): self.generate()

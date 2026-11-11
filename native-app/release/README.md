@@ -42,6 +42,21 @@ release notes; users may need per-app approval in Privacy & Security.
 
 ## Signing and notarization
 
+For an unnotarized beta with a reusable self-signed identity, use the same
+certificate and private key in the maintainer’s Keychain for successive releases:
+
+```sh
+python3 native-app/release/prepare.py self-signed-release --version 0.5.1 --build 60 \
+  --identity 'CERTIFICATE_SHA1_WITHOUT_COLONS'
+```
+
+Keep an encrypted backup of the identity. Keep the existing Sparkle key and
+bundle ID when rotating the app certificate, and test that update path before
+publishing the feed. macOS may ask for fresh privacy consent when the certificate
+changes. Mixer app and calendar selections are stored independently of consent.
+
+### Developer ID
+
 A **Developer ID Application** certificate and its private key must be available
 in Keychain. **Apple Development** certificates cannot replace it for this
 channel. Create the certificate through Apple Developer or Xcode with the

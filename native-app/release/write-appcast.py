@@ -23,7 +23,7 @@ def main(argv=None):
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args(argv)
     manifest = json.loads(args.manifest.read_text())
-    if manifest['state'] != 'prepared' or manifest['mode'] not in ('adhoc-release', 'release'):
+    if manifest['state'] != 'prepared' or manifest['mode'] not in ('adhoc-release', 'self-signed-release', 'release'):
         parser.error('Only prepared public artifacts can enter the update feed')
     if not re.fullmatch('v' + re.escape(manifest['version']) + r'(?:-beta\.\d+)?', args.tag):
         parser.error('Tag must match the prepared version')
@@ -47,7 +47,12 @@ def main(argv=None):
     ET.SubElement(item, f'{{{SPARKLE}}}version').text = manifest['build']
     ET.SubElement(item, f'{{{SPARKLE}}}shortVersionString').text = args.tag.removeprefix('v')
     ET.SubElement(item, f'{{{SPARKLE}}}minimumSystemVersion').text = manifest['minimum_macos']
-    ET.SubElement(item, 'description').text = 'Update Sorayura while keeping your settings. This beta is not notarized by Apple.' if manifest['mode'] == 'adhoc-release' else 'Update Sorayura while keeping your settings.'
+    description = 'Update Sorayura while keeping your settings.'
+    if manifest['mode'] != 'release':
+        description += ' This beta is not notarized by Apple.'
+    if manifest['mode'] == 'self-signed-release':
+        description += ' After a signing certificate change, macOS may ask you to grant access again.'
+    ET.SubElement(item, 'description').text = description
     ET.SubElement(item, 'enclosure', {
         'url': f"https://github.com/AnielloFalcone/sorayura/releases/download/{args.tag}/{artifact.name}",
         'length': str(artifact.stat().st_size), 'type': 'application/octet-stream',

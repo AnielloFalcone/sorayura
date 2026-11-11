@@ -90,11 +90,11 @@ Repository: [AnielloFalcone/sorayura](https://github.com/AnielloFalcone/sorayura
 
 ### Download the beta
 
-[GitHub Releases](https://github.com/AnielloFalcone/sorayura/releases) provides the Apple Silicon beta. Packages marked **ADHOC are not notarized by Apple**. Move the app to Applications; if macOS blocks its first launch, approve Sorayura in System Settings → Privacy & Security → Open Anyway. See [Apple’s instructions](https://support.apple.com/en-ie/102445) and the release notes for compatibility and verification limits. Managed Macs may disallow this exception. Source builds remain available through the instructions above.
+[GitHub Releases](https://github.com/AnielloFalcone/sorayura/releases) provides the Apple Silicon beta. Packages marked **SELF-SIGNED** or **ADHOC** are unnotarized. Move the app to Applications; if macOS blocks its first launch, approve Sorayura in System Settings → Privacy & Security → Open Anyway. See [Apple’s instructions](https://support.apple.com/en-ie/102445) and the release notes for compatibility and verification limits. Managed Macs may disallow this exception. Source builds remain available through the instructions above.
 
 ### In-app updates
 
-Starting with build 35, General settings includes **Check for updates…**. Sparkle checks a signed feed hosted in this repository and installs a verified GitHub release after confirmation. Builds 33 and 34 need one manual upgrade. Checks and installs are user-initiated; existing settings are retained. Ad hoc builds remain unnotarized and disable library validation to load Sparkle without an Apple Team ID.
+Starting with build 35, General settings includes **Check for updates…**. Sparkle checks a signed feed hosted in this repository and installs a verified GitHub release after confirmation. Builds 33 and 34 need one manual upgrade. Checks and installs are user-initiated. Calendar and mixer app selections remain saved if macOS asks for fresh consent after a signing certificate change.
 
 ### Clipboard
 

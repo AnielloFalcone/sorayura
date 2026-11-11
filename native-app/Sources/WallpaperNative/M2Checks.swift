@@ -30,16 +30,31 @@ import AppKit
         let systemLayout = SpotifyLayout(size: CGSize(width: 400, height: 400), expanded: true, shortcuts: 0, nowPlaying: true)
         try check(systemLayout.controls.map(\.0) == ["previous track", "playpause", "next track"] && systemLayout.volumeBar == nil,
                   "System Now Playing exposes unsupported controls")
-        let mixer = ProcessMixer()
+        let mixerSuite = "Sorayura.M2Checks.\(UUID().uuidString)"
+        let mixerDefaults = UserDefaults(suiteName: mixerSuite)!
+        defer { mixerDefaults.removePersistentDomain(forName: mixerSuite) }
+        let mixer = ProcessMixer(defaults: mixerDefaults)
         let mixerSize = CGSize(width: 300, height: MixerWidget.preferredHeight(count: 2) - 32)
         try check(MixerWidget.preferredHeight(count: 0) < MixerWidget.preferredHeight(count: 2), "Empty mixer is not compact")
         var openedMixerSettings = false
         MixerWidget.click(CGPoint(x: 290, y: 10), size: mixerSize, mixer: mixer) { openedMixerSettings = true }
         try check(openedMixerSettings, "Mixer process picker is not reachable from its header")
-        mixer.select(AudioProcess(id: 100, pid: 100, name: "Test"), true)
+        let app = AudioProcess(id: 100, pid: 100, name: "Test", selectionID: "dev.sorayura.test")
+        mixer.updateAvailable([app])
+        mixer.select(app, true)
         try check(MixerWidget.beginSlider(CGPoint(x: 100, y: 80), size: mixerSize, mixer: mixer) != nil &&
                   MixerWidget.beginSlider(CGPoint(x: 290, y: 80), size: mixerSize, mixer: mixer) == nil,
                   "Mixer slider and mute hit areas overlap")
+        mixer.updateAvailable([])
+        try check(mixer.selected.isEmpty, "Mixer still shows a closed app")
+        let reopened = ProcessMixer(defaults: mixerDefaults)
+        let restartedApp = AudioProcess(id: 101, pid: 101, name: "Test", selectionID: app.selectionID)
+        reopened.updateAvailable([restartedApp])
+        try check(reopened.selected == [restartedApp], "Mixer selection did not survive relaunch and PID change")
+        reopened.select(restartedApp, false)
+        let deselected = ProcessMixer(defaults: mixerDefaults)
+        deselected.updateAvailable([restartedApp])
+        try check(deselected.selected.isEmpty, "Mixer restored an explicitly deselected app")
         let resources = Bundle.main.resourceURL!
         let extensionManifest = try JSONSerialization.jsonObject(with: Data(contentsOf: resources.appending(path: "SpotifyWebExtension/manifest.json"))) as! [String: Any]
         let extensionKey = Data(base64Encoded: extensionManifest["key"] as! String)!

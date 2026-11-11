@@ -30,6 +30,7 @@ struct SettingsView: View {
         ("Animazione", "waveform.path", "Stile e livelli"),
         ("Clipboard", "doc.on.clipboard", "Cronologia, ricerca e preferiti"),
         ("Musica", "music.note", "Spotify e Apple Music"),
+        ("Calendario", "calendar", "Scegli i calendari per il widget."),
         ("Integrazioni", "app.connected.to.app.below.fill", "Applicazioni e stato termico"),
         ("Avvisi", "exclamationmark.triangle", "Soglie delle risorse")
     ]
@@ -86,6 +87,7 @@ struct SettingsView: View {
                         case "Animazione": animationSection
                         case "Clipboard": ClipboardSettingsView().environment(model)
                         case "Musica": musicSection
+                        case "Calendario": panel("Calendario") { CalendarSettings(agenda: model.calendarAgenda) }
                         case "Integrazioni": integrationsSection
                         default: alertsSection
                         }

@@ -466,6 +466,19 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     else { content.widgets.removeAll { $0 == widget } }
                     self.model.setContent(screen, content)
                 }
+                if widget == "calendar" {
+                    hitView.onBoxes = { [weak self] in
+                        guard let self else { return }
+                        self.settingsPresentation.navigation.section = "Calendario"
+                        self.openSettings()
+                    }
+                    hitView.onClick = { [weak self, weak hitView] point in
+                        guard let self, let hitView, !self.model.editing else { return }
+                        let size = CGSize(width: hitView.bounds.width - 32, height: hitView.bounds.height - 32)
+                        let local = CGPoint(x: point.x - 16, y: hitView.bounds.height - point.y - 16)
+                        CalendarWidget.click(local, size: size, agenda: self.model.calendarAgenda, displayID: self.model.displayKey(screen))
+                    }
+                }
                 if widget == "audioMixer" {
                     hitView.onBoxes = { [weak self] in
                         guard let self else { return }
@@ -684,8 +697,8 @@ final class LongPressView: NSView {
             }
             menu.addItem(.separator())
         }
-        if widgetID == "audioMixer" {
-            let item = NSMenuItem(title: L("Scegli app…"), action: #selector(configureBoxes), keyEquivalent: "")
+        if ["audioMixer", "calendar"].contains(widgetID) {
+            let item = NSMenuItem(title: L(widgetID == "calendar" ? "Scegli calendari…" : "Scegli app…"), action: #selector(configureBoxes), keyEquivalent: "")
             item.target = self
             menu.addItem(item)
         }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build/check/package a local candidate, public ad hoc beta, or Developer ID notarized beta.
+"""Build/check/package a candidate, unnotarized beta, or Developer ID notarized beta.
 
 Never publishes to GitHub or alters login items, hooks or user preferences.
 Credentials stay in an existing Keychain profile. No passwords are arguments.
@@ -41,19 +41,22 @@ def notarize(path, profile, log):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=['candidate', 'adhoc-release', 'release'])
+    parser.add_argument('mode', choices=['candidate', 'adhoc-release', 'self-signed-release', 'release'])
     parser.add_argument('--version', default='0.5.1')
     parser.add_argument('--build', default='53')
-    parser.add_argument('--identity', help='Exact Developer ID Application identity')
+    parser.add_argument('--identity', help='Developer ID Application identity or self-signed certificate SHA-1 fingerprint')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile name')
     args = parser.parse_args()
     if not re.fullmatch(r'\d+\.\d+\.\d+', args.version) or not re.fullmatch(r'\d+', args.build):
         parser.error('Version must be x.y.z and build must be numeric')
     notarized = args.mode == 'release'
+    self_signed = args.mode == 'self-signed-release'
     if notarized and (not args.identity or not args.identity.startswith('Developer ID Application:') or not args.notary_profile):
         parser.error('Release requires --identity "Developer ID Application: …" and --notary-profile')
-    if not notarized and (args.identity or args.notary_profile):
-        parser.error('Local-signature modes do not accept credentials; use release mode for notarization')
+    if self_signed and (not re.fullmatch(r'[0-9A-Fa-f]{40}', args.identity or '') or args.notary_profile):
+        parser.error('Self-signed release requires a certificate SHA-1 fingerprint and no notary profile')
+    if not notarized and not self_signed and (args.identity or args.notary_profile):
+        parser.error('Ad hoc modes do not accept a signing identity or notary profile')
     destination = ROOT / 'releases' / f'{args.version}-{args.build}-{args.mode}'
     destination.mkdir(parents=True, exist_ok=False)
     log = destination / 'preparation.log'
@@ -66,7 +69,8 @@ def main():
             env = os.environ.copy()
             env.update(WALLPAPER_VERSION=args.version, WALLPAPER_BUILD=args.build,
                        WALLPAPER_OUTPUT_ROOT=str(staging / 'build'), WALLPAPER_HARDENED='1',
-                       WALLPAPER_SIGN_ID=args.identity if notarized else '-')
+                       WALLPAPER_SIGN_ID=args.identity if notarized or self_signed else '-',
+                       WALLPAPER_SELF_SIGNED='1' if self_signed else '0')
             run([ROOT / 'build-native.sh'], log, cwd=ROOT, env=env, timeout=300)
             app = staging / 'build' / 'Sorayura.app'
             binary = app / 'Contents/MacOS/Sorayura'
@@ -100,7 +104,11 @@ def main():
                 raise RuntimeError('Hardened runtime missing')
             if notarized and ('Authority=Developer ID Application:' not in signature or 'Timestamp=' not in signature):
                 raise RuntimeError('Developer ID signature or secure timestamp missing')
-            if not notarized and 'Signature=adhoc' not in signature:
+            if self_signed:
+                requirement = f'identifier "{info["CFBundleIdentifier"]}" and certificate leaf = H"{args.identity}"'
+                run(['codesign', '--verify', '--strict', '-R=' + requirement, app], log)
+                manifest['certificate_sha1'] = args.identity.upper()
+            if not notarized and not self_signed and 'Signature=adhoc' not in signature:
                 raise RuntimeError('Expected ad hoc signature')
             manifest.update(update_public_key=info['SUPublicEDKey'], architecture=architecture, minimum_macos=info['LSMinimumSystemVersion'],
                             tested_macos=run(['sw_vers', '-productVersion'], log).strip(),
@@ -119,7 +127,8 @@ def main():
             for name in ['READ-ME.txt', 'PRIVACY.md', 'RELEASE-NOTES.md', 'SPOTIFY-WEB.md']:
                 shutil.copy2(ROOT / 'release' / name, contents / name)
             shutil.copy2(ROOT.parent / 'LICENSE', contents / 'LICENSE')
-            suffix = {'release': '', 'adhoc-release': '-ADHOC', 'candidate': '-CANDIDATE-NON-DISTRIBUIRE'}[args.mode]
+            suffix = {'release': '', 'adhoc-release': '-ADHOC', 'self-signed-release': '-SELF-SIGNED',
+                      'candidate': '-CANDIDATE-NON-DISTRIBUIRE'}[args.mode]
             dmg = destination / f'Sorayura-{args.version}-arm64{suffix}.dmg'
             run(['hdiutil', 'create', '-volname', f'Sorayura {args.version}',
                  '-srcfolder', contents, '-format', 'UDZO', '-ov', dmg], log, timeout=180)
@@ -133,11 +142,12 @@ def main():
             sha = hashlib.sha256(dmg.read_bytes()).hexdigest()
             (destination / 'SHA256SUMS').write_text(f'{sha}  {dmg.name}\n')
             manifest.update(state='prepared', artifact=dmg.name, sha256=sha,
-                            signing='Developer ID + notarized' if notarized else 'ad hoc + hardened runtime',
+                            signing={'release': 'Developer ID + notarized',
+                                     'self-signed-release': 'self-signed + hardened runtime'}.get(args.mode, 'ad hoc + hardened runtime'),
                             public_distribution_ready=False,
                             remaining_gate=('Physical QA for this exact artifact, downloaded artifact on another Mac, and approval of release destination/materials'
                                             if notarized else 'Developer ID signing/notarization, physical QA, downloaded final artifact on another Mac, and approval of release destination/materials'))
-            if args.mode == 'adhoc-release':
+            if args.mode in ('adhoc-release', 'self-signed-release'):
                 manifest['remaining_gate'] = 'Unnotarized beta: downloaded first launch on another Mac remains unverified; explicit per-app approval may be required'
             print(str(dmg))
     except Exception as error:

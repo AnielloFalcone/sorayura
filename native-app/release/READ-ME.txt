@@ -23,8 +23,8 @@ Layouts remain in ~/Library/Application Support/dev.aniello.macsystemwallpaper/.
 
 Signing and first launch
 
-Packages marked ADHOC are public betas with a local ad hoc signature. They are
-NOT Developer ID signed or notarized by Apple. macOS may block the first launch.
+Packages marked SELF-SIGNED or ADHOC are unnotarized public betas. macOS may
+block the first launch.
 After attempting to open Sorayura, go to System Settings → Privacy & Security,
 find the Sorayura notice and select Open Anyway, then confirm. Approve only the
 copy downloaded from https://github.com/AnielloFalcone/sorayura/releases.
@@ -32,7 +32,7 @@ Managed Macs may not allow this exception. Do not disable Gatekeeper globally.
 Apple's instructions: https://support.apple.com/en-ie/102445
 
 Verify the DMG against SHA256SUMS from the same release if desired:
-  shasum -a 256 Sorayura-0.5.1-arm64-ADHOC.dmg
+  shasum -a 256 -c SHA256SUMS
 
 Packages marked CANDIDATE-NON-DISTRIBUIRE remain local test builds.
 The downloaded public beta has not yet been tested on a separate clean Mac.
@@ -44,6 +44,10 @@ the signed GitHub feed and download, then installs after your confirmation.
 Builds 33 and 34 need one manual upgrade first. Automatic background checks and
 unattended installation are disabled. The Sparkle license is included inside
 the app Resources folder.
+
+When the app signing certificate changes, macOS may ask for Calendar and System
+Audio Recording consent again. Calendar and mixer app selections remain saved
+and do not need to be configured again.
 
 Spotify Web (Chrome)
 --------------------

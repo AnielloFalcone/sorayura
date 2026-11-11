@@ -7,9 +7,13 @@ struct AudioProcess: Identifiable, Equatable {
     let id: AudioObjectID
     let pid: pid_t
     let name: String
+    let selectionID: String
 }
 
 @MainActor @Observable final class ProcessMixer {
+    private static let selectionKey = "processMixer.selectedApps"
+    @ObservationIgnored private let defaults: UserDefaults?
+    private var savedSelections: [String]
     var available: [AudioProcess] = []
     private(set) var selected: [AudioProcess] = []
     private(set) var levels: [AudioObjectID: Int] = [:]
@@ -18,6 +22,15 @@ struct AudioProcess: Identifiable, Equatable {
     @ObservationIgnored var selectionChanged: (() -> Void)?
     @ObservationIgnored private var restoreVolume: [AudioObjectID: Int] = [:]
     private(set) var outputVolume: Int?
+
+    init(defaults: UserDefaults? = nil) {
+        self.defaults = defaults
+        savedSelections = defaults?.stringArray(forKey: Self.selectionKey) ?? []
+    }
+
+    func refreshSelection() {
+        if !savedSelections.isEmpty { refresh() }
+    }
 
     func refreshOutput() {
         let value = OutputVolume.read()
@@ -52,8 +65,9 @@ struct AudioProcess: Identifiable, Equatable {
             $0.processIdentifier > 0 && $0.processIdentifier != ProcessInfo.processInfo.processIdentifier
         }
         let next = apps.compactMap { app -> AudioProcess? in
-            guard let name = app.localizedName else { return nil }
-            return AudioProcess(id: AudioObjectID(app.processIdentifier), pid: app.processIdentifier, name: name)
+            guard let name = app.localizedName, let url = app.bundleURL else { return nil }
+            let selectionID = app.bundleIdentifier ?? url.standardizedFileURL.path
+            return AudioProcess(id: AudioObjectID(app.processIdentifier), pid: app.processIdentifier, name: name, selectionID: selectionID)
         }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         let byPID = Dictionary(apps.map { ($0.processIdentifier, $0) }, uniquingKeysWith: { first, _ in first })
         var groups: [AudioObjectID: [AudioObjectID: pid_t]] = [:]
@@ -70,14 +84,12 @@ struct AudioProcess: Identifiable, Equatable {
             if let owner { groups[AudioObjectID(owner.processIdentifier), default: [:]][id] = pid }
         }
         members = groups
-        if available != next { available = next }
+        updateAvailable(next)
         let output = OutputVolume.outputDevice()
         for process in selected {
-            if !next.contains(where: { $0.id == process.id && $0.pid == process.pid }) {
-                select(process, false)
-            } else if let tap = taps[process.id] as? ProcessAudioTap,
-                      tap.failed || tap.output != output ||
-                      tap.processes != activeMembers(for: process, output: tap.output) {
+            if let tap = taps[process.id] as? ProcessAudioTap,
+               tap.failed || tap.output != output ||
+               tap.processes != activeMembers(for: process, output: tap.output) {
                 taps.removeValue(forKey: process.id)
                 levels[process.id] = 100
                 error = true
@@ -86,15 +98,26 @@ struct AudioProcess: Identifiable, Equatable {
     }
 
     func select(_ process: AudioProcess, _ enabled: Bool) {
-        guard selected.contains(process) != enabled else { return }
+        guard savedSelections.contains(process.selectionID) != enabled else { return }
         if enabled {
-            selected.append(process)
+            savedSelections.append(process.selectionID)
         } else {
+            savedSelections.removeAll { $0 == process.selectionID }
+        }
+        defaults?.set(savedSelections, forKey: Self.selectionKey)
+        updateAvailable(available)
+    }
+
+    func updateAvailable(_ apps: [AudioProcess]) {
+        if available != apps { available = apps }
+        let next = savedSelections.flatMap { selection in apps.filter { $0.selectionID == selection } }
+        guard selected != next else { return }
+        for process in selected where !next.contains(where: { $0.pid == process.pid && $0.selectionID == process.selectionID }) {
             taps.removeValue(forKey: process.id)
             levels.removeValue(forKey: process.id)
             restoreVolume.removeValue(forKey: process.id)
-            selected.removeAll { $0.id == process.id }
         }
+        selected = next
         selectionChanged?()
     }
 
