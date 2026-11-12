@@ -1,6 +1,6 @@
 # Beta preparation
 
-The first beta targets Apple Silicon. The build declares macOS 14 as its minimum;
+The public release targets Apple Silicon. The build declares macOS 14 as its minimum;
 real-world tests have been conducted on macOS 27.0.1. Intel and other macOS versions
 still require verification. Review READ-ME.txt, RELEASE-NOTES.md and PRIVACY.md.
 
@@ -42,11 +42,11 @@ release notes; users may need per-app approval in Privacy & Security.
 
 ## Signing and notarization
 
-For an unnotarized beta with a reusable self-signed identity, use the same
+For an unnotarized release with a reusable self-signed identity, use the same
 certificate and private key in the maintainer’s Keychain for successive releases:
 
 ```sh
-python3 native-app/release/prepare.py self-signed-release --version 0.5.1 --build 60 \
+python3 native-app/release/prepare.py self-signed-release --stable --version 0.6.0 --build 71 \
   --identity 'CERTIFICATE_SHA1_WITHOUT_COLONS'
 ```
 
@@ -130,7 +130,8 @@ The script verifies the prepared hash, matching public key and both signatures.
 Upload the exact DMG and SHA256SUMS to the matching GitHub release **before**
 pushing updates/appcast.xml. Do not edit signed XML; regenerate it for each release.
 The feed contains the newest release only, and compares numeric CFBundleVersion:
-always increase the build number. The public feed is the beta channel for now.
+always increase the build number. Use the plain version tag for a stable release
+and a `-beta.N` tag for a beta. The public feed serves both.
 
 Test the update on a disposable copy before declaring installation/relaunch
 verified. Never remove quarantine or disable Gatekeeper as part of the updater.

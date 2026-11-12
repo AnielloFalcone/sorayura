@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build/check/package a candidate, unnotarized beta, or Developer ID notarized beta.
+"""Build, check and package a candidate or public release.
 
 Never publishes to GitHub or alters login items, hooks or user preferences.
 Credentials stay in an existing Keychain profile. No passwords are arguments.
@@ -42,8 +42,9 @@ def notarize(path, profile, log):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['candidate', 'adhoc-release', 'self-signed-release', 'release'])
-    parser.add_argument('--version', default='0.5.1')
-    parser.add_argument('--build', default='53')
+    parser.add_argument('--version', default='0.6.0')
+    parser.add_argument('--build', default='71')
+    parser.add_argument('--stable', action='store_true', help='Prepare a stable public release')
     parser.add_argument('--identity', help='Developer ID Application identity or self-signed certificate SHA-1 fingerprint')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile name')
     args = parser.parse_args()
@@ -51,6 +52,8 @@ def main():
         parser.error('Version must be x.y.z and build must be numeric')
     notarized = args.mode == 'release'
     self_signed = args.mode == 'self-signed-release'
+    if args.stable and args.mode == 'candidate':
+        parser.error('A local candidate cannot be a stable release')
     if notarized and (not args.identity or not args.identity.startswith('Developer ID Application:') or not args.notary_profile):
         parser.error('Release requires --identity "Developer ID Application: …" and --notary-profile')
     if self_signed and (not re.fullmatch(r'[0-9A-Fa-f]{40}', args.identity or '') or args.notary_profile):
@@ -60,7 +63,7 @@ def main():
     destination = ROOT / 'releases' / f'{args.version}-{args.build}-{args.mode}'
     destination.mkdir(parents=True, exist_ok=False)
     log = destination / 'preparation.log'
-    manifest = {'version': args.version, 'build': args.build, 'channel': 'beta',
+    manifest = {'version': args.version, 'build': args.build, 'channel': 'stable' if args.stable else 'beta',
                 'mode': args.mode, 'state': 'preparing', 'public_distribution_ready': False,
                 'created': datetime.now(timezone.utc).isoformat(), 'checks': {}}
     try:
@@ -148,7 +151,7 @@ def main():
                             remaining_gate=('Physical QA for this exact artifact, downloaded artifact on another Mac, and approval of release destination/materials'
                                             if notarized else 'Developer ID signing/notarization, physical QA, downloaded final artifact on another Mac, and approval of release destination/materials'))
             if args.mode in ('adhoc-release', 'self-signed-release'):
-                manifest['remaining_gate'] = 'Unnotarized beta: downloaded first launch on another Mac remains unverified; explicit per-app approval may be required'
+                manifest['remaining_gate'] = 'Unnotarized release: downloaded first launch on another Mac remains unverified; explicit per-app approval may be required'
             print(str(dmg))
     except Exception as error:
         manifest.update(state='failed', error=str(error))

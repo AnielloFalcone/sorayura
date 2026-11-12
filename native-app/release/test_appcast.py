@@ -69,6 +69,14 @@ class AppcastTests(unittest.TestCase):
         with self.assertRaises(SystemExit): self.generate(tag='v0.5.2-beta.3')
         self.assertFalse(self.output.exists())
 
+    def test_stable_release_requires_a_stable_tag(self):
+        self.data.update(channel='stable', mode='self-signed-release', build='71')
+        with self.assertRaises(SystemExit): self.generate()
+        self.generate(tag='v0.5.1')
+        item = ET.parse(self.output).find('channel/item')
+        self.assertEqual(item.findtext(f'{{{appcast.SPARKLE}}}shortVersionString'), '0.5.1')
+        self.assertEqual(item.findtext(f'{{{appcast.SPARKLE}}}version'), '71')
+
     def test_refuses_path_outside_package_folder(self):
         self.data['artifact'] = '../other.dmg'
         with self.assertRaises(SystemExit): self.generate()

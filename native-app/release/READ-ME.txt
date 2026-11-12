@@ -1,4 +1,4 @@
-Sorayura — beta 0.5.1
+Sorayura — installation and updates
 
 Drag Sorayura into Applications, eject the disk image and open the app.
 The controller appears in the menu bar. Open its settings to configure widgets and wallpaper.
@@ -6,7 +6,7 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 
 Apple Silicon. The build requires macOS 14; real-world verification has been
 performed on macOS 27.0.1. Other macOS versions and Macs are still being verified
-during the beta. Intel is not included in this package.
+with later releases. Intel is not included in this package.
 
 When upgrading, first quit the running copy. Preferences and layouts are retained.
 Keep the app in Applications before enabling Open at Login or Claude connections,
@@ -23,7 +23,7 @@ Layouts remain in ~/Library/Application Support/dev.aniello.macsystemwallpaper/.
 
 Signing and first launch
 
-Packages marked SELF-SIGNED or ADHOC are unnotarized public betas. macOS may
+Packages marked SELF-SIGNED or ADHOC are unnotarized. macOS may
 block the first launch.
 After attempting to open Sorayura, go to System Settings → Privacy & Security,
 find the Sorayura notice and select Open Anyway, then confirm. Approve only the
@@ -35,7 +35,7 @@ Verify the DMG against SHA256SUMS from the same release if desired:
   shasum -a 256 -c SHA256SUMS
 
 Packages marked CANDIDATE-NON-DISTRIBUIRE remain local test builds.
-The downloaded public beta has not yet been tested on a separate clean Mac.
+The current package has not yet been tested on a separate clean Mac.
 
 Updates
 -------

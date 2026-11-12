@@ -27,6 +27,9 @@ def main(argv=None):
         parser.error('Only prepared public artifacts can enter the update feed')
     if not re.fullmatch('v' + re.escape(manifest['version']) + r'(?:-beta\.\d+)?', args.tag):
         parser.error('Tag must match the prepared version')
+    channel = 'beta' if '-beta.' in args.tag else 'stable'
+    if manifest.get('channel', channel) != channel:
+        parser.error('Tag must match the prepared release channel')
     artifact = args.manifest.parent / manifest['artifact']
     if artifact.name != manifest['artifact'] or not artifact.name.endswith('.dmg'):
         parser.error('Expected a DMG filename')
@@ -49,7 +52,7 @@ def main(argv=None):
     ET.SubElement(item, f'{{{SPARKLE}}}minimumSystemVersion').text = manifest['minimum_macos']
     description = 'Update Sorayura while keeping your settings.'
     if manifest['mode'] != 'release':
-        description += ' This beta is not notarized by Apple.'
+        description += ' This release is not notarized by Apple.'
     if manifest['mode'] == 'self-signed-release':
         description += ' After a signing certificate change, macOS may ask you to grant access again.'
     ET.SubElement(item, 'description').text = description

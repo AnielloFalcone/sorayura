@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.13 — build 70
+# Sorayura 0.6.0 — build 71
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -11,7 +11,7 @@ The interface supports English, Italian and Spanish. In General → Language, fo
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
 
-## New in beta 13
+## Calendar in 0.6.0
 
 - Browse earlier and later months in the Calendar widget and return to the
   current month with one click. Each display keeps its own month in view.
@@ -21,7 +21,7 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Apple Maps suggestions appear in a floating list attached to the location
   field. Near Me requests macOS location access when selected.
 
-This Apple Silicon beta uses the same self-signed identity as beta 12 and is
+This Apple Silicon release uses the same self-signed identity as the recent betas and is
 distributed through the signed Sparkle feed. Apple has not notarized the build.
 
 ## New in beta 11
@@ -93,7 +93,7 @@ The ad hoc build disables library validation so it can load the signed Sparkle f
 
 Fresh installations now keep the existing macOS wallpaper on each display. Widgets and animations are overlaid without replacing the system wallpaper. Select a Sorayura background explicitly in Wallpaper settings; synchronization with macOS starts disabled. Existing saved wallpaper preferences are preserved, so upgrading from beta 1 does not automatically restore a previous wallpaper.
 
-## Beta limitations
+## Compatibility and verification
 
 Apple Silicon package. Built for macOS 14+, tested on macOS 27.0.1; other versions
 and Macs still require verification. Liquid Glass is used on macOS 26+, with
@@ -112,7 +112,7 @@ do not verify renderer pausing during sleep. First launch of this downloaded pac
 
 ## Download and first launch
 
-This prerelease uses a self-signed certificate. Download the DMG, drag Sorayura into Applications, eject the image and open the app. If macOS blocks it, use System Settings → Privacy & Security → Open Anyway for this app, following [Apple’s instructions](https://support.apple.com/en-ie/102445). Managed Macs may prohibit this exception. Do not disable Gatekeeper globally.
+This release uses a self-signed certificate. Download the DMG, drag Sorayura into Applications, eject the image and open the app. If macOS blocks it, use System Settings → Privacy & Security → Open Anyway for this app, following [Apple’s instructions](https://support.apple.com/en-ie/102445). Managed Macs may prohibit this exception. Do not disable Gatekeeper globally.
 
 `SHA256SUMS` identifies the uploaded DMG. Build 35 and later can check for updates in General settings. Earlier builds require a manual update. The Homebrew Cask is reserved for Developer ID distribution.
 
