@@ -68,7 +68,9 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>SUVerifyUpdateBeforeExtraction</key><true/>
 <key>SURequireSignedFeed</key><true/>
 <key>LSUIElement</key><true/>
-<key>NSCalendarsFullAccessUsageDescription</key><string>Sorayura reads upcoming events from the calendars you select to display them in its desktop widget.</string>
+<key>NSCalendarsFullAccessUsageDescription</key><string>Sorayura shows events from the calendars you select and saves events you create in the calendar widget.</string>
+<key>NSLocationUsageDescription</key><string>Sorayura uses your approximate location when you choose Near me to prioritize nearby Apple Maps suggestions.</string>
+<key>NSLocationWhenInUseUsageDescription</key><string>Sorayura uses your approximate location when you choose Near me to prioritize nearby Apple Maps suggestions.</string>
 <key>NSAudioCaptureUsageDescription</key><string>Sorayura uses system audio access to adjust the volume of the processes you select. Audio is processed locally and is not recorded.</string>
 <key>NSAppleEventsUsageDescription</key><string>Shows the current track and controls Spotify or Music when you enable the corresponding music integration.</string>
 <key>NSHighResolutionCapable</key><true/>

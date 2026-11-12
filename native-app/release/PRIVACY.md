@@ -58,6 +58,15 @@ audio access. Sorayura processes the selected apps' audio in memory to adjust
 their volume. It does not save or transmit audio. The explicit permission
 request starts a short unmuted system audio tap and discards the samples.
 
+## Calendar
+
+While you type in the event editor’s location field, MapKit sends the search
+text to Apple Maps for suggestions. If you choose Near me and grant macOS
+location access, Sorayura requests an approximate location once and uses it as
+the search region for the current editor. Sorayura does not save that location
+in its preferences. If you select a suggestion and save the event, the chosen
+place’s address and coordinates are stored in the selected calendar.
+
 ## Clipboard history
 
 Clipboard collection is off by default. When explicitly enabled, Sorayura checks

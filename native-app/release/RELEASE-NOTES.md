@@ -1,4 +1,4 @@
-# Sorayura 0.5.1-beta.11 — build 53
+# Sorayura 0.5.1-beta.13 — build 70
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,19 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## New in beta 13
+
+- Browse earlier and later months in the Calendar widget and return to the
+  current month with one click. Each display keeps its own month in view.
+- Create events from an empty day or the agenda, and edit, duplicate or delete
+  eligible events from the widget. The editor opens on the widget's display
+  and supports all-day events, durations, locations and notes.
+- Apple Maps suggestions appear in a floating list attached to the location
+  field. Near Me requests macOS location access when selected.
+
+This Apple Silicon beta uses the same self-signed identity as beta 12 and is
+distributed through the signed Sparkle feed. Apple has not notarized the build.
 
 ## New in beta 11
 
@@ -99,8 +112,8 @@ do not verify renderer pausing during sleep. First launch of this downloaded pac
 
 ## Download and first launch
 
-This prerelease is **ad hoc signed, not Developer ID signed and not notarized by Apple**. Download the DMG, drag Sorayura into Applications, eject the image and open the app. If macOS blocks it, use System Settings → Privacy & Security → Open Anyway for this app, following [Apple’s instructions](https://support.apple.com/en-ie/102445). Managed Macs may prohibit this exception. Do not disable Gatekeeper globally.
+This prerelease uses a self-signed certificate. Download the DMG, drag Sorayura into Applications, eject the image and open the app. If macOS blocks it, use System Settings → Privacy & Security → Open Anyway for this app, following [Apple’s instructions](https://support.apple.com/en-ie/102445). Managed Macs may prohibit this exception. Do not disable Gatekeeper globally.
 
-`SHA256SUMS` identifies the uploaded DMG. Users of beta 3 can update in the app. Users of beta 1 or beta 2 must install this build manually once. The Homebrew Cask is not available for this unsigned-by-Developer-ID channel.
+`SHA256SUMS` identifies the uploaded DMG. Build 35 and later can check for updates in General settings. Earlier builds require a manual update. The Homebrew Cask is reserved for Developer ID distribution.
 
 Claude account limits use the authenticated CLI control protocol with session persistence disabled. Spotify includes expanded controls and shortcuts. Account integrations are optional and require their respective clients and login.

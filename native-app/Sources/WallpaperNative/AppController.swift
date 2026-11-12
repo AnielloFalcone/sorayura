@@ -467,6 +467,18 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     self.model.setContent(screen, content)
                 }
                 if widget == "calendar" {
+                    window.acceptsMouseMovedEvents = true
+                    hitView.onHover = { [weak self, weak hitView] point in
+                        guard let self, let hitView else { return }
+                        let agenda = self.model.calendarAgenda
+                        let displayID = self.model.displayKey(screen)
+                        let day = self.model.editing ? nil : point.flatMap { point in
+                            let size = CGSize(width: hitView.bounds.width - 32, height: hitView.bounds.height - 32)
+                            let local = CGPoint(x: point.x - 16, y: hitView.bounds.height - point.y - 16)
+                            return CalendarWidget.clickableDay(at: local, size: size, agenda: agenda, displayID: displayID)
+                        }
+                        if agenda.hoveredDays[displayID] != day { agenda.hoveredDays[displayID] = day }
+                    }
                     hitView.onBoxes = { [weak self] in
                         guard let self else { return }
                         self.settingsPresentation.navigation.section = "Calendario"
@@ -476,7 +488,18 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         guard let self, let hitView, !self.model.editing else { return }
                         let size = CGSize(width: hitView.bounds.width - 32, height: hitView.bounds.height - 32)
                         let local = CGPoint(x: point.x - 16, y: hitView.bounds.height - point.y - 16)
-                        CalendarWidget.click(local, size: size, agenda: self.model.calendarAgenda, displayID: self.model.displayKey(screen))
+                        CalendarWidget.click(local, size: size, agenda: self.model.calendarAgenda,
+                                             displayID: self.model.displayKey(screen), screen: screen)
+                        hitView.onHover?(point)
+                    }
+                    hitView.onContextActions = { [weak self, weak hitView] point in
+                        guard let self, let hitView, !self.model.editing else { return [] }
+                        let size = CGSize(width: hitView.bounds.width - 32, height: hitView.bounds.height - 32)
+                        let local = CGPoint(x: point.x - 16, y: hitView.bounds.height - point.y - 16)
+                        let agenda = self.model.calendarAgenda
+                        guard let event = CalendarWidget.event(at: local, size: size, agenda: agenda,
+                                                               displayID: self.model.displayKey(screen)) else { return [] }
+                        return agenda.eventActions(for: event, screen: screen)
                     }
                 }
                 if widget == "audioMixer" {
@@ -606,6 +629,7 @@ final class LongPressView: NSView {
     var hitRegions: [CGRect]? { didSet { needsDisplay = true } }
     var onRemove: (() -> Void)?
     var onClick: ((CGPoint) -> Void)?
+    var onContextActions: ((CGPoint) -> [(String, () -> Void)])?
     var onControlPress: ((CGPoint) -> ((CGPoint) -> Void)?)?
     private var controlDrag: ((CGPoint) -> Void)?
     var musicCommandAvailable: ((String) -> Bool)?
@@ -681,7 +705,15 @@ final class LongPressView: NSView {
     }
     override func rightMouseDown(with event: NSEvent) {
         finishDrag()
-        NSMenu.popUpContextMenu(contextMenu(), with: event, for: self)
+        let actions = onContextActions?(convert(event.locationInWindow, from: nil)) ?? []
+        let menu = actions.isEmpty ? contextMenu() : NSMenu()
+        for (label, action) in actions {
+            let item = NSMenuItem(title: L(label), action: #selector(contextAction(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = action
+            menu.addItem(item)
+        }
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
     func contextMenu() -> NSMenu {
         let menu = NSMenu(title: widgetName)
@@ -746,6 +778,7 @@ final class LongPressView: NSView {
         return menu
     }
     @objc private func configureAction(_ sender: NSMenuItem) { if let value = sender.representedObject as? String { onConfigure?(value) } }
+    @objc private func contextAction(_ sender: NSMenuItem) { (sender.representedObject as? () -> Void)?() }
     @objc private func musicAction(_ sender: NSMenuItem) { if let command = sender.representedObject as? String { onMusicCommand?(command) } }
     @objc private func configureBoxes() { onBoxes?() }
     @objc private func editWidget() { onEdit?() }

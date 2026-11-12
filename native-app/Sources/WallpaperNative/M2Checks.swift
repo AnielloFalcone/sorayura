@@ -1,12 +1,71 @@
 import Foundation
 import CryptoKit
 import AppKit
+import MapKit
 
 @MainActor enum M2Checks {
     static func run() throws {
         func check(_ passed: Bool, _ message: String) throws {
             if !passed { throw SettingsError.invalid(message) }
         }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2
+        let date = calendar.date(from: DateComponents(year: 2026, month: 11, day: 2))!
+        let month = CalendarMonth(date: date, calendar: calendar)!
+        let size = CGSize(width: 210, height: 220)
+        try check(CalendarWidget.day(at: CGPoint(x: 15, y: 80), size: size, month: month) == date &&
+                  CalendarWidget.day(at: CGPoint(x: 15, y: 50), size: size, month: month) == nil,
+                  "Calendar hit testing must include empty days and exclude padding cells")
+        let december = Calendar.current.date(from: DateComponents(year: 2026, month: 12, day: 31))!
+        let january = Calendar.current.date(from: DateComponents(year: 2027, month: 1, day: 1))!
+        let agenda = CalendarAgenda(defaults: nil)
+        agenda.setDisplay(.month)
+        agenda.moveMonth(by: 1, displayID: "external", now: december)
+        try check(agenda.visibleMonth(displayID: "external", now: december)?.interval.start == january &&
+                  agenda.visibleMonth(displayID: "laptop", now: december)?.interval.contains(december) == true,
+                  "Calendar month navigation must cross years and stay local to the display")
+        let firstDayCell = agenda.visibleMonth(displayID: "external", now: december)!.days.firstIndex(of: january)!
+        let firstDayPoint = CGPoint(x: CGFloat(firstDayCell) * 30 + 15, y: 41)
+        try check(CalendarWidget.clickableDay(at: firstDayPoint, size: size, agenda: agenda, displayID: "external") == january,
+                  "Calendar click and hover must target the month shown by the widget")
+        agenda.moveMonth(by: 0, displayID: "external", now: december)
+        try check(agenda.visibleMonth(displayID: "external", now: december)?.interval.contains(december) == true &&
+                  CalendarWidget.monthNavigation(at: CGPoint(x: 140, y: 10), size: size) == -1 &&
+                  CalendarWidget.monthNavigation(at: CGPoint(x: 180, y: 10), size: size) == 0 &&
+                  CalendarWidget.monthNavigation(at: CGPoint(x: 200, y: 10), size: size) == 1 &&
+                  CalendarWidget.monthNavigation(at: CGPoint(x: 200, y: 30), size: size) == nil,
+                  "Calendar month controls must work only in the header and return to the current month")
+        let topRight = CGPoint(x: 200, y: 10)
+        try check(CalendarWidget.addButtonContains(topRight, size: size, display: .list, showingDay: false) &&
+                  CalendarWidget.addButtonContains(topRight, size: size, display: .month, showingDay: true) &&
+                  !CalendarWidget.addButtonContains(topRight, size: size, display: .month, showingDay: false),
+                  "Calendar add button must match the agenda and day detail headers")
+        try check(CalendarWidget.rowIndex(at: 26, top: 25, height: 33, spacing: 5) == 0 &&
+                  CalendarWidget.rowIndex(at: 59, top: 25, height: 33, spacing: 5) == nil &&
+                  CalendarWidget.rowIndex(at: 63, top: 25, height: 33, spacing: 5) == 1,
+                  "Calendar editing must target the clicked row and ignore the gap")
+        let externalScreen = CGRect(x: -1920, y: 100, width: 1920, height: 1000)
+        let editorFrame = CalendarAgenda.centeredFrame(CGSize(width: 476, height: 378), in: externalScreen)
+        try check(externalScreen.contains(editorFrame) && editorFrame.midX == externalScreen.midX,
+                  "Calendar editor must use the widget display even with negative desktop coordinates")
+        let evening = calendar.date(bySettingHour: 21, minute: 0, second: 0, of: date)!
+        let midnight = calendar.date(byAdding: .day, value: 1, to: date)!
+        let dayRange = CalendarAgenda.convertedEventRange(start: evening, end: midnight, allDay: true, calendar: calendar)
+        try check(dayRange.start == date && dayRange.end == date, "Midnight end must not add another all-day date")
+        let timedRange = CalendarAgenda.convertedEventRange(start: dayRange.start, end: dayRange.end, allDay: false, calendar: calendar)
+        try check(calendar.component(.hour, from: timedRange.start) == 9 &&
+                  timedRange.end.timeIntervalSince(timedRange.start) == 3600,
+                  "Returning to a timed event must provide a valid one-hour range")
+        let region = CalendarPlaceSearch.nearbyRegion(around: CLLocationCoordinate2D(latitude: 45.4642, longitude: 9.1909))
+        try check(region.center.latitude == 45.46 && region.center.longitude == 9.19,
+                  "Nearby Maps suggestions must use an approximate location")
+        let locationField = CGRect(x: 12, y: 80, width: 360, height: 40)
+        let suggestionsBelow = CalendarEventEditor.suggestionsFrame(below: locationField, viewportHeight: 340)
+        let suggestionsAbove = CalendarEventEditor.suggestionsFrame(below: locationField, viewportHeight: 150)
+        try check(suggestionsBelow?.minY == 126 && suggestionsBelow?.width == 360 &&
+                  suggestionsAbove?.maxY == 74 &&
+                  CalendarEventEditor.suggestionsFrame(below: locationField.offsetBy(dx: 0, dy: -130), viewportHeight: 340) == nil,
+                  "Calendar location suggestions must follow the field and fit the visible form")
         try check(AgentRankingPage.pageSize(expanded: false, height: 120) == 1 && AgentRankingPage.pageSize(expanded: true, height: 240) == 6, "Pagination hides rows in a small widget")
         for total in [0, 1, 3, 4, 7, 40] {
             var visited: [Int] = []
