@@ -160,6 +160,11 @@ final class DesktopSurfaceWindow: NSWindow {
 
 @MainActor
 final class DesktopHitPanel: NSPanel {
+    static func desktopLevel(isAnimation: Bool) -> NSWindow.Level {
+        // Finder's desktop items win overlaps, and widget controls win over the animation.
+        NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) - (isAnimation ? 2 : 1))
+    }
+
     override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
 }
 
@@ -602,8 +607,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let frame = NSRect(x: screen.frame.minX + rect.minX, y: screen.frame.maxY - rect.maxY,
                                width: rect.width, height: rect.height)
             if window.frame != frame { window.setFrame(frame, display: true) }
-            // Widget controls take precedence where the animation overlaps them.
-            window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + (widget == "animation" ? 1 : 2))
+            window.level = DesktopHitPanel.desktopLevel(isAnimation: widget == "animation")
             if let hitView = window.contentView as? LongPressView, widget == "animation" {
                 let regions = AnimationView.interactionRegions(style: model.prefs.animationStyle, bounds: screen.frame.size,
                     scale: model.animationScale(screen), position: model.animationPosition(screen), layers: model.prefs.layers.count,

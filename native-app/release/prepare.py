@@ -42,8 +42,8 @@ def notarize(path, profile, log):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['candidate', 'adhoc-release', 'self-signed-release', 'release'])
-    parser.add_argument('--version', default='0.6.0')
-    parser.add_argument('--build', default='71')
+    parser.add_argument('--version', default='0.6.1')
+    parser.add_argument('--build', default='72')
     parser.add_argument('--stable', action='store_true', help='Prepare a stable public release')
     parser.add_argument('--identity', help='Developer ID Application identity or self-signed certificate SHA-1 fingerprint')
     parser.add_argument('--notary-profile', help='Existing notarytool Keychain profile name')

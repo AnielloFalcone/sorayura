@@ -1,4 +1,4 @@
-# Sorayura 0.6.0 — build 71
+# Sorayura 0.6.1 — build 72
 
 Native desktop widgets and animations for macOS, controlled from the menu bar.
 The interface supports English, Italian and Spanish. In General → Language, follow the Mac’s preferred language or choose a language explicitly. System dialogs follow macOS.
@@ -10,6 +10,12 @@ The interface supports English, Italian and Spanish. In General → Language, fo
 - Coordinated rendering across monitors and reusable Metal buffers. A short
   comparison on three displays measured approximately 30% lower CPU at similar
   frame rates. Results vary with configuration, visibility and Mac activity.
+
+## Fixed in 0.6.1
+
+Finder desktop items, including screenshots in expanded stacks, take priority
+when they overlap a widget or animation. The uncovered parts of widgets remain
+interactive.
 
 ## Calendar in 0.6.0
 

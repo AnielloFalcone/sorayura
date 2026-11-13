@@ -201,6 +201,11 @@ enum M1Checks {
         try check(editingWindow.canBecomeKey && !editingWindow.canBecomeMain, "Edit window cannot accept key focus")
         editingWindow.editingEnabled = false
         try check(!editingWindow.canBecomeKey, "Leaving editing retains key-window capability")
+        let animationLevel = DesktopHitPanel.desktopLevel(isAnimation: true).rawValue
+        let widgetLevel = DesktopHitPanel.desktopLevel(isAnimation: false).rawValue
+        try check(Int(CGWindowLevelForKey(.desktopWindow)) + 1 < animationLevel &&
+                  animationLevel < widgetLevel && widgetLevel < Int(CGWindowLevelForKey(.desktopIconWindow)),
+                  "Desktop items must take precedence over widget and animation hit panels")
         let dataModel = Model.isolated()
         try check(dataModel.animationFields("right") == dataModel.prefs.layers.map(\.metric), "Legacy right box lost its selected metrics")
         dataModel.setAnimationFields(["clock", "device"], side: "left")
