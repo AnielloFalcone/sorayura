@@ -4,15 +4,15 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
   <channel>
     <title>Sorayura updates</title>
     <item>
-      <title>Sorayura 0.6.0 (build 71)</title>
-      <sparkle:version>71</sparkle:version>
-      <sparkle:shortVersionString>0.6.0</sparkle:shortVersionString>
+      <title>Sorayura 0.6.1 (build 72)</title>
+      <sparkle:version>72</sparkle:version>
+      <sparkle:shortVersionString>0.6.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <description>Update Sorayura while keeping your settings. This release is not notarized by Apple. After a signing certificate change, macOS may ask you to grant access again.</description>
-      <enclosure url="https://github.com/AnielloFalcone/sorayura/releases/download/v0.6.0/Sorayura-0.6.0-arm64-SELF-SIGNED.dmg" length="8837576" type="application/octet-stream" sparkle:edSignature="wxarqoLzV/JSWWzcPFtY+ijaqGMYOdTq7QD8Wz2EtJGJJyboFn+yBy9irIE1KVNhOZ3ij4ClyIeRCfjVx/K3DQ=="></enclosure>
+      <enclosure url="https://github.com/AnielloFalcone/sorayura/releases/download/v0.6.1/Sorayura-0.6.1-arm64-SELF-SIGNED.dmg" length="8838952" type="application/octet-stream" sparkle:edSignature="3p1f38HaDj53T6Yi5owKjqB1l2mlIlUUukSwr5YS71yLppI99UdLgz2Od3Oy/mKLXWJJ7AMgYqMkaYBW/Ig2DQ=="></enclosure>
     </item>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: as41VDa908rDWIRhJPYj+ctBS8h3RIMHSwrBloMmZAbxsZ3H3b3bPwL7yKb4iXgYerCy1I+8jPBwmS5Is+uqCg==
+edSignature: FPZZwtO8O2hujAbTHp3umy2K4jsaBiyjAFBOm+/pIaXtetIkZ0+GD8G2rmz3zrb+0hM00r+FZGVqVuqzuxRSAw==
 length: 1197
 -->
